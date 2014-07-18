@@ -1,3 +1,34 @@
+# Copyright (C) 2007 Kristian B. Oelgaard, 2008-2009 Anders Logg
+# Copyright (C) 2014 Jan Blechta
+#
+# This file is part of FENaPack and is based on file from DOLFIN.
+#
+# FENaPack is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FENaPack is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
+#
+# DOLFIN is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# DOLFIN is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with DOLFIN. If not, see <http://www.gnu.org/licenses/>.
+
 from dolfin import *
 from field_split import FieldSplitSolver
 
@@ -9,8 +40,8 @@ except IndexError:
     num_refinements = 0
 
 # Load mesh and subdomains
-mesh = Mesh("dolfin_fine.xml.gz")
-sub_domains = MeshFunction("size_t", mesh, "dolfin_fine_subdomains.xml.gz")
+mesh = Mesh("../data/dolfin_fine.xml.gz")
+sub_domains = MeshFunction("size_t", mesh, "../data/dolfin_fine_subdomains.xml.gz")
 
 # Refine
 # NOTE: Only works sequentially
@@ -78,9 +109,9 @@ solver.parameters['gmres']['restart'] = 100
 
 # AMG approximation to 0,0-block inverse
 #PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
+#PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
 ##PETScOptions.set("fieldsplit_u_pc_type", "gamg") # Does not work
 #PETScOptions.set("fieldsplit_u_pc_type", "ml")
-#PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
 #PETScOptions.set("fieldsplit_u_mg_levels_ksp_type", "chebyshev")
 #PETScOptions.set("fieldsplit_u_mg_levels_ksp_max_it", 2)
 #PETScOptions.set("fieldsplit_u_mg_levels_pc_type", "sor")

@@ -1,0 +1,5 @@
+*.pyc
+
+*.xml.gz
+*.xdmf
+*.h5

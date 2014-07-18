@@ -1,0 +1,7 @@
+#!/bin/bash
+
+mkdir -p data/
+cd data/
+
+wget -N http://fenicsproject.org/pub/data/meshes/dolfin_fine.xml.gz
+wget -N http://fenicsproject.org/pub/data/meshes/dolfin_fine_subdomains.xml.gz
