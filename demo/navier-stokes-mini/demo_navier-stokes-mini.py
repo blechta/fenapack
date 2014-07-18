@@ -30,7 +30,7 @@
 # along with DOLFIN. If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import *
-from field_split import FieldSplitSolver
+from fenapack import FieldSplitSolver
 
 import sys
 
@@ -40,8 +40,8 @@ except IndexError:
     num_refinements = 0
 
 # Load mesh and subdomains
-mesh = Mesh("../data/dolfin_fine.xml.gz")
-sub_domains = MeshFunction("size_t", mesh, "../data/dolfin_fine_subdomains.xml.gz")
+mesh = Mesh("../../data/dolfin_fine.xml.gz")
+sub_domains = MeshFunction("size_t", mesh, "../../data/dolfin_fine_subdomains.xml.gz")
 
 # Refine
 # NOTE: Only works sequentially

@@ -19,6 +19,8 @@ from dolfin import (PETScKrylovSolver, compile_extension_module,
         as_backend_type, PETScMatrix, SystemAssembler)
 from petsc4py import PETSc
 
+__all__ = ['FieldSplitSolver']
+
 class FieldSplitSolver(PETScKrylovSolver):
     def __init__(self, space):
         # Setup GMRES with RIGHT preconditioning
@@ -138,7 +140,8 @@ dofmap_dofs_is_cpp_code = """
 %include "petsc4py/petsc4py.i"
 #endif
 
-#include <petsc.h>
+#include <vector>
+#include <petscis.h>
 #include <dolfin/fem/GenericDofMap.h>
 
 namespace dolfin {
