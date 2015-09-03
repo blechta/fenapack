@@ -129,7 +129,7 @@ class PCD_preconditioner(object):
         pc = ksp.getPC()
         pc.setType(PETSc.PC.Type.CHOLESKY)
         pc.setFactorSolverPackage('mumps')
-        self._mp.setOption(PETSc.Mat.Option.SPD, True)
+        self._ap.setOption(PETSc.Mat.Option.SPD, True)
         ksp.setOperators(self._ap)
         ksp.setUp()
         self._ksp_ap = ksp
