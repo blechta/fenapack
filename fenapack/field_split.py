@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Jan Blechta
+# Copyright (C) 2014-2015 Jan Blechta and Martin Rehor
 #
 # This file is part of FENaPack.
 #
@@ -19,9 +19,44 @@ from dolfin import (PETScKrylovSolver, compile_extension_module,
         as_backend_type, PETScMatrix, SystemAssembler)
 from petsc4py import PETSc
 
-__all__ = ['FieldSplitSolver']
+__all__ = ['SimpleFieldSplitSolver', 'PCDFieldSplitSolver']
 
-class FieldSplitSolver(PETScKrylovSolver):
+class SimpleFieldSplitSolver(PETScKrylovSolver):
+    def __init__(self, space, ksptype):
+        """Arguments:
+            space   ... instance of dolfin's MixedFunctionSpace
+            ksptype ... krylov solver type, see help(PETSc.KSP.Type)
+        """
+        # Setup KSP
+        ksp = PETSc.KSP()
+        ksp.create(PETSc.COMM_WORLD)
+        ksp.setType(ksptype)
+
+        # Setup FIELDSPLIT preconditioning
+        pc = ksp.getPC()
+        pc.setType(PETSc.PC.Type.FIELDSPLIT)
+        is0 = dofmap_dofs_is(space.sub(0).dofmap())
+        is1 = dofmap_dofs_is(space.sub(1).dofmap())
+        pc.setFieldSplitIS(['u', is0], ['p', is1])
+        is0.destroy()
+        is1.destroy()
+
+        # Init mother class
+        PETScKrylovSolver.__init__(self, ksp)
+
+    def setup(self):
+        # Setup KSP and PC
+        ksp = self.ksp()
+        pc = ksp.getPC()
+        # TODO: What is the exact purpose of the following two calls?
+        # NOTE: When uncommented, there is a segmentation fault using
+        # fieldsplit_type = 'schur' in IFISS example square_stokes.py.
+        #ksp.setUp()
+        #pc.setUp()
+        ksp.setFromOptions()
+        pc.setFromOptions()
+
+class PCDFieldSplitSolver(PETScKrylovSolver):
     def __init__(self, space):
         # Setup GMRES with RIGHT preconditioning
         ksp = PETSc.KSP()
@@ -97,11 +132,11 @@ class PCD_preconditioner(object):
         self.prepare_factors()
     def apply(self, pc, x, y):
         # y = S^{-1} x = M_p^{-1} F_p  A_p^{-1} x
-        self._ksp_ap.solve(x, y)
+        self._ksp_ap.solve(x, y) # y = A_p^{-1} x
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
-        self._fp.mult(y, x)
-        self._ksp_mp.solve(x, y)
+        self._fp.mult(y, x) # x = F_p y
+        self._ksp_mp.solve(x, y) # y = M_p^{-1} x
     def set_operators(self, isp, Mp, Fp, Ap, Lp, bcs_Ap):
         self._isp = isp
         self._Mp = Mp

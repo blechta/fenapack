@@ -30,7 +30,7 @@
 # along with DOLFIN. If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import *
-from fenapack import FieldSplitSolver
+from fenapack import PCDFieldSplitSolver
 
 import sys
 
@@ -99,7 +99,7 @@ Lp = Constant(0.0)*q*dx # Dummy right-hand side
 A, b = assemble_system(a, L, bcs)
 
 # Setup fieldsplit solver
-solver = FieldSplitSolver(Mini)
+solver = PCDFieldSplitSolver(Mini)
 solver.parameters["monitor_convergence"] = True
 solver.parameters["relative_tolerance"] = 1e-6
 solver.parameters["maximum_iterations"] = 100
