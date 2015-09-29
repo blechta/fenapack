@@ -16,7 +16,7 @@
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import (PETScKrylovSolver, compile_extension_module,
-        as_backend_type, PETScMatrix, SystemAssembler)
+        as_backend_type, PETScMatrix, SystemAssembler, PETScOptions)
 from petsc4py import PETSc
 
 __all__ = ['SimpleFieldSplitSolver', 'PCDFieldSplitSolver']
@@ -43,6 +43,23 @@ class SimpleFieldSplitSolver(PETScKrylovSolver):
 
         # Init mother class
         PETScKrylovSolver.__init__(self, ksp)
+
+        # Setup default PETSc options
+        self.default_settings()
+
+    def default_settings(self):
+        # Fieldsplit type
+        PETScOptions.set("pc_fieldsplit_type", "additive")
+        # HYPRE AMG for 00 block
+        PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
+        PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
+        PETScOptions.set("fieldsplit_u_pc_type", "hypre")
+        PETScOptions.set("fieldsplit_u_pc_hypre_type", "boomeramg")
+        # T = Q with Chebyshev semi-iteration for 11 block
+        PETScOptions.set("fieldsplit_p_ksp_type", "chebyshev")
+        PETScOptions.set("fieldsplit_p_ksp_max_it", 5)
+        PETScOptions.set("fieldsplit_p_pc_type", "jacobi")
+        self.setup()
 
     def setup(self):
         # Setup KSP and PC
