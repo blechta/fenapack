@@ -16,12 +16,14 @@
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import (PETScKrylovSolver, compile_extension_module,
-        as_backend_type, PETScMatrix, SystemAssembler, PETScOptions)
+                    as_backend_type, PETScMatrix, SystemAssembler)
 from petsc4py import PETSc
 
 __all__ = ['SimpleFieldSplitSolver', 'PCDFieldSplitSolver']
 
 class SimpleFieldSplitSolver(PETScKrylovSolver):
+    """This class implements fieldsplit preconditioner for "Stokes-like" problems."""
+
     def __init__(self, space, ksptype):
         """Arguments:
             space   ... instance of dolfin's MixedFunctionSpace
@@ -35,41 +37,65 @@ class SimpleFieldSplitSolver(PETScKrylovSolver):
         # Setup FIELDSPLIT preconditioning
         pc = ksp.getPC()
         pc.setType(PETSc.PC.Type.FIELDSPLIT)
+        pc.setFieldSplitType(PETSc.PC.CompositeType.ADDITIVE)
         is0 = dofmap_dofs_is(space.sub(0).dofmap())
         is1 = dofmap_dofs_is(space.sub(1).dofmap())
         pc.setFieldSplitIS(['u', is0], ['p', is1])
         is0.destroy()
         is1.destroy()
 
+        # Create helper class to set options for external packages (e.g. HYPRE)
+        self._opts = PETSc.Options()
+
         # Init mother class
         PETScKrylovSolver.__init__(self, ksp)
 
-        # Setup default PETSc options
+        # Set up ksp and pc
         self.default_settings()
 
-    def default_settings(self):
-        # Fieldsplit type
-        PETScOptions.set("pc_fieldsplit_type", "additive")
-        # HYPRE AMG for 00 block
-        PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
-        PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
-        PETScOptions.set("fieldsplit_u_pc_type", "hypre")
-        PETScOptions.set("fieldsplit_u_pc_hypre_type", "boomeramg")
-        # T = Q with Chebyshev semi-iteration for 11 block
-        PETScOptions.set("fieldsplit_p_ksp_type", "chebyshev")
-        PETScOptions.set("fieldsplit_p_ksp_max_it", 5)
-        PETScOptions.set("fieldsplit_p_pc_type", "jacobi")
-        self.setup()
+    def opts(self):
+        """Returns helper `PETSc.Options` class, so that command-line options
+        can be set using either DOLFIN's `PETScOptions.set("some_option", value)`
+        or `solver.opts().setValue("-some_option", value)`, where solver is an
+        instance of the `SimpleFieldSplitSolver` class."""
+        return self._opts
 
-    def setup(self):
-        # Setup KSP and PC
-        ksp = self.ksp()
+    def default_settings(self):
+        """Default settings for the solver. This method is first called
+        by the constructor."""
+        # Get KSP and PC contexts
+        ksp = self.ksp() # ksp is obtained from DOLFIN's PETScKrylovSolver
         pc = ksp.getPC()
-        # TODO: What is the exact purpose of the following two calls?
-        # NOTE: When uncommented, there is a segmentation fault using
-        # fieldsplit_type = 'schur' in IFISS example square_stokes.py.
-        #ksp.setUp()
-        #pc.setUp()
+
+        # Get sub-KSPs, sub-PCs
+        ksp0, ksp1 = pc.getFieldSplitSubKSP()
+        pc0, pc1 = ksp0.getPC(), ksp1.getPC()
+
+        # HYPRE AMG for 00 block
+        ksp0.setType(PETSc.KSP.Type.RICHARDSON)
+        ksp0.max_it = 1
+        pc0.setType(PETSc.PC.Type.HYPRE)
+        self._opts.setValue("-fieldsplit_u_pc_hypre_type", "boomeramg")
+        #self._opts.setValue("-fieldsplit_u_pc_hypre_boomeramg_cycle_type", "W")
+
+        # Chebyshev semi-iteration for 11 block
+        ksp1.setType(PETSc.KSP.Type.CHEBYSHEV)
+        ksp1.max_it = 5
+        pc1.setType(PETSc.PC.Type.JACOBI)
+
+    def setFromOptions(self):
+        """Do the set up from command-line options."""
+        # Get KSP and PC contexts
+        ksp = self.ksp() # ksp is obtained from DOLFIN's PETScKrylovSolver
+        pc = ksp.getPC()
+        # Get sub-KSPs, sub-PCs
+        ksp0, ksp1 = pc.getFieldSplitSubKSP()
+        pc0, pc1 = ksp0.getPC(), ksp1.getPC()
+        # Call setFromOptions method for all KSPs and PCs
+        ksp0.setFromOptions()
+        pc0.setFromOptions()
+        ksp1.setFromOptions()
+        pc1.setFromOptions()
         ksp.setFromOptions()
         pc.setFromOptions()
 
