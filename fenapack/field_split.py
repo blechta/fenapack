@@ -26,8 +26,8 @@ class SimpleFieldSplitSolver(PETScKrylovSolver):
 
     def __init__(self, space, ksptype):
         """Arguments:
-            space   ... instance of dolfin's MixedFunctionSpace
-            ksptype ... krylov solver type, see help(PETSc.KSP.Type)
+             space   ... instance of dolfin's MixedFunctionSpace
+             ksptype ... krylov solver type, see help(PETSc.KSP.Type)
         """
         # Setup KSP
         ksp = PETSc.KSP()
@@ -71,14 +71,14 @@ class SimpleFieldSplitSolver(PETScKrylovSolver):
         ksp0, ksp1 = pc.getFieldSplitSubKSP()
         pc0, pc1 = ksp0.getPC(), ksp1.getPC()
 
-        # HYPRE AMG for 00 block
+        # Setup approximation of 00-block inverse (Hypre AMG)
         ksp0.setType(PETSc.KSP.Type.RICHARDSON)
         ksp0.max_it = 1
         pc0.setType(PETSc.PC.Type.HYPRE)
         self._opts.setValue("-fieldsplit_u_pc_hypre_type", "boomeramg")
         #self._opts.setValue("-fieldsplit_u_pc_hypre_boomeramg_cycle_type", "W")
 
-        # Chebyshev semi-iteration for 11 block
+        # Setup approximation of 11-block inverse (Chebyshev semi-iteration)
         ksp1.setType(PETSc.KSP.Type.CHEBYSHEV)
         ksp1.max_it = 5
         pc1.setType(PETSc.PC.Type.JACOBI)
@@ -100,13 +100,19 @@ class SimpleFieldSplitSolver(PETScKrylovSolver):
         pc.setFromOptions()
 
 class PCDFieldSplitSolver(PETScKrylovSolver):
-    def __init__(self, space):
+    """This class implements PCD preconditioner for Navier-Stokes problems."""
+
+    def __init__(self, space, ksptype):
+        """Arguments:
+             space   ... instance of dolfin's MixedFunctionSpace
+             ksptype ... krylov solver type, see help(PETSc.KSP.Type)
+        """
         # Setup GMRES with RIGHT preconditioning
+        ksptype_petsc_name = "bcgs" if ksptype == "bicgstab" else ksptype
         ksp = PETSc.KSP()
         ksp.create(PETSc.COMM_WORLD)
-        ksp.setType(PETSc.KSP.Type.GMRES)
+        ksp.setType(ksptype_petsc_name)
         ksp.setPCSide(PETSc.PC.Side.RIGHT)
-        self._ksp = ksp
 
         # Setup SCHUR with UPPER factorization
         pc = ksp.getPC()
@@ -117,15 +123,10 @@ class PCDFieldSplitSolver(PETScKrylovSolver):
         is1 = dofmap_dofs_is(space.sub(1).dofmap())
         pc.setFieldSplitIS(['u', is0], ['p', is1])
         is0.destroy()
-        self._is1 = is1 # Will be needed by Schur PC
+        self._is1 = is1 # will be needed by Schur PC
 
         # Init mother class
         PETScKrylovSolver.__init__(self, ksp)
-
-    # Override PETScKrylovSolver::set_operator() method
-    def set_operator(self, A):
-        PETScKrylovSolver.set_operator(self, A)
-        self._ksp.setOperators(as_backend_type(A).mat())
 
     # Discard PETScKrylovSolver::set_operators() method
     def set_operators(self, *args):
@@ -133,7 +134,7 @@ class PCDFieldSplitSolver(PETScKrylovSolver):
 
     def setup(self, *args):
         # Setup KSP and PC
-        ksp = self._ksp
+        ksp = self.ksp() # ksp is obtained from DOLFIN's PETScKrylovSolver
         ksp.setUp()
         pc = ksp.getPC()
         pc.setUp()
@@ -142,75 +143,99 @@ class PCDFieldSplitSolver(PETScKrylovSolver):
         ksp0, ksp1 = pc.getFieldSplitSubKSP()
         pc0, pc1 = ksp0.getPC(), ksp1.getPC()
 
-        # Setup approximation of 0,0-block inverse
+        # Setup approximation of 00-block inverse
         ksp0.setFromOptions()
+        ksp0.setUp()
         pc0.setFromOptions()
+        pc0.setUp()
 
-        # Setup approximation of Schur complement inverse
+        # Setup approximation of Schur complement (11-block) inverse
         ksp1.setType(PETSc.KSP.Type.PREONLY)
+        ksp1.setUp()
         pc1.setType(PETSc.PC.Type.PYTHON)
-        pc1.setPythonContext(PCD_preconditioner(self._is1, *args))
-        self._is1.destroy()
+        pc1.setPythonContext(PCDctx(self._is1, *args))
+        pc1.setUp()
 
+class PCDctx(object):
+    """Python context for PCD preconditioner."""
 
-class PCD_preconditioner(object):
     def __init__(self, *args):
         if args:
             self.set_operators(*args)
-            self.setup()
-    def setup(self):
-        self._mp = PETScMatrix()
-        self._fp = PETScMatrix()
-        self._ap = PETScMatrix()
-        # TODO: What are correct BCs?
-        assembler = SystemAssembler(self._Mp, self._Lp, self._bcs_Ap)
-        assembler.assemble(self._mp)
-        assembler = SystemAssembler(self._Fp, self._Lp, self._bcs_Ap)
-        assembler.assemble(self._fp)
-        assembler = SystemAssembler(self._Ap, self._Lp, self._bcs_Ap)
-        assembler.assemble(self._ap)
-        self._mp = self._mp.mat().getSubMatrix(self._isp, self._isp)
-        self._ap = self._ap.mat().getSubMatrix(self._isp, self._isp)
-        self._fp = self._fp.mat().getSubMatrix(self._isp, self._isp)
-        self.prepare_factors()
-    def apply(self, pc, x, y):
-        # y = S^{-1} x = M_p^{-1} F_p  A_p^{-1} x
-        self._ksp_ap.solve(x, y) # y = A_p^{-1} x
-        # TODO: Try matrix-free!
-        # TODO: Is modification of x safe?
-        self._fp.mult(y, x) # x = F_p y
-        self._ksp_mp.solve(x, y) # y = M_p^{-1} x
-    def set_operators(self, isp, Mp, Fp, Ap, Lp, bcs_Ap):
+            self.assemble_operators()
+
+    def set_operators(self, isp, mp, fp, ap, Lp, bcs_Ap):
+        """Collects an index set to identify block corresponding to Schur
+        complement in the system matrix, variational forms and boundary
+        conditions to assemble corresponding matrix operators."""
         self._isp = isp
-        self._Mp = Mp
-        self._Fp = Fp
-        self._Ap = Ap
-        self._Lp = Lp
+        self._mp = mp    # -> pressure mass matrix Mp
+        self._ap = ap    # -> pressure Laplacian Ap
+        self._fp = fp    # -> pressure convection-diffusion Fp
+        self._Lp = Lp    # -> dummy right hand side vector (not used)
         self._bcs_Ap = bcs_Ap
+
+    def assemble_operators(self):
+        """Prepares operators for PCD preconditioning."""
+        self._Mp = PETScMatrix()
+        self._Ap = PETScMatrix()
+        self._Fp = PETScMatrix()
+        # TODO: What are correct BCs?
+        # ----> It seems that homogeneus Dirichlet at outflow boundaries
+        #       plus Robin boundary condition due to which a surface term
+        #       appears in the definition of fp. Note that for enclosed
+        #       flow problems we need to additionally fix the pressure
+        #       somewhere -- usually at one particular point. (At least
+        #       if we want to solve the problem using LU factorization.)
+        assembler = SystemAssembler(self._mp, self._Lp, self._bcs_Ap)
+        assembler.assemble(self._Mp)
+        assembler = SystemAssembler(self._ap, self._Lp, self._bcs_Ap)
+        assembler.assemble(self._Ap)
+        assembler = SystemAssembler(self._fp, self._Lp, self._bcs_Ap)
+        assembler.assemble(self._Fp)
+        self._Mp = self._Mp.mat().getSubMatrix(self._isp, self._isp)
+        self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
+        self._Fp = self._Fp.mat().getSubMatrix(self._isp, self._isp)
+        self.prepare_factors()
+
     def prepare_factors(self):
         # Prepare Mp factorization
         ksp = PETSc.KSP()
         ksp.create(PETSc.COMM_WORLD)
         ksp.setType(PETSc.KSP.Type.PREONLY)
         pc = ksp.getPC()
-        pc.setType(PETSc.PC.Type.CHOLESKY)
-        pc.setFactorSolverPackage('mumps')
-        self._mp.setOption(PETSc.Mat.Option.SPD, True)
-        ksp.setOperators(self._mp)
+        pc.setType(PETSc.PC.Type.LU)
+        #pc.setFactorSolverPackage('umfpack')
+        #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
+        ksp.setOperators(self._Mp)
         ksp.setUp()
-        self._ksp_mp = ksp
+        pc.setUp()
+        self._ksp_Mp = ksp
 
         # Prepare Ap factorization
         ksp = PETSc.KSP()
         ksp.create(PETSc.COMM_WORLD)
         ksp.setType(PETSc.KSP.Type.PREONLY)
         pc = ksp.getPC()
-        pc.setType(PETSc.PC.Type.CHOLESKY)
-        pc.setFactorSolverPackage('mumps')
-        self._ap.setOption(PETSc.Mat.Option.SPD, True)
-        ksp.setOperators(self._ap)
+        pc.setType(PETSc.PC.Type.LU)
+        #pc.setFactorSolverPackage('umfpack')
+        #self._Ap.setOption(PETSc.Mat.Option.SPD, True)
+        ksp.setOperators(self._Ap)
         ksp.setUp()
-        self._ksp_ap = ksp
+        pc.setUp()
+        self._ksp_Ap = ksp
+
+    def apply(self, pc, x, y):
+        """This method is an obligatory part of the Python context, cf. PCShellSetApply.
+        It implements the following action (x ... input vector, y ... output vector):
+            $y = S^{-1} x = -A_p^{-1} F_p M_p^{-1} x$,
+        where $S = -M_p F_p^{-1} A_p$ approximates Schur complement $-B F^{-1} B^{T}$."""
+        # TODO: Try matrix-free!
+        # TODO: Is modification of x safe?
+        self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
+        # NOTE: Preconditioning with sole M_p in place of 11-block works for low Re.
+        self._Fp.mult(-y, x) # x = -F_p y
+        self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
 
 
 dofmap_dofs_is_cpp_code = """
