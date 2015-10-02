@@ -28,6 +28,8 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with DOLFIN. If not, see <http://www.gnu.org/licenses/>.
+#
+# Modified by Martin Rehor 2015
 
 from dolfin import *
 from fenapack import PCDFieldSplitSolver
@@ -43,63 +45,65 @@ except IndexError:
 mesh = Mesh("../../data/dolfin_fine.xml.gz")
 sub_domains = MeshFunction("size_t", mesh, "../../data/dolfin_fine_subdomains.xml.gz")
 
-# Refine
-# NOTE: Only works sequentially
-sub_domains_old = []
-for i in range(num_refinements):
-    mesh = adapt(mesh, CellFunction('bool', mesh, True))
-    # BUG in DOLFIN: this is needed to prevent memory corruption
-    sub_domains_old.append(sub_domains)
-    sub_domains = adapt(sub_domains, mesh)
+# # Refine
+# # NOTE: Only works sequentially
+# sub_domains_old = []
+# for i in range(num_refinements):
+#     mesh = adapt(mesh, CellFunction('bool', mesh, True))
+#     # BUG in DOLFIN: this is needed to prevent memory corruption
+#     sub_domains_old.append(sub_domains)
+#     sub_domains = adapt(sub_domains, mesh)
 
-# Define function spaces
-P1 = FunctionSpace(mesh, "Lagrange", 1)
-B  = FunctionSpace(mesh, "Bubble", 3)
-gdim = mesh.geometry().dim()
-V  = MixedFunctionSpace(gdim*(P1+B,))
-Q  = FunctionSpace(mesh, "CG",  1)
-Mini = MixedFunctionSpace((V, Q))
-info('Dimension of the function space %g' % Mini.dim())
+# Define function spaces (Taylor-Hood)
+V = VectorFunctionSpace(mesh, 'Lagrange', 2)
+Q = FunctionSpace(mesh, 'Lagrange', 1)
+W = MixedFunctionSpace((V, Q))
+info('Dimension of the function space %g' % W.dim())
 
 # No-slip boundary condition for velocity
 noslip = Constant((0.0, 0.0))
-bc0 = DirichletBC(Mini.sub(0), noslip, sub_domains, 0)
+bc0 = DirichletBC(W.sub(0), noslip, sub_domains, 0)
 
 # Inflow boundary condition for velocity
 inflow = Expression(("-sin(x[1]*pi)", "0.0"))
-bc1 = DirichletBC(Mini.sub(0), inflow, sub_domains, 1)
+bc1 = DirichletBC(W.sub(0), inflow, sub_domains, 1)
 
 # Boundary condition for pressure at outflow
 zero = Constant(0.0)
-bc2 = DirichletBC(Mini.sub(1), zero, sub_domains, 2)
+bc2 = DirichletBC(W.sub(1), zero, sub_domains, 2)
 
 # Collect boundary conditions
-bcs = [bc0, bc1, bc2]
+bcs = [bc0, bc1]
+bcs_pcd = [bc2]
 
 # Define variational problem
-(u, p) = TrialFunctions(Mini)
-(v, q) = TestFunctions(Mini)
-#nu = Constant(1e-1)
-nu = Expression('x[1] < x1 ? nu1 : nu2', x1=0.5, nu1=1e1, nu2=2e-1)
+(u, p) = TrialFunctions(W)
+(v, q) = TestFunctions(W)
+nu = Constant(1e-1)
+#nu = Expression('x[1] < x1 ? nu1 : nu2', x1=0.5, nu1=1e1, nu2=2e-1)
 f  = Constant((0.0, 0.0))
-a  = (nu*inner(grad(u), grad(v)) + div(v)*p + q*div(u))*dx
+a  = (nu*inner(grad(u), grad(v)) - p*div(v) - q*div(u))*dx
 L  = inner(f, v)*dx
 
 # Add Oseen-like convection
 u0 = Function(V)
 a += inner(dot(grad(u), u0), v)*dx
 
+# Define outward unit normal
+n = FacetNormal(W.mesh())
+
 # Operators for PCD preconditioner
-Mp = p*q*dx
-Fp = (nu*inner(grad(p), grad(q)) + dot(grad(p), u0)*q)*dx
-Ap = inner(grad(p), grad(q))*dx
-Lp = Constant(0.0)*q*dx # Dummy right-hand side
+mp = p*q*dx
+ap = inner(grad(p), grad(q))*dx
+fp = (nu*inner(grad(p), grad(q)) + dot(grad(p), u0)*q)*dx
+fp -= inner(u0, n)*p*q*ds # correction due to Robin BC
+Lp = Constant(0.0)*q*dx # dummy right-hand side
 
 # Assemble
 A, b = assemble_system(a, L, bcs)
 
 # Setup fieldsplit solver
-solver = PCDFieldSplitSolver(Mini)
+solver = PCDFieldSplitSolver(W, "gmres")
 solver.parameters["monitor_convergence"] = True
 solver.parameters["relative_tolerance"] = 1e-6
 solver.parameters["maximum_iterations"] = 100
@@ -120,12 +124,12 @@ solver.parameters['gmres']['restart'] = 100
 # LU 0,0-block inverse
 PETScOptions.set("fieldsplit_u_ksp_type", "preonly")
 PETScOptions.set("fieldsplit_u_pc_type", "lu")
-PETScOptions.set("fieldsplit_u_pc_factor_mat_solver_package", "mumps")
+#PETScOptions.set("fieldsplit_u_pc_factor_mat_solver_package", "mumps")
 
 # Compute solution using Ossen approximation
-w = Function(Mini)
+w = Function(W)
 solver.set_operator(A)
-solver.setup(Mp, Fp, Ap, Lp, [bc2])
+solver.setup(mp, fp, ap, Lp, bcs_pcd)
 solver.solve(w.vector(), b)
 while True:
     u0.assign(w.sub(0, deepcopy=True))
@@ -139,8 +143,8 @@ while True:
 (u, p) = w.split()
 
 # Save solution in VTK format
-File("velocity.xdmf") << u
-File("pressure.xdmf") << p
+#File("velocity.xdmf") << u
+#File("pressure.xdmf") << p
 
 # Plot solution
 plot(u)
