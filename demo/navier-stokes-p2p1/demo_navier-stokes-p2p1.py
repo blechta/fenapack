@@ -37,9 +37,9 @@ from fenapack import PCDFieldSplitSolver
 import sys
 
 try:
-    num_refinements = int(sys.argv[1])
+    strategy = sys.argv[1]
 except IndexError:
-    num_refinements = 0
+    strategy = 'A'
 
 # Load mesh and subdomains
 mesh = Mesh("../../data/dolfin_fine.xml.gz")
@@ -47,6 +47,7 @@ sub_domains = MeshFunction("size_t", mesh, "../../data/dolfin_fine_subdomains.xm
 
 # # Refine
 # # NOTE: Only works sequentially
+# num_refinements = 0
 # sub_domains_old = []
 # for i in range(num_refinements):
 #     mesh = adapt(mesh, CellFunction('bool', mesh, True))
@@ -68,9 +69,14 @@ bc0 = DirichletBC(W.sub(0), noslip, sub_domains, 0)
 inflow = Expression(("-sin(x[1]*pi)", "0.0"))
 bc1 = DirichletBC(W.sub(0), inflow, sub_domains, 1)
 
-# Boundary condition for pressure at outflow
+# Boundary conditions for PCD preconditioning
 zero = Constant(0.0)
-bc2 = DirichletBC(W.sub(1), zero, sub_domains, 2)
+if strategy == 'A':
+    print "Usage of strategy A."
+    bc2 = DirichletBC(W.sub(1), zero, sub_domains, 2)
+else:
+    print "Usage of strategy B."
+    bc2 = DirichletBC(W.sub(1), zero, sub_domains, 1)
 
 # Collect boundary conditions
 bcs = [bc0, bc1]
@@ -96,7 +102,8 @@ n = FacetNormal(W.mesh())
 mp = p*q*dx
 ap = inner(grad(p), grad(q))*dx
 fp = (nu*inner(grad(p), grad(q)) + dot(grad(p), u0)*q)*dx
-fp -= inner(u0, n)*p*q*ds # correction due to Robin BC
+alpha = 0.0 if strategy == 'B' else 1.0
+fp -= Constant(alpha)*inner(u0, n)*p*q*ds # correction due to Robin BC
 Lp = Constant(0.0)*q*dx # dummy right-hand side
 
 # Assemble
@@ -129,7 +136,7 @@ PETScOptions.set("fieldsplit_u_pc_type", "lu")
 # Compute solution using Ossen approximation
 w = Function(W)
 solver.set_operator(A)
-solver.setup(mp, fp, ap, Lp, bcs_pcd)
+solver.setup(mp, fp, ap, Lp, bcs_pcd, strategy)
 solver.solve(w.vector(), b)
 while True:
     u0.assign(w.sub(0, deepcopy=True))

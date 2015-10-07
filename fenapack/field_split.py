@@ -164,7 +164,7 @@ class PCDctx(object):
             self.set_operators(*args)
             self.assemble_operators()
 
-    def set_operators(self, isp, mp, fp, ap, Lp, bcs_Ap):
+    def set_operators(self, isp, mp, fp, ap, Lp, bcs_Ap, strategy):
         """Collects an index set to identify block corresponding to Schur
         complement in the system matrix, variational forms and boundary
         conditions to assemble corresponding matrix operators."""
@@ -173,7 +173,9 @@ class PCDctx(object):
         self._ap = ap    # -> pressure Laplacian Ap
         self._fp = fp    # -> pressure convection-diffusion Fp
         self._Lp = Lp    # -> dummy right hand side vector (not used)
+        self._bcs_Mp = bcs_Ap if strategy == 'A' else []
         self._bcs_Ap = bcs_Ap
+        self._bcs_Fp = bcs_Ap
 
     def assemble_operators(self):
         """Prepares operators for PCD preconditioning."""
@@ -187,11 +189,11 @@ class PCDctx(object):
         #       flow problems we need to additionally fix the pressure
         #       somewhere -- usually at one particular point. (At least
         #       if we want to solve the problem using LU factorization.)
-        assembler = SystemAssembler(self._mp, self._Lp, self._bcs_Ap)
+        assembler = SystemAssembler(self._mp, self._Lp, self._bcs_Mp)
         assembler.assemble(self._Mp)
         assembler = SystemAssembler(self._ap, self._Lp, self._bcs_Ap)
         assembler.assemble(self._Ap)
-        assembler = SystemAssembler(self._fp, self._Lp, self._bcs_Ap)
+        assembler = SystemAssembler(self._fp, self._Lp, self._bcs_Fp)
         assembler.assemble(self._Fp)
         self._Mp = self._Mp.mat().getSubMatrix(self._isp, self._isp)
         self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
