@@ -102,10 +102,11 @@ class SimpleFieldSplitSolver(PETScKrylovSolver):
 class PCDFieldSplitSolver(PETScKrylovSolver):
     """This class implements PCD preconditioner for Navier-Stokes problems."""
 
-    def __init__(self, space, ksptype):
+    def __init__(self, space, ksptype='gmres', insolver='lu'):
         """Arguments:
-             space   ... instance of dolfin's MixedFunctionSpace
-             ksptype ... krylov solver type, see help(PETSc.KSP.Type)
+             space    ... instance of dolfin's MixedFunctionSpace
+             ksptype  ... krylov solver type, see help(PETSc.KSP.Type)
+             insolver ... direct/iterative inner solver (choices: 'lu', 'it')
         """
         # Setup GMRES with RIGHT preconditioning
         ksptype_petsc_name = "bcgs" if ksptype == "bicgstab" else ksptype
@@ -123,7 +124,10 @@ class PCDFieldSplitSolver(PETScKrylovSolver):
         is1 = dofmap_dofs_is(space.sub(1).dofmap())
         pc.setFieldSplitIS(['u', is0], ['p', is1])
         is0.destroy()
+
+        # Store what needed
         self._is1 = is1 # will be needed by Schur PC
+        self._insolver = insolver
 
         # Init mother class
         PETScKrylovSolver.__init__(self, ksp)
@@ -153,7 +157,7 @@ class PCDFieldSplitSolver(PETScKrylovSolver):
         ksp1.setType(PETSc.KSP.Type.PREONLY)
         ksp1.setUp()
         pc1.setType(PETSc.PC.Type.PYTHON)
-        pc1.setPythonContext(PCDctx(self._is1, *args))
+        pc1.setPythonContext(PCDctx(self._insolver, self._is1, *args))
         pc1.setUp()
 
 class PCDctx(object):
@@ -161,10 +165,11 @@ class PCDctx(object):
 
     def __init__(self, *args):
         if args:
+            self._opts = PETSc.Options()
             self.set_operators(*args)
             self.assemble_operators()
 
-    def set_operators(self, isp, mp, fp, ap, Lp, bcs_Ap, strategy):
+    def set_operators(self, insolver, isp, mp, fp, ap, Lp, bcs_Ap, strategy):
         """Collects an index set to identify block corresponding to Schur
         complement in the system matrix, variational forms and boundary
         conditions to assemble corresponding matrix operators."""
@@ -176,6 +181,7 @@ class PCDctx(object):
         self._bcs_Mp = bcs_Ap if strategy == 'A' else []
         self._bcs_Ap = bcs_Ap
         self._bcs_Fp = bcs_Ap
+        self._insolver = insolver
 
     def assemble_operators(self):
         """Prepares operators for PCD preconditioning."""
@@ -204,27 +210,45 @@ class PCDctx(object):
         # Prepare Mp factorization
         ksp = PETSc.KSP()
         ksp.create(PETSc.COMM_WORLD)
-        ksp.setType(PETSc.KSP.Type.PREONLY)
         pc = ksp.getPC()
-        pc.setType(PETSc.PC.Type.LU)
-        #pc.setFactorSolverPackage('umfpack')
-        #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
+        if self._insolver == 'lu':
+            ksp.setType(PETSc.KSP.Type.PREONLY)
+            pc.setType(PETSc.PC.Type.LU)
+            #pc.setFactorSolverPackage('umfpack')
+        else:
+            #ksp.setType(PETSc.KSP.Type.CG)
+            #pc.setType(PETSc.PC.Type.HYPRE)
+            ksp.setType(PETSc.KSP.Type.CHEBYSHEV)
+            ksp.max_it = 5
+            pc.setType(PETSc.PC.Type.JACOBI)
+            # FIXME: The following estimates are valid only for continuous pressure.
+            self._opts.setValue("-ksp_chebyshev_eigenvalues", "0.5, 2.0")
+        self._Mp.setOption(PETSc.Mat.Option.SPD, True)
         ksp.setOperators(self._Mp)
         ksp.setUp()
         pc.setUp()
+        ksp.setFromOptions()
         self._ksp_Mp = ksp
 
         # Prepare Ap factorization
         ksp = PETSc.KSP()
         ksp.create(PETSc.COMM_WORLD)
-        ksp.setType(PETSc.KSP.Type.PREONLY)
         pc = ksp.getPC()
-        pc.setType(PETSc.PC.Type.LU)
-        #pc.setFactorSolverPackage('umfpack')
-        #self._Ap.setOption(PETSc.Mat.Option.SPD, True)
+        if self._insolver == 'lu':
+            ksp.setType(PETSc.KSP.Type.PREONLY)
+            pc.setType(PETSc.PC.Type.LU)
+            #pc.setFactorSolverPackage('umfpack')
+        else:
+            ksp.setType(PETSc.KSP.Type.RICHARDSON)
+            ksp.max_it = 2
+            pc.setType(PETSc.PC.Type.HYPRE)
+            #self._opts.setValue("-pc_hypre_type", "boomeramg") # this is default
+            #self._opts.setValue("-pc_hypre_boomeramg_cycle_type", "W")
+        self._Ap.setOption(PETSc.Mat.Option.SPD, True)
         ksp.setOperators(self._Ap)
         ksp.setUp()
         pc.setUp()
+        ksp.setFromOptions()
         self._ksp_Ap = ksp
 
     def apply(self, pc, x, y):
