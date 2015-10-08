@@ -132,10 +132,6 @@ class PCDFieldSplitSolver(PETScKrylovSolver):
         # Init mother class
         PETScKrylovSolver.__init__(self, ksp)
 
-    # Discard PETScKrylovSolver::set_operators() method
-    def set_operators(self, *args):
-        raise NotImplementedError
-
     def setup(self, *args):
         # Setup KSP and PC
         ksp = self.ksp() # ksp is obtained from DOLFIN's PETScKrylovSolver
@@ -182,6 +178,7 @@ class PCDctx(object):
         self._bcs_Ap = bcs_Ap
         self._bcs_Fp = bcs_Ap
         self._insolver = insolver
+        self._strategy = strategy
 
     def assemble_operators(self):
         """Prepares operators for PCD preconditioning."""
@@ -225,9 +222,9 @@ class PCDctx(object):
             self._opts.setValue("-ksp_chebyshev_eigenvalues", "0.5, 2.0")
         self._Mp.setOption(PETSc.Mat.Option.SPD, True)
         ksp.setOperators(self._Mp)
+        ksp.setFromOptions()
         ksp.setUp()
         pc.setUp()
-        ksp.setFromOptions()
         self._ksp_Mp = ksp
 
         # Prepare Ap factorization
@@ -246,9 +243,9 @@ class PCDctx(object):
             #self._opts.setValue("-pc_hypre_boomeramg_cycle_type", "W")
         self._Ap.setOption(PETSc.Mat.Option.SPD, True)
         ksp.setOperators(self._Ap)
+        ksp.setFromOptions()
         ksp.setUp()
         pc.setUp()
-        ksp.setFromOptions()
         self._ksp_Ap = ksp
 
     def apply(self, pc, x, y):
@@ -258,10 +255,16 @@ class PCDctx(object):
         where $S = -M_p F_p^{-1} A_p$ approximates Schur complement $-B F^{-1} B^{T}$."""
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
-        self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
-        # NOTE: Preconditioning with sole M_p in place of 11-block works for low Re.
-        self._Fp.mult(-y, x) # x = -F_p y
-        self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
+        if self._strategy == 'A':
+            self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
+            # NOTE: Preconditioning with sole M_p in place of 11-block works for low Re.
+            self._Fp.mult(-y, x) # x = -F_p y
+            self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
+        else:
+            # Interchange the order of operators for strategy B
+            self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
+            self._Fp.mult(-y, x) # x = -F_p y
+            self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
 
 
 dofmap_dofs_is_cpp_code = """
