@@ -16,7 +16,8 @@
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import (PETScKrylovSolver, compile_extension_module,
-                    as_backend_type, PETScMatrix, SystemAssembler)
+                    as_backend_type, PETScMatrix, PETScVector,
+                    SystemAssembler, assemble)
 from petsc4py import PETSc
 
 __all__ = ['SimpleFieldSplitSolver', 'PCDFieldSplitSolver']
@@ -161,6 +162,7 @@ class PCDctx(object):
 
     def __init__(self, *args):
         if args:
+            self._ctxapply = 0
             self._opts = PETSc.Options()
             self.set_operators(*args)
             self.assemble_operators()
@@ -192,12 +194,19 @@ class PCDctx(object):
         #       flow problems we need to additionally fix the pressure
         #       somewhere -- usually at one particular point. (At least
         #       if we want to solve the problem using LU factorization.)
-        assembler = SystemAssembler(self._mp, self._Lp, self._bcs_Mp)
-        assembler.assemble(self._Mp)
-        assembler = SystemAssembler(self._ap, self._Lp, self._bcs_Ap)
-        assembler.assemble(self._Ap)
-        assembler = SystemAssembler(self._fp, self._Lp, self._bcs_Fp)
-        assembler.assemble(self._Fp)
+        # assembler = SystemAssembler(self._mp, self._Lp, self._bcs_Mp)
+        # assembler.assemble(self._Mp)
+        # assembler = SystemAssembler(self._ap, self._Lp, self._bcs_Ap)
+        # assembler.assemble(self._Ap)
+        # assembler = SystemAssembler(self._fp, self._Lp, self._bcs_Fp)
+        # assembler.assemble(self._Fp)
+        assemble(self._mp, tensor=self._Mp)
+        assemble(self._ap, tensor=self._Ap)
+        assemble(self._fp, tensor=self._Fp)
+        for bc in self._bcs_Ap:
+            bc.apply(self._Mp)
+            bc.apply(self._Fp)
+            bc.apply(self._Ap)
         self._Mp = self._Mp.mat().getSubMatrix(self._isp, self._isp)
         self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
         self._Fp = self._Fp.mat().getSubMatrix(self._isp, self._isp)
@@ -220,7 +229,7 @@ class PCDctx(object):
             pc.setType(PETSc.PC.Type.JACOBI)
             # FIXME: The following estimates are valid only for continuous pressure.
             self._opts.setValue("-ksp_chebyshev_eigenvalues", "0.5, 2.0")
-        self._Mp.setOption(PETSc.Mat.Option.SPD, True)
+        #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
         ksp.setOperators(self._Mp)
         ksp.setFromOptions()
         ksp.setUp()
@@ -241,7 +250,7 @@ class PCDctx(object):
             pc.setType(PETSc.PC.Type.HYPRE)
             #self._opts.setValue("-pc_hypre_type", "boomeramg") # this is default
             #self._opts.setValue("-pc_hypre_boomeramg_cycle_type", "W")
-        self._Ap.setOption(PETSc.Mat.Option.SPD, True)
+        #self._Ap.setOption(PETSc.Mat.Option.SPD, True)
         ksp.setOperators(self._Ap)
         ksp.setFromOptions()
         ksp.setUp()
@@ -255,13 +264,46 @@ class PCDctx(object):
         where $S = -M_p F_p^{-1} A_p$ approximates Schur complement $-B F^{-1} B^{T}$."""
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
+        self._ctxapply += 1
+        # if self._ctxapply == 1:
+        #     x.view()
         if self._strategy == 'A':
             self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
             # NOTE: Preconditioning with sole M_p in place of 11-block works for low Re.
             self._Fp.mult(-y, x) # x = -F_p y
+            # x_wrap = PETScVector()
+            # x_wrap.init(x.getComm(), x.getSize())
+            # x.copy(x_wrap.vec())
+            # lgmap = self._isp.indices
+            # lgmap = lgmap.tolist()
+            # keys = []
+            # for bc in self._bcs_Ap:
+            #     bc_map = bc.get_boundary_values()
+            #     for key in bc_map.keys():
+            #         keys.append(lgmap.index(key))
+            #     x_wrap.vec().setValuesLocal(keys, bc_map.values())
+            # # if self._ctxapply == 1:
+            # #     x_wrap.vec().view()
+            # self._ksp_Ap.solve(x_wrap.vec(), y) # y = A_p^{-1} x
             self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
         else:
             # Interchange the order of operators for strategy B
+            # x_wrap = PETScVector()
+            # x_wrap.init(x.getComm(), x.getSize())
+            # x.copy(x_wrap.vec())
+            # lgmap = self._isp.indices
+            # lgmap = lgmap.tolist()
+            # keys = []
+            # for bc in self._bcs_Ap:
+            #     bc_map = bc.get_boundary_values()
+            #     for key in bc_map.keys():
+            #         keys.append(lgmap.index(key))
+            #     x_wrap.vec().setValuesLocal(keys, bc_map.values())
+            # # if self._ctxapply == 1:
+            # #     x_wrap.vec().view()
+            # self._ksp_Ap.solve(x_wrap.vec(), y) # y = A_p^{-1} x
+            # # if self._ctxapply == 1:
+            # #     y.view()
             self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
             self._Fp.mult(-y, x) # x = -F_p y
             self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
