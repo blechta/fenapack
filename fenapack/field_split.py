@@ -124,10 +124,10 @@ class PCDFieldSplitSolver(PETScKrylovSolver):
         is0 = dofmap_dofs_is(space.sub(0).dofmap())
         is1 = dofmap_dofs_is(space.sub(1).dofmap())
         pc.setFieldSplitIS(['u', is0], ['p', is1])
-        is0.destroy()
 
         # Store what needed
-        self._is1 = is1 # will be needed by Schur PC
+        self._is0 = is0
+        self._is1 = is1
         self._insolver = insolver
 
         # Init mother class
@@ -154,8 +154,10 @@ class PCDFieldSplitSolver(PETScKrylovSolver):
         ksp1.setType(PETSc.KSP.Type.PREONLY)
         ksp1.setUp()
         pc1.setType(PETSc.PC.Type.PYTHON)
-        pc1.setPythonContext(PCDctx(self._insolver, self._is1, *args))
+        pc1.setPythonContext(PCDctx(self._insolver, self.ksp(),
+                                    self._is0, self._is1, *args))
         pc1.setUp()
+
 
 class PCDctx(object):
     """Python context for PCD preconditioner."""
@@ -167,16 +169,21 @@ class PCDctx(object):
             self.set_operators(*args)
             self.assemble_operators()
 
-    def set_operators(self, insolver, isp, mp, fp, ap, Lp, bcs_Ap, strategy):
+    def set_operators(self, insolver, ksp, isu, isp,
+                      mu, mp, fp, ap, Lp, bcs_Ap, strategy):
         """Collects an index set to identify block corresponding to Schur
         complement in the system matrix, variational forms and boundary
         conditions to assemble corresponding matrix operators."""
+        self._ksp = ksp
+        self._isu = isu
         self._isp = isp
+        self._mu = mu    # -> velocity mass matrux Mu
         self._mp = mp    # -> pressure mass matrix Mp
         self._ap = ap    # -> pressure Laplacian Ap
         self._fp = fp    # -> pressure convection-diffusion Fp
         self._Lp = Lp    # -> dummy right hand side vector (not used)
-        self._bcs_Mp = bcs_Ap if strategy == 'A' else []
+        # TODO: What are correct BCs?
+        self._bcs_Mp = [] if strategy == 'B' else bcs_Ap
         self._bcs_Ap = bcs_Ap
         self._bcs_Fp = bcs_Ap
         self._insolver = insolver
@@ -184,33 +191,80 @@ class PCDctx(object):
 
     def assemble_operators(self):
         """Prepares operators for PCD preconditioning."""
-        self._Mp = PETScMatrix()
-        self._Ap = PETScMatrix()
+        #
+        # TODO: Some operators can be assembled only once outside PCDctx,
+        #       e.g. velocity mass matrix. (In the current naive approach we
+        #       assemble those operators in each nonlinear iteration.)
+        #
+        # TODO: Can we use SystemAssembler to assemble operators in a symmetric
+        #       way whithout simultaneous assembly of rhs vector? (Supposing
+        #       that we are dealing only with homogeneous bcs.)
+        #
+        # Assemble Ap
+        if self._strategy in ['A', 'B']:
+            self._Ap = PETScMatrix()
+            assemble(self._ap, tensor=self._Ap)
+            for bc in self._bcs_Ap:
+                bc.apply(self._Ap)
+            self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
+        else:
+            self._Ap = self._assemble_Ap_approx(multiply='Bt')
+        # Assemble Fp
         self._Fp = PETScMatrix()
-        # TODO: What are correct BCs?
-        # ----> It seems that homogeneus Dirichlet at outflow boundaries
-        #       plus Robin boundary condition due to which a surface term
-        #       appears in the definition of fp. Note that for enclosed
-        #       flow problems we need to additionally fix the pressure
-        #       somewhere -- usually at one particular point. (At least
-        #       if we want to solve the problem using LU factorization.)
-        # assembler = SystemAssembler(self._mp, self._Lp, self._bcs_Mp)
-        # assembler.assemble(self._Mp)
-        # assembler = SystemAssembler(self._ap, self._Lp, self._bcs_Ap)
-        # assembler.assemble(self._Ap)
-        # assembler = SystemAssembler(self._fp, self._Lp, self._bcs_Fp)
-        # assembler.assemble(self._Fp)
-        assemble(self._mp, tensor=self._Mp)
-        assemble(self._ap, tensor=self._Ap)
         assemble(self._fp, tensor=self._Fp)
-        for bc in self._bcs_Ap:
-            bc.apply(self._Mp)
+        for bc in self._bcs_Fp:
             bc.apply(self._Fp)
-            bc.apply(self._Ap)
-        self._Mp = self._Mp.mat().getSubMatrix(self._isp, self._isp)
-        self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
         self._Fp = self._Fp.mat().getSubMatrix(self._isp, self._isp)
+        # Assemble Mp
+        self._Mp = PETScMatrix()
+        assemble(self._mp, tensor=self._Mp)
+        for bc in self._bcs_Mp:
+            bc.apply(self._Mp)
+        self._Mp = self._Mp.mat().getSubMatrix(self._isp, self._isp)
         self.prepare_factors()
+
+    def _assemble_Ap_approx(self, multiply='Bt'):
+        """Assembly of an approximation of the pressure Laplacian that is more
+        appropriate for nonstationary problems, i.e. Ap = B*diag(Mu)^{-1}*B^T,
+        where Mu is the velocity mass matrix. (Note that for inflow-outflow
+        problems this operator is nonsingular and we do not need to prescribe
+        any artificial boundary conditions for pressure. For enclosed flows
+        one can solve the system using iterative solvers.)"""
+        # Assemble velocity mass matrix
+        # NOTE: There is no need to apply Dirichlet bcs for velocity on the
+        #       velocity mass matrix as long as those bsc have been applied on
+        #       the system matrix A. Thus, Bt contains zero rows corresponding
+        #       to test functions on the Dirichlet boundary.
+        Mu = PETScMatrix()
+        assemble(self._mu, tensor=Mu)
+        Mu = Mu.mat().getSubMatrix(self._isu, self._isu)
+        # Get diagonal of the velocity mass matrix
+        iT = Mu.getDiagonal()
+        # Make inverse of diag(Mu)
+        iT.reciprocal()
+        # Make square root of the diagonal and use it for scaling
+        iT.sqrtabs()
+        # Extract 01-block, i.e. "grad", from the matrix operator A
+        A, P = self._ksp.getOperators()
+        if multiply != 'B':
+            Bt = A.getSubMatrix(self._isu, self._isp)
+            Bt.diagonalScale(L=iT)
+        # Extract 10-block, i.e. "-div", from the matrix operator A
+        if multiply != 'Bt':
+            B = A.getSubMatrix(self._isp, self._isu)
+            B.diagonalScale(R=iT)
+        # Prepare Ap
+        if multiply == 'Bt':
+            # Correct way, i.e. Ap = Bt^T*Bt
+            Ap = Bt.transposeMatMult(Bt)
+        elif multiply == 'B':
+            # Wrong way, i.e. Ap = B*B^T (B^T doesn't contain zero rows as Bt)
+            Ap = B.matTransposeMult(B)
+            #Ap = PETSc.Mat().createNormal(B)
+        else:
+            # Explicit multiplication, i.e. Ap = B*Bt
+            Ap = B.matMult(Bt)
+        return Ap
 
     def prepare_factors(self):
         # Prepare Mp factorization
@@ -258,8 +312,8 @@ class PCDctx(object):
         self._ksp_Ap = ksp
 
     def apply(self, pc, x, y):
-        """This method is an obligatory part of the Python context, cf. PCShellSetApply.
-        It implements the following action (x ... input vector, y ... output vector):
+        """This method implements the following action (x ... input vector,
+        y ... output vector), cf. PCShellSetApply:
             $y = S^{-1} x = -A_p^{-1} F_p M_p^{-1} x$,
         where $S = -M_p F_p^{-1} A_p$ approximates Schur complement $-B F^{-1} B^{T}$."""
         # TODO: Try matrix-free!
@@ -267,44 +321,46 @@ class PCDctx(object):
         self._ctxapply += 1
         # if self._ctxapply == 1:
         #     x.view()
-        if self._strategy == 'A':
+        if self._strategy in ['A', 'C']:
             self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
             # NOTE: Preconditioning with sole M_p in place of 11-block works for low Re.
             self._Fp.mult(-y, x) # x = -F_p y
-            # x_wrap = PETScVector()
-            # x_wrap.init(x.getComm(), x.getSize())
-            # x.copy(x_wrap.vec())
-            # lgmap = self._isp.indices
-            # lgmap = lgmap.tolist()
-            # keys = []
+            # TRY: Apply boundary conditions to x. (There must be some smarter
+            #      way how to do that. Nevertheless, it seems that direct
+            #      modification of RHS does not lead to anticipated results.)
+            # lgmap = PETSc.LGMap().createIS(self._isp) # local to global mapping
+            # x.setLGMap(lgmap)
+            # lgmap = lgmap.indices.tolist() # FIXME: brute force attack
+            # indices = []
             # for bc in self._bcs_Ap:
             #     bc_map = bc.get_boundary_values()
             #     for key in bc_map.keys():
-            #         keys.append(lgmap.index(key))
-            #     x_wrap.vec().setValuesLocal(keys, bc_map.values())
-            # # if self._ctxapply == 1:
-            # #     x_wrap.vec().view()
-            # self._ksp_Ap.solve(x_wrap.vec(), y) # y = A_p^{-1} x
+            #         indices.append(lgmap.index(key)) # FIXME: brute force attack
+            #     x.setValues(indices, bc_map.values())
+            # if self._ctxapply == 1:
+            #     print indices
+            #     x.view()
             self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
         else:
             # Interchange the order of operators for strategy B
-            # x_wrap = PETScVector()
-            # x_wrap.init(x.getComm(), x.getSize())
-            # x.copy(x_wrap.vec())
-            # lgmap = self._isp.indices
-            # lgmap = lgmap.tolist()
-            # keys = []
+            # TRY: Apply boundary conditions to x. (There must be some smarter
+            #      way how to do that. Nevertheless, it seems that direct
+            #      modification of RHS does not lead to anticipated results.)
+            # lgmap = PETSc.LGMap().createIS(self._isp) # local to global mapping
+            # x.setLGMap(lgmap)
+            # lgmap = lgmap.indices.tolist() # FIXME: brute force attack
+            # indices = []
             # for bc in self._bcs_Ap:
             #     bc_map = bc.get_boundary_values()
             #     for key in bc_map.keys():
-            #         keys.append(lgmap.index(key))
-            #     x_wrap.vec().setValuesLocal(keys, bc_map.values())
+            #         indices.append(lgmap.index(key)) # FIXME: brute force attack
+            #     x.setValues(indices, bc_map.values())
             # # if self._ctxapply == 1:
-            # #     x_wrap.vec().view()
-            # self._ksp_Ap.solve(x_wrap.vec(), y) # y = A_p^{-1} x
-            # # if self._ctxapply == 1:
-            # #     y.view()
+            # #     print indices
+            # #     x.view()
             self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
+            # if self._ctxapply == 1:
+            #     y.view()
             self._Fp.mult(-y, x) # x = -F_p y
             self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
 
