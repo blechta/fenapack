@@ -164,13 +164,12 @@ class PCDctx(object):
 
     def __init__(self, *args):
         if args:
-            self._ctxapply = 0
             self._opts = PETSc.Options()
             self.set_operators(*args)
             self.assemble_operators()
 
     def set_operators(self, insolver, ksp, isu, isp,
-                      mu, mp, fp, ap, Lp, bcs_Ap, strategy):
+                      mu, mp, ap, kp, fp, Lp, bcs_Ap, strategy, nu):
         """Collects an index set to identify block corresponding to Schur
         complement in the system matrix, variational forms and boundary
         conditions to assemble corresponding matrix operators."""
@@ -180,14 +179,16 @@ class PCDctx(object):
         self._mu = mu    # -> velocity mass matrux Mu
         self._mp = mp    # -> pressure mass matrix Mp
         self._ap = ap    # -> pressure Laplacian Ap
+        self._kp = kp    # -> pressure convection Kp
         self._fp = fp    # -> pressure convection-diffusion Fp
         self._Lp = Lp    # -> dummy right hand side vector (not used)
         # TODO: What are correct BCs?
-        self._bcs_Mp = [] if strategy == 'B' else bcs_Ap
+        self._bcs_Mp = [] if strategy in ['B', 'D'] else bcs_Ap
         self._bcs_Ap = bcs_Ap
-        self._bcs_Fp = bcs_Ap
+        self._bcs_Fp = [] if strategy in ['B', 'D'] else bcs_Ap
         self._insolver = insolver
         self._strategy = strategy
+        self._nu = nu
 
     def assemble_operators(self):
         """Prepares operators for PCD preconditioning."""
@@ -209,6 +210,12 @@ class PCDctx(object):
             self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
         else:
             self._Ap = self._assemble_Ap_approx(multiply='Bt')
+        # Assemble Kp
+        self._Kp = PETScMatrix()
+        assemble(self._kp, tensor=self._Kp)
+        for bc in self._bcs_Fp:
+            bc.apply(self._Kp)
+        self._Kp = self._Kp.mat().getSubMatrix(self._isp, self._isp)
         # Assemble Fp
         self._Fp = PETScMatrix()
         assemble(self._fp, tensor=self._Fp)
@@ -318,9 +325,6 @@ class PCDctx(object):
         where $S = -M_p F_p^{-1} A_p$ approximates Schur complement $-B F^{-1} B^{T}$."""
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
-        self._ctxapply += 1
-        # if self._ctxapply == 1:
-        #     x.view()
         if self._strategy in ['A', 'C']:
             self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
             # NOTE: Preconditioning with sole M_p in place of 11-block works for low Re.
@@ -342,26 +346,21 @@ class PCDctx(object):
             #     x.view()
             self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
         else:
-            # Interchange the order of operators for strategy B
-            # TRY: Apply boundary conditions to x. (There must be some smarter
-            #      way how to do that. Nevertheless, it seems that direct
-            #      modification of RHS does not lead to anticipated results.)
-            # lgmap = PETSc.LGMap().createIS(self._isp) # local to global mapping
-            # x.setLGMap(lgmap)
-            # lgmap = lgmap.indices.tolist() # FIXME: brute force attack
-            # indices = []
-            # for bc in self._bcs_Ap:
-            #     bc_map = bc.get_boundary_values()
-            #     for key in bc_map.keys():
-            #         indices.append(lgmap.index(key)) # FIXME: brute force attack
-            #     x.setValues(indices, bc_map.values())
-            # # if self._ctxapply == 1:
-            # #     print indices
-            # #     x.view()
+            # Interchange the order of operators for strategies B and D
+            x0 = x.copy()
+            lgmap = PETSc.LGMap().createIS(self._isp) # local to global mapping
+            x.setLGMap(lgmap)
+            lgmap = lgmap.indices.tolist()
+            indices = []
+            for bc in self._bcs_Ap:
+                bc_map = bc.get_boundary_values()
+                for key in bc_map.keys():
+                    indices.append(lgmap.index(key))  # FIXME: brute force attack
+                if self._strategy == 'B':
+                    x.setValues(indices, bc_map.values())
             self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
-            # if self._ctxapply == 1:
-            #     y.view()
-            self._Fp.mult(-y, x) # x = -F_p y
+            self._Kp.mult(-y, x)
+            x.axpy(-self._nu, x0)    # x = -K_p y - nu*x0
             self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
 
 
