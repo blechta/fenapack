@@ -169,7 +169,7 @@ class PCDctx(object):
             self.assemble_operators()
 
     def set_operators(self, insolver, ksp, isu, isp,
-                      mu, mp, ap, kp, fp, Lp, bcs_Ap, strategy, nu):
+                      mu, mp, ap, kp, fp, Lp, bcs_pcd, strategy, nu):
         """Collects an index set to identify block corresponding to Schur
         complement in the system matrix, variational forms and boundary
         conditions to assemble corresponding matrix operators."""
@@ -183,9 +183,10 @@ class PCDctx(object):
         self._fp = fp    # -> pressure convection-diffusion Fp
         self._Lp = Lp    # -> dummy right hand side vector (not used)
         # TODO: What are correct BCs?
-        self._bcs_Mp = [] if strategy in ['B', 'D'] else bcs_Ap
-        self._bcs_Ap = bcs_Ap
-        self._bcs_Fp = [] if strategy in ['B', 'D'] else bcs_Ap
+        self._bcs_pcd = bcs_pcd
+        self._bcs_Mp = []
+        self._bcs_Ap = bcs_pcd if strategy == 'B' else []
+        self._bcs_Fp = []
         self._insolver = insolver
         self._strategy = strategy
         self._nu = nu
@@ -201,6 +202,19 @@ class PCDctx(object):
         #       way whithout simultaneous assembly of rhs vector? (Supposing
         #       that we are dealing only with homogeneous bcs.)
         #
+        # For strategy 'A' we shall apply Dirichlet conditions for Ap and Fp
+        # using a ghost layer behind the outflow boundary (we shall mimic
+        # finite differences).
+        indices = []
+        for bc in self._bcs_pcd:
+            bc_map = bc.get_boundary_values()
+            indices += bc_map.keys()
+        scale_factor = PETScVector()
+        assemble(self._Lp, tensor=scale_factor)
+        scale_factor = scale_factor.vec()
+        scale_factor.set(1.0)
+        scale_factor.setValuesLocal(indices, len(indices)*[2.0,])
+        scale_factor = scale_factor.getSubVector(self._isp)
         # Assemble Ap
         if self._strategy in ['A', 'B']:
             self._Ap = PETScMatrix()
@@ -208,6 +222,11 @@ class PCDctx(object):
             for bc in self._bcs_Ap:
                 bc.apply(self._Ap)
             self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
+            if self._strategy == 'A':
+                d = self._Ap.getDiagonal()
+                d.pointwiseMult(d, scale_factor)
+                self._Ap.setDiagonal(d)
+                d.destroy()
         else:
             self._Ap = self._assemble_Ap_approx(multiply='Bt')
         # Assemble Kp
@@ -222,6 +241,11 @@ class PCDctx(object):
         for bc in self._bcs_Fp:
             bc.apply(self._Fp)
         self._Fp = self._Fp.mat().getSubMatrix(self._isp, self._isp)
+        if self._strategy in ['A', 'C']:
+            d = self._Fp.getDiagonal()
+            d.pointwiseMult(d, scale_factor)
+            self._Fp.setDiagonal(d)
+            d.destroy()
         # Assemble Mp
         self._Mp = PETScMatrix()
         assemble(self._mp, tensor=self._Mp)
@@ -329,21 +353,6 @@ class PCDctx(object):
             self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
             # NOTE: Preconditioning with sole M_p in place of 11-block works for low Re.
             self._Fp.mult(-y, x) # x = -F_p y
-            # TRY: Apply boundary conditions to x. (There must be some smarter
-            #      way how to do that. Nevertheless, it seems that direct
-            #      modification of RHS does not lead to anticipated results.)
-            # lgmap = PETSc.LGMap().createIS(self._isp) # local to global mapping
-            # x.setLGMap(lgmap)
-            # lgmap = lgmap.indices.tolist() # FIXME: brute force attack
-            # indices = []
-            # for bc in self._bcs_Ap:
-            #     bc_map = bc.get_boundary_values()
-            #     for key in bc_map.keys():
-            #         indices.append(lgmap.index(key)) # FIXME: brute force attack
-            #     x.setValues(indices, bc_map.values())
-            # if self._ctxapply == 1:
-            #     print indices
-            #     x.view()
             self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
         else:
             # Interchange the order of operators for strategies B and D
