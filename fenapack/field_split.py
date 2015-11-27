@@ -17,7 +17,7 @@
 
 from dolfin import (PETScKrylovSolver, compile_extension_module,
                     as_backend_type, PETScMatrix, PETScVector,
-                    SystemAssembler, assemble)
+                    SystemAssembler, assemble, error)
 from petsc4py import PETSc
 
 __all__ = ['SimpleFieldSplitSolver', 'PCDFieldSplitSolver']
@@ -103,11 +103,14 @@ class SimpleFieldSplitSolver(PETScKrylovSolver):
 class PCDFieldSplitSolver(PETScKrylovSolver):
     """This class implements PCD preconditioner for Navier-Stokes problems."""
 
-    def __init__(self, space, ksptype='gmres', insolver='lu'):
+    def __init__(self, space, ksptype='gmres', insolver='lu',
+                 strategy='ESW14', BQBt=False):
         """Arguments:
              space    ... instance of dolfin's MixedFunctionSpace
              ksptype  ... krylov solver type, see help(PETSc.KSP.Type)
              insolver ... direct/iterative inner solver (choices: 'lu', 'it')
+             strategy ... strategy used for PCD preconditioning ('ESW14', 'BMR15')
+             BQBt     ... assembles Ap appropriate for nonstationary problems
         """
         # Setup GMRES with RIGHT preconditioning
         ksptype_petsc_name = "bcgs" if ksptype == "bicgstab" else ksptype
@@ -129,6 +132,8 @@ class PCDFieldSplitSolver(PETScKrylovSolver):
         self._is0 = is0
         self._is1 = is1
         self._insolver = insolver
+        self._strategy = strategy
+        self._flag_BQBt = BQBt
 
         # Init mother class
         PETScKrylovSolver.__init__(self, ksp)
@@ -155,7 +160,9 @@ class PCDFieldSplitSolver(PETScKrylovSolver):
         ksp1.setUp()
         pc1.setType(PETSc.PC.Type.PYTHON)
         pc1.setPythonContext(PCDctx(self._insolver, self.ksp(),
-                                    self._is0, self._is1, *args))
+                                    self._is0, self._is1,
+                                    self._strategy, self._flag_BQBt,
+                                    *args))
         pc1.setUp()
 
 
@@ -167,9 +174,10 @@ class PCDctx(object):
             self._opts = PETSc.Options()
             self.set_operators(*args)
             self.assemble_operators()
+            self.prepare_factors()
 
-    def set_operators(self, insolver, ksp, isu, isp,
-                      mu, mp, ap, kp, fp, Lp, bcs_pcd, strategy, nu):
+    def set_operators(self, insolver, ksp, isu, isp, strategy, flag_BQBt,
+                      mu, mp, ap, kp, fp, Lp, bcs_pcd, nu):
         """Collects an index set to identify block corresponding to Schur
         complement in the system matrix, variational forms and boundary
         conditions to assemble corresponding matrix operators."""
@@ -181,14 +189,11 @@ class PCDctx(object):
         self._ap = ap    # -> pressure Laplacian Ap
         self._kp = kp    # -> pressure convection Kp
         self._fp = fp    # -> pressure convection-diffusion Fp
-        self._Lp = Lp    # -> dummy right hand side vector (not used)
-        # TODO: What are correct BCs?
+        self._Lp = Lp    # -> dummy right hand side vector
         self._bcs_pcd = bcs_pcd
-        self._bcs_Mp = []
-        self._bcs_Ap = bcs_pcd if strategy == 'B' else []
-        self._bcs_Fp = []
         self._insolver = insolver
         self._strategy = strategy
+        self._flag_BQBt = flag_BQBt
         self._nu = nu
 
     def assemble_operators(self):
@@ -202,59 +207,72 @@ class PCDctx(object):
         #       way whithout simultaneous assembly of rhs vector? (Supposing
         #       that we are dealing only with homogeneous bcs.)
         #
-        # For strategy 'A' we shall apply Dirichlet conditions for Ap and Fp
-        # using a ghost layer behind the outflow boundary (we shall mimic
-        # finite differences).
-        indices = []
-        for bc in self._bcs_pcd:
-            bc_map = bc.get_boundary_values()
-            indices += bc_map.keys()
-        scale_factor = PETScVector()
-        assemble(self._Lp, tensor=scale_factor)
-        scale_factor = scale_factor.vec()
-        scale_factor.set(1.0)
-        scale_factor.setValuesLocal(indices, len(indices)*[2.0,])
-        scale_factor = scale_factor.getSubVector(self._isp)
-        # Assemble Ap
-        if self._strategy in ['A', 'B']:
-            self._Ap = PETScMatrix()
-            assemble(self._ap, tensor=self._Ap)
-            for bc in self._bcs_Ap:
-                bc.apply(self._Ap)
-            self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
-            if self._strategy == 'A':
+        if self._strategy == 'ESW14':
+            # Apply Dirichlet conditions for Ap and Fp using a ghost layer of
+            # elements outside the outflow boundary (mimic finite differences).
+            indices = []
+            for bc in self._bcs_pcd:
+                bc_map = bc.get_boundary_values()
+                indices += bc_map.keys()
+            scaling_factor = PETScVector()
+            assemble(self._Lp, tensor=scaling_factor)
+            scaling_factor = scaling_factor.vec()
+            scaling_factor.set(1.0)
+            scaling_factor.setValuesLocal(indices, len(indices)*[2.0,])
+            scaling_factor = scaling_factor.getSubVector(self._isp)
+            # Assemble Ap
+            if self._flag_BQBt:
+                # Ap = B*T^{-1}*Bt (appropriate for nonstationary problems)
+                self._Ap = self._assemble_BQBt(multiply='Bt')
+            else:
+                # Ap assembled from UFL form
+                self._Ap = PETScMatrix()
+                assemble(self._ap, tensor=self._Ap)
+                self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
+                # Augment diagonal with values from "ghost elements"
                 d = self._Ap.getDiagonal()
-                d.pointwiseMult(d, scale_factor)
+                d.pointwiseMult(d, scaling_factor)
                 self._Ap.setDiagonal(d)
                 d.destroy()
-        else:
-            self._Ap = self._assemble_Ap_approx(multiply='Bt')
-        # Assemble Kp
-        self._Kp = PETScMatrix()
-        assemble(self._kp, tensor=self._Kp)
-        for bc in self._bcs_Fp:
-            bc.apply(self._Kp)
-        self._Kp = self._Kp.mat().getSubMatrix(self._isp, self._isp)
-        # Assemble Fp
-        self._Fp = PETScMatrix()
-        assemble(self._fp, tensor=self._Fp)
-        for bc in self._bcs_Fp:
-            bc.apply(self._Fp)
-        self._Fp = self._Fp.mat().getSubMatrix(self._isp, self._isp)
-        if self._strategy in ['A', 'C']:
+                del d
+            # Assemble Fp
+            self._Fp = PETScMatrix()
+            assemble(self._fp, tensor=self._Fp)
+            self._Fp = self._Fp.mat().getSubMatrix(self._isp, self._isp)
+            # Augment diagonal with values from "ghost elements"
             d = self._Fp.getDiagonal()
-            d.pointwiseMult(d, scale_factor)
+            d.pointwiseMult(d, scaling_factor)
             self._Fp.setDiagonal(d)
             d.destroy()
-        # Assemble Mp
-        self._Mp = PETScMatrix()
-        assemble(self._mp, tensor=self._Mp)
-        for bc in self._bcs_Mp:
-            bc.apply(self._Mp)
-        self._Mp = self._Mp.mat().getSubMatrix(self._isp, self._isp)
-        self.prepare_factors()
+            del d
+            # Assemble Mp
+            self._Mp = PETScMatrix()
+            assemble(self._mp, tensor=self._Mp)
+            self._Mp = self._Mp.mat().getSubMatrix(self._isp, self._isp)
+        elif self._strategy == 'BMR15':
+            # Assemble Ap
+            if self._flag_BQBt:
+                # Ap = B*diag(Mu)^{-1}*Bt (appropriate for nonstationary problems)
+                self._Ap = self._assemble_BQBt(multiply='Bt')
+            else:
+                # Ap assembled from UFL form
+                self._Ap = PETScMatrix()
+                assemble(self._ap, tensor=self._Ap)
+                for bc in self._bcs_pcd:
+                    bc.apply(self._Ap)
+                self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
+            # Assemble Kp
+            self._Kp = PETScMatrix()
+            assemble(self._kp, tensor=self._Kp)
+            self._Kp = self._Kp.mat().getSubMatrix(self._isp, self._isp)
+            # Assemble Mp
+            self._Mp = PETScMatrix()
+            assemble(self._mp, tensor=self._Mp)
+            self._Mp = self._Mp.mat().getSubMatrix(self._isp, self._isp)
+        else:
+            error("Unknown PCD strategy.")
 
-    def _assemble_Ap_approx(self, multiply='Bt'):
+    def _assemble_BQBt(self, multiply='Bt'):
         """Assembly of an approximation of the pressure Laplacian that is more
         appropriate for nonstationary problems, i.e. Ap = B*diag(Mu)^{-1}*B^T,
         where Mu is the velocity mass matrix. (Note that for inflow-outflow
@@ -343,34 +361,39 @@ class PCDctx(object):
         self._ksp_Ap = ksp
 
     def apply(self, pc, x, y):
-        """This method implements the following action (x ... input vector,
-        y ... output vector), cf. PCShellSetApply:
-            $y = S^{-1} x = -A_p^{-1} F_p M_p^{-1} x$,
-        where $S = -M_p F_p^{-1} A_p$ approximates Schur complement $-B F^{-1} B^{T}$."""
+        """This method implements the action of the inverse of approximate
+        Schur complement S, cf. PCShellSetApply."""
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
-        if self._strategy in ['A', 'C']:
+        if self._strategy == 'ESW14':
+            # $y = S^{-1} x = -A_p^{-1} F_p M_p^{-1} x$,
+            # where $S = -M_p F_p^{-1} A_p$ approximates $-B F^{-1} B^{T}$.
             self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
             # NOTE: Preconditioning with sole M_p in place of 11-block works for low Re.
             self._Fp.mult(-y, x) # x = -F_p y
             self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
-        else:
-            # Interchange the order of operators for strategies B and D
+        elif self._strategy == 'BMR15':
+            # $y = S^{-1} x = -M_p^{-1} (\nu x + K_p A_p^{-1} x)}$,
+            # where $S = -A_p F_p^{-1} M_p = -A_p (\nu A_p + K_p)^{-1} M_p$
+            # approximates $-B F^{-1} B^{T}$.
+            # FIXME: This is an inefficient approximation
             x0 = x.copy()
             lgmap = PETSc.LGMap().createIS(self._isp) # local to global mapping
             x.setLGMap(lgmap)
             lgmap = lgmap.indices.tolist()
             indices = []
-            for bc in self._bcs_Ap:
+            for bc in self._bcs_pcd:
                 bc_map = bc.get_boundary_values()
                 for key in bc_map.keys():
                     indices.append(lgmap.index(key))  # FIXME: brute force attack
-                if self._strategy == 'B':
-                    x.setValues(indices, bc_map.values())
+                if not self._flag_BQBt:
+                    x.setValues(indices, bc_map.values()) # apply bcs to rhs
             self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
             self._Kp.mult(-y, x)
             x.axpy(-self._nu, x0)    # x = -K_p y - nu*x0
             self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
+        else:
+            error("Unknown PCD strategy.")
 
 
 dofmap_dofs_is_cpp_code = """
