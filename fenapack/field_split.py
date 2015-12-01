@@ -15,12 +15,30 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
-from dolfin import (PETScKrylovSolver, compile_extension_module,
-                    as_backend_type, PETScMatrix, PETScVector,
-                    SystemAssembler, assemble, error)
+import dolfin
+
 from petsc4py import PETSc
 
-__all__ = ['SimpleFieldSplitSolver', 'PCDFieldSplitSolver']
+__all__ = ['FieldSplitSolver']
+
+class FieldSplitSolver(dolfin.PETScKrylovSolver):
+    """This class derives from 'dolfin.PETScKrylovSolver' and implements
+    fieldsplit preconditioner for saddle point problems like [Navier-]Stokes
+    flow."""
+    #
+    # TODO:
+    #   Create a common interace for 'SimpleFieldSplitSolver' and
+    #   'PCDFieldSplitSolver'. In other words: merge the two classes into
+    #   one class with a parameter set to set up specific preconditioners.
+    def __init__(self, space):
+        """."""
+        # Create KSP
+        ksptype = PETSc.KSP.Type.GMRES
+        ksp = PETSc.KSP()
+        ksp.create(PETSc.COMM_WORLD)
+        ksp.setType(ksptype)
+        # Init mother class
+        dolfin.PETScKrylovSolver.__init__(self, ksp)
 
 class SimpleFieldSplitSolver(PETScKrylovSolver):
     """This class implements fieldsplit preconditioner for "Stokes-like" problems."""

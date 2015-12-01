@@ -1,1 +1,1 @@
-from field_split import SimpleFieldSplitSolver, PCDFieldSplitSolver
+from field_split import FieldSplitSolver
