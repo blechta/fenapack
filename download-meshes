@@ -1,7 +1,13 @@
 #!/bin/bash
 
+KEY_BLECHTA=68cbeb00578f36fa7cf8d70f7efd7717a725d963
+KEY=$KEY_BLECHTA
+
 mkdir -p data/
 cd data/
 
 wget -N http://fenicsproject.org/pub/data/meshes/dolfin_fine.xml.gz
 wget -N http://fenicsproject.org/pub/data/meshes/dolfin_fine_subdomains.xml.gz
+
+wget --no-check-certificate -O step_domain.xml.gz \
+    https://dev.karlin.mff.cuni.cz/attachments/download/640/step_domain.xml.gz?key=$KEY
