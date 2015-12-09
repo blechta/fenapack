@@ -16,404 +16,12 @@
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 import dolfin
-
 from petsc4py import PETSc
 
 __all__ = ['FieldSplitSolver']
 
-class FieldSplitSolver(dolfin.PETScKrylovSolver):
-    """This class derives from 'dolfin.PETScKrylovSolver' and implements
-    fieldsplit preconditioner for saddle point problems like [Navier-]Stokes
-    flow."""
-    #
-    # TODO:
-    #   Create a common interace for 'SimpleFieldSplitSolver' and
-    #   'PCDFieldSplitSolver'. In other words: merge the two classes into
-    #   one class with a parameter set to set up specific preconditioners.
-    def __init__(self, space):
-        """."""
-        # Create KSP
-        ksptype = PETSc.KSP.Type.GMRES
-        ksp = PETSc.KSP()
-        ksp.create(PETSc.COMM_WORLD)
-        ksp.setType(ksptype)
-        # Init mother class
-        dolfin.PETScKrylovSolver.__init__(self, ksp)
-
-class SimpleFieldSplitSolver(PETScKrylovSolver):
-    """This class implements fieldsplit preconditioner for "Stokes-like" problems."""
-
-    def __init__(self, space, ksptype):
-        """Arguments:
-             space   ... instance of dolfin's MixedFunctionSpace
-             ksptype ... krylov solver type, see help(PETSc.KSP.Type)
-        """
-        # Setup KSP
-        ksp = PETSc.KSP()
-        ksp.create(PETSc.COMM_WORLD)
-        ksp.setType(ksptype)
-
-        # Setup FIELDSPLIT preconditioning
-        pc = ksp.getPC()
-        pc.setType(PETSc.PC.Type.FIELDSPLIT)
-        pc.setFieldSplitType(PETSc.PC.CompositeType.ADDITIVE)
-        is0 = dofmap_dofs_is(space.sub(0).dofmap())
-        is1 = dofmap_dofs_is(space.sub(1).dofmap())
-        pc.setFieldSplitIS(['u', is0], ['p', is1])
-        is0.destroy()
-        is1.destroy()
-
-        # Create helper class to set options for external packages (e.g. HYPRE)
-        self._opts = PETSc.Options()
-
-        # Init mother class
-        PETScKrylovSolver.__init__(self, ksp)
-
-        # Set up ksp and pc
-        self.default_settings()
-
-    def opts(self):
-        """Returns helper `PETSc.Options` class, so that command-line options
-        can be set using either DOLFIN's `PETScOptions.set("some_option", value)`
-        or `solver.opts().setValue("-some_option", value)`, where solver is an
-        instance of the `SimpleFieldSplitSolver` class."""
-        return self._opts
-
-    def default_settings(self):
-        """Default settings for the solver. This method is first called
-        by the constructor."""
-        # Get KSP and PC contexts
-        ksp = self.ksp() # ksp is obtained from DOLFIN's PETScKrylovSolver
-        pc = ksp.getPC()
-
-        # Get sub-KSPs, sub-PCs
-        ksp0, ksp1 = pc.getFieldSplitSubKSP()
-        pc0, pc1 = ksp0.getPC(), ksp1.getPC()
-
-        # Setup approximation of 00-block inverse (Hypre AMG)
-        ksp0.setType(PETSc.KSP.Type.RICHARDSON)
-        ksp0.max_it = 1
-        pc0.setType(PETSc.PC.Type.HYPRE)
-        self._opts.setValue("-fieldsplit_u_pc_hypre_type", "boomeramg")
-        #self._opts.setValue("-fieldsplit_u_pc_hypre_boomeramg_cycle_type", "W")
-
-        # Setup approximation of 11-block inverse (Chebyshev semi-iteration)
-        ksp1.setType(PETSc.KSP.Type.CHEBYSHEV)
-        ksp1.max_it = 5
-        pc1.setType(PETSc.PC.Type.JACOBI)
-
-    def setFromOptions(self):
-        """Do the set up from command-line options."""
-        # Get KSP and PC contexts
-        ksp = self.ksp() # ksp is obtained from DOLFIN's PETScKrylovSolver
-        pc = ksp.getPC()
-        # Get sub-KSPs, sub-PCs
-        ksp0, ksp1 = pc.getFieldSplitSubKSP()
-        pc0, pc1 = ksp0.getPC(), ksp1.getPC()
-        # Call setFromOptions method for all KSPs and PCs
-        ksp0.setFromOptions()
-        pc0.setFromOptions()
-        ksp1.setFromOptions()
-        pc1.setFromOptions()
-        ksp.setFromOptions()
-        pc.setFromOptions()
-
-class PCDFieldSplitSolver(PETScKrylovSolver):
-    """This class implements PCD preconditioner for Navier-Stokes problems."""
-
-    def __init__(self, space, ksptype='gmres', insolver='lu',
-                 strategy='ESW14', BQBt=False):
-        """Arguments:
-             space    ... instance of dolfin's MixedFunctionSpace
-             ksptype  ... krylov solver type, see help(PETSc.KSP.Type)
-             insolver ... direct/iterative inner solver (choices: 'lu', 'it')
-             strategy ... strategy used for PCD preconditioning ('ESW14', 'BMR15')
-             BQBt     ... assembles Ap appropriate for nonstationary problems
-        """
-        # Setup GMRES with RIGHT preconditioning
-        ksptype_petsc_name = "bcgs" if ksptype == "bicgstab" else ksptype
-        ksp = PETSc.KSP()
-        ksp.create(PETSc.COMM_WORLD)
-        ksp.setType(ksptype_petsc_name)
-        ksp.setPCSide(PETSc.PC.Side.RIGHT)
-
-        # Setup SCHUR with UPPER factorization
-        pc = ksp.getPC()
-        pc.setType(PETSc.PC.Type.FIELDSPLIT)
-        pc.setFieldSplitType(PETSc.PC.CompositeType.SCHUR)
-        pc.setFieldSplitSchurFactType(PETSc.PC.SchurFactType.UPPER)
-        is0 = dofmap_dofs_is(space.sub(0).dofmap())
-        is1 = dofmap_dofs_is(space.sub(1).dofmap())
-        pc.setFieldSplitIS(['u', is0], ['p', is1])
-
-        # Store what needed
-        self._is0 = is0
-        self._is1 = is1
-        self._insolver = insolver
-        self._strategy = strategy
-        self._flag_BQBt = BQBt
-
-        # Init mother class
-        PETScKrylovSolver.__init__(self, ksp)
-
-    def setup(self, *args):
-        # Setup KSP and PC
-        ksp = self.ksp() # ksp is obtained from DOLFIN's PETScKrylovSolver
-        ksp.setUp()
-        pc = ksp.getPC()
-        pc.setUp()
-
-        # Get sub-KSPs, sub-PCs
-        ksp0, ksp1 = pc.getFieldSplitSubKSP()
-        pc0, pc1 = ksp0.getPC(), ksp1.getPC()
-
-        # Setup approximation of 00-block inverse
-        ksp0.setFromOptions()
-        ksp0.setUp()
-        pc0.setFromOptions()
-        pc0.setUp()
-
-        # Setup approximation of Schur complement (11-block) inverse
-        ksp1.setType(PETSc.KSP.Type.PREONLY)
-        ksp1.setUp()
-        pc1.setType(PETSc.PC.Type.PYTHON)
-        pc1.setPythonContext(PCDctx(self._insolver, self.ksp(),
-                                    self._is0, self._is1,
-                                    self._strategy, self._flag_BQBt,
-                                    *args))
-        pc1.setUp()
-
-
-class PCDctx(object):
-    """Python context for PCD preconditioner."""
-
-    def __init__(self, *args):
-        if args:
-            self._opts = PETSc.Options()
-            self.set_operators(*args)
-            self.assemble_operators()
-            self.prepare_factors()
-
-    def set_operators(self, insolver, ksp, isu, isp, strategy, flag_BQBt,
-                      mu, mp, ap, kp, fp, Lp, bcs_pcd, nu):
-        """Collects an index set to identify block corresponding to Schur
-        complement in the system matrix, variational forms and boundary
-        conditions to assemble corresponding matrix operators."""
-        self._ksp = ksp
-        self._isu = isu
-        self._isp = isp
-        self._mu = mu    # -> velocity mass matrux Mu
-        self._mp = mp    # -> pressure mass matrix Mp
-        self._ap = ap    # -> pressure Laplacian Ap
-        self._kp = kp    # -> pressure convection Kp
-        self._fp = fp    # -> pressure convection-diffusion Fp
-        self._Lp = Lp    # -> dummy right hand side vector
-        self._bcs_pcd = bcs_pcd
-        self._insolver = insolver
-        self._strategy = strategy
-        self._flag_BQBt = flag_BQBt
-        self._nu = nu
-
-    def assemble_operators(self):
-        """Prepares operators for PCD preconditioning."""
-        #
-        # TODO: Some operators can be assembled only once outside PCDctx,
-        #       e.g. velocity mass matrix. (In the current naive approach we
-        #       assemble those operators in each nonlinear iteration.)
-        #
-        # TODO: Can we use SystemAssembler to assemble operators in a symmetric
-        #       way whithout simultaneous assembly of rhs vector? (Supposing
-        #       that we are dealing only with homogeneous bcs.)
-        #
-        if self._strategy == 'ESW14':
-            # Apply Dirichlet conditions for Ap and Fp using a ghost layer of
-            # elements outside the outflow boundary (mimic finite differences).
-            indices = []
-            for bc in self._bcs_pcd:
-                bc_map = bc.get_boundary_values()
-                indices += bc_map.keys()
-            scaling_factor = PETScVector()
-            assemble(self._Lp, tensor=scaling_factor)
-            scaling_factor = scaling_factor.vec()
-            scaling_factor.set(1.0)
-            scaling_factor.setValuesLocal(indices, len(indices)*[2.0,])
-            scaling_factor = scaling_factor.getSubVector(self._isp)
-            # Assemble Ap
-            if self._flag_BQBt:
-                # Ap = B*T^{-1}*Bt (appropriate for nonstationary problems)
-                self._Ap = self._assemble_BQBt(multiply='Bt')
-            else:
-                # Ap assembled from UFL form
-                self._Ap = PETScMatrix()
-                assemble(self._ap, tensor=self._Ap)
-                self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
-                # Augment diagonal with values from "ghost elements"
-                d = self._Ap.getDiagonal()
-                d.pointwiseMult(d, scaling_factor)
-                self._Ap.setDiagonal(d)
-                d.destroy()
-                del d
-            # Assemble Fp
-            self._Fp = PETScMatrix()
-            assemble(self._fp, tensor=self._Fp)
-            self._Fp = self._Fp.mat().getSubMatrix(self._isp, self._isp)
-            # Augment diagonal with values from "ghost elements"
-            d = self._Fp.getDiagonal()
-            d.pointwiseMult(d, scaling_factor)
-            self._Fp.setDiagonal(d)
-            d.destroy()
-            del d
-            # Assemble Mp
-            self._Mp = PETScMatrix()
-            assemble(self._mp, tensor=self._Mp)
-            self._Mp = self._Mp.mat().getSubMatrix(self._isp, self._isp)
-        elif self._strategy == 'BMR15':
-            # Assemble Ap
-            if self._flag_BQBt:
-                # Ap = B*diag(Mu)^{-1}*Bt (appropriate for nonstationary problems)
-                self._Ap = self._assemble_BQBt(multiply='Bt')
-            else:
-                # Ap assembled from UFL form
-                self._Ap = PETScMatrix()
-                assemble(self._ap, tensor=self._Ap)
-                for bc in self._bcs_pcd:
-                    bc.apply(self._Ap)
-                self._Ap = self._Ap.mat().getSubMatrix(self._isp, self._isp)
-            # Assemble Kp
-            self._Kp = PETScMatrix()
-            assemble(self._kp, tensor=self._Kp)
-            self._Kp = self._Kp.mat().getSubMatrix(self._isp, self._isp)
-            # Assemble Mp
-            self._Mp = PETScMatrix()
-            assemble(self._mp, tensor=self._Mp)
-            self._Mp = self._Mp.mat().getSubMatrix(self._isp, self._isp)
-        else:
-            error("Unknown PCD strategy.")
-
-    def _assemble_BQBt(self, multiply='Bt'):
-        """Assembly of an approximation of the pressure Laplacian that is more
-        appropriate for nonstationary problems, i.e. Ap = B*diag(Mu)^{-1}*B^T,
-        where Mu is the velocity mass matrix. (Note that for inflow-outflow
-        problems this operator is nonsingular and we do not need to prescribe
-        any artificial boundary conditions for pressure. For enclosed flows
-        one can solve the system using iterative solvers.)"""
-        # Assemble velocity mass matrix
-        # NOTE: There is no need to apply Dirichlet bcs for velocity on the
-        #       velocity mass matrix as long as those bsc have been applied on
-        #       the system matrix A. Thus, Bt contains zero rows corresponding
-        #       to test functions on the Dirichlet boundary.
-        Mu = PETScMatrix()
-        assemble(self._mu, tensor=Mu)
-        Mu = Mu.mat().getSubMatrix(self._isu, self._isu)
-        # Get diagonal of the velocity mass matrix
-        iT = Mu.getDiagonal()
-        # Make inverse of diag(Mu)
-        iT.reciprocal()
-        # Make square root of the diagonal and use it for scaling
-        iT.sqrtabs()
-        # Extract 01-block, i.e. "grad", from the matrix operator A
-        A, P = self._ksp.getOperators()
-        if multiply != 'B':
-            Bt = A.getSubMatrix(self._isu, self._isp)
-            Bt.diagonalScale(L=iT)
-        # Extract 10-block, i.e. "-div", from the matrix operator A
-        if multiply != 'Bt':
-            B = A.getSubMatrix(self._isp, self._isu)
-            B.diagonalScale(R=iT)
-        # Prepare Ap
-        if multiply == 'Bt':
-            # Correct way, i.e. Ap = Bt^T*Bt
-            Ap = Bt.transposeMatMult(Bt)
-        elif multiply == 'B':
-            # Wrong way, i.e. Ap = B*B^T (B^T doesn't contain zero rows as Bt)
-            Ap = B.matTransposeMult(B)
-            #Ap = PETSc.Mat().createNormal(B)
-        else:
-            # Explicit multiplication, i.e. Ap = B*Bt
-            Ap = B.matMult(Bt)
-        return Ap
-
-    def prepare_factors(self):
-        # Prepare Mp factorization
-        ksp = PETSc.KSP()
-        ksp.create(PETSc.COMM_WORLD)
-        pc = ksp.getPC()
-        if self._insolver == 'lu':
-            ksp.setType(PETSc.KSP.Type.PREONLY)
-            pc.setType(PETSc.PC.Type.LU)
-            #pc.setFactorSolverPackage('umfpack')
-        else:
-            #ksp.setType(PETSc.KSP.Type.CG)
-            #pc.setType(PETSc.PC.Type.HYPRE)
-            ksp.setType(PETSc.KSP.Type.CHEBYSHEV)
-            ksp.max_it = 5
-            pc.setType(PETSc.PC.Type.JACOBI)
-            # FIXME: The following estimates are valid only for continuous pressure.
-            self._opts.setValue("-ksp_chebyshev_eigenvalues", "0.5, 2.0")
-        #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
-        ksp.setOperators(self._Mp)
-        ksp.setFromOptions()
-        ksp.setUp()
-        pc.setUp()
-        self._ksp_Mp = ksp
-
-        # Prepare Ap factorization
-        ksp = PETSc.KSP()
-        ksp.create(PETSc.COMM_WORLD)
-        pc = ksp.getPC()
-        if self._insolver == 'lu':
-            ksp.setType(PETSc.KSP.Type.PREONLY)
-            pc.setType(PETSc.PC.Type.LU)
-            #pc.setFactorSolverPackage('umfpack')
-        else:
-            ksp.setType(PETSc.KSP.Type.RICHARDSON)
-            ksp.max_it = 2
-            pc.setType(PETSc.PC.Type.HYPRE)
-            #self._opts.setValue("-pc_hypre_type", "boomeramg") # this is default
-            #self._opts.setValue("-pc_hypre_boomeramg_cycle_type", "W")
-        #self._Ap.setOption(PETSc.Mat.Option.SPD, True)
-        ksp.setOperators(self._Ap)
-        ksp.setFromOptions()
-        ksp.setUp()
-        pc.setUp()
-        self._ksp_Ap = ksp
-
-    def apply(self, pc, x, y):
-        """This method implements the action of the inverse of approximate
-        Schur complement S, cf. PCShellSetApply."""
-        # TODO: Try matrix-free!
-        # TODO: Is modification of x safe?
-        if self._strategy == 'ESW14':
-            # $y = S^{-1} x = -A_p^{-1} F_p M_p^{-1} x$,
-            # where $S = -M_p F_p^{-1} A_p$ approximates $-B F^{-1} B^{T}$.
-            self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
-            # NOTE: Preconditioning with sole M_p in place of 11-block works for low Re.
-            self._Fp.mult(-y, x) # x = -F_p y
-            self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
-        elif self._strategy == 'BMR15':
-            # $y = S^{-1} x = -M_p^{-1} (\nu x + K_p A_p^{-1} x)}$,
-            # where $S = -A_p F_p^{-1} M_p = -A_p (\nu A_p + K_p)^{-1} M_p$
-            # approximates $-B F^{-1} B^{T}$.
-            # FIXME: This is an inefficient approximation
-            x0 = x.copy()
-            lgmap = PETSc.LGMap().createIS(self._isp) # local to global mapping
-            x.setLGMap(lgmap)
-            lgmap = lgmap.indices.tolist()
-            indices = []
-            for bc in self._bcs_pcd:
-                bc_map = bc.get_boundary_values()
-                for key in bc_map.keys():
-                    indices.append(lgmap.index(key))  # FIXME: brute force attack
-                if not self._flag_BQBt:
-                    x.setValues(indices, bc_map.values()) # apply bcs to rhs
-            self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
-            self._Kp.mult(-y, x)
-            x.axpy(-self._nu, x0)    # x = -K_p y - nu*x0
-            self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
-        else:
-            error("Unknown PCD strategy.")
-
-
+# -----------------------------------------------------------------------------
+# Function converting dofs (dolfin) to IS (PETSc)
 dofmap_dofs_is_cpp_code = """
 #ifdef SWIG
 %include "petsc4py/petsc4py.i"
@@ -436,7 +44,102 @@ namespace dolfin {
 
 }
 """
-
 dofmap_dofs_is = \
-    compile_extension_module(dofmap_dofs_is_cpp_code).dofmap_dofs_is
+    dolfin.compile_extension_module(dofmap_dofs_is_cpp_code).dofmap_dofs_is
 del dofmap_dofs_is_cpp_code
+# -----------------------------------------------------------------------------
+
+class FieldSplitSolver(dolfin.PETScKrylovSolver):
+    """This class derives from 'dolfin.PETScKrylovSolver' and implements
+    field split preconditioner for saddle point problems like incompressible
+    [Navier-]Stokes flow."""
+
+    def __init__(self, space, method):
+        """Create fieldsplit solver on a given space for a particular method.
+
+        *Arguments*
+            space
+                A :py:class:`FunctionSpace <dolfin.functions.functionspace>`
+            method
+                Type of a PETSc KSP object, see help(PETSc.KSP.Type)
+        """
+        # Create KSP
+        ksp = self._ksp = PETSc.KSP()
+        ksp.create(PETSc.COMM_WORLD)
+        ksp.setType(method)
+        # Init parent class
+        dolfin.PETScKrylovSolver.__init__(self, ksp)
+        # Set up FIELDSPLIT preconditioning
+        pc = ksp.getPC()
+        pc.setType(PETSc.PC.Type.FIELDSPLIT)
+        self._is0 = dofmap_dofs_is(space.sub(0).dofmap())
+        self._is1 = dofmap_dofs_is(space.sub(1).dofmap())
+        pc.setFieldSplitIS(["u", self._is0], ["p", self._is1])
+        # Initiate option databases for subsolvers
+        self._OptDB_00 = PETSc.Options("fieldsplit_u_")
+        self._OptDB_11 = PETSc.Options("fieldsplit_p_")
+        # Set default parameter values
+        self.parameters = self.default_parameters()
+
+    def default_parameters(self):
+        """Extend default parameter set of parent class."""
+        # Get default parameters for parent class
+        prm = dolfin.PETScKrylovSolver().default_parameters()
+        # Add new parameters
+        prm["preconditioner"].add("side", "right",
+                                  ["left", "right", "symmetric"])
+        prm_fs = dolfin.Parameters("fieldsplit")
+        prm_fs.add("type", "schur",
+                   ["additive", "multiplicative", "symmetric_multiplicative",
+                    "special", "schur"])
+        prm_fs.add(dolfin.Parameters("schur"))
+        prm_fs["schur"].add("fact_type", "upper",
+                            ["diag", "lower", "upper", "full"])
+        prm_fs["schur"].add("precondition", "user",
+                            ["self", "selfp", "a11", "user", "full"])
+        # Add new parameters to 'petsc_krylov_solver' parameters
+        prm["preconditioner"].add(prm_fs)
+        return prm
+
+    def get_subopts(self):
+        """Return option databases enabling to set up subsolvers."""
+        return self._OptDB_00, self._OptDB_11
+
+    def custom_setup(self, *args):
+        """Must be called between 'self.set_operators' and 'self.solve'."""
+        # Update global option database
+        self._set_from_parameters()
+        # Set up KSP
+        self._ksp.setFromOptions()
+        self._ksp.setUp() # NOTE: this includes operations within 'PCSetUp'
+        # Check if python context has been set up to define approximation of
+        # 11-block inverse. If so, use *args to set up this context.
+        if self._OptDB_11.hasName("pc_python_type"):
+            ksp0, ksp1 = self._ksp.getPC().getFieldSplitSubKSP()
+            ctx = ksp1.getPC().getPythonContext()
+            ctx.custom_setup(self._is0, self._is1, *args)
+
+    def _set_from_parameters(self):
+        """Set up extra parameters added to parent class."""
+        # Get access to global option database
+        OptDB = PETSc.Options()
+        # Add extra solver parameters to the global option database
+        prm = self.parameters["preconditioner"]
+        OptDB["ksp_pc_side"] = \
+          prm["side"]
+        OptDB["pc_fieldsplit_type"] = \
+          prm["fieldsplit"]["type"]
+        OptDB["pc_fieldsplit_schur_fact_type"] = \
+          prm["fieldsplit"]["schur"]["fact_type"]
+        OptDB["pc_fieldsplit_schur_precondition"] = \
+          prm["fieldsplit"]["schur"]["precondition"]
+
+if __name__ == "__main__":
+    # TODO: Write proper unit test.
+    dolfin.info("Tests of %s." % __file__)
+    mesh = dolfin.UnitSquareMesh(2, 2)
+    V = dolfin.VectorFunctionSpace(mesh, "CG", 2)
+    Q = dolfin.FunctionSpace(mesh, "CG", 1)
+    W = V * Q
+    solver = FieldSplitSolver(W, "gmres")
+    dolfin.info(solver.parameters, True)
