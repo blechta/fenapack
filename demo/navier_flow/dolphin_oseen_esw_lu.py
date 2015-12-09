@@ -32,14 +32,14 @@
 # Modified by Martin Rehor 2015
 
 from dolfin import *
-from fenapack import PCDFieldSplitSolver
+from fenapack import FieldSplitSolver
 
+# Parse input arguments
 import sys
-
 try:
-    strategy = sys.argv[1]
+    viscosity = float(sys.argv[1])
 except IndexError:
-    strategy = 'A'
+    viscosity = 0.02
 
 # Load mesh and subdomains
 mesh = Mesh("../../data/dolfin_fine.xml.gz")
@@ -71,21 +71,16 @@ bc1 = DirichletBC(W.sub(0), inflow, sub_domains, 1)
 
 # Boundary conditions for PCD preconditioning
 zero = Constant(0.0)
-if strategy == 'A':
-    print "Usage of strategy A."
-    bc2 = DirichletBC(W.sub(1), zero, sub_domains, 2)
-else:
-    print "Usage of strategy B."
-    bc2 = DirichletBC(W.sub(1), zero, sub_domains, 1)
+bc2 = DirichletBC(W.sub(1), zero, sub_domains, 2)
 
 # Collect boundary conditions
 bcs = [bc0, bc1]
 bcs_pcd = [bc2]
 
 # Define variational problem
-(u, p) = TrialFunctions(W)
-(v, q) = TestFunctions(W)
-nu = Constant(1e-1)
+u, p = TrialFunctions(W)
+v, q = TestFunctions(W)
+nu = Constant(viscosity)
 #nu = Expression('x[1] < x1 ? nu1 : nu2', x1=0.5, nu1=1e1, nu2=2e-1)
 f  = Constant((0.0, 0.0))
 a  = (nu*inner(grad(u), grad(v)) - p*div(v) - q*div(u))*dx
@@ -95,65 +90,80 @@ L  = inner(f, v)*dx
 u0 = Function(V)
 a += inner(dot(grad(u), u0), v)*dx
 
-# Define outward unit normal
-n = FacetNormal(W.mesh())
+# Assemble system of linear equations
+A, b = assemble_system(a, L, bcs)
 
-# Operators for PCD preconditioner
+# Define operators for PCD preconditioner
 mp = p*q*dx
 ap = inner(grad(p), grad(q))*dx
 fp = (nu*inner(grad(p), grad(q)) + dot(grad(p), u0)*q)*dx
-alpha = 0.0 if strategy == 'B' else 1.0
-fp -= Constant(alpha)*inner(u0, n)*p*q*ds # correction due to Robin BC
-Lp = Constant(0.0)*q*dx # dummy right-hand side
+# Correction of fp due to Robin BC
+n = FacetNormal(mesh) # outward unit normal
+ds = Measure("ds")[sub_domains]
+fp -= (inner(u0, n)*p*q)*ds(1)
+# Assemble PCD operators
+Mp = assemble(mp)
+Ap = assemble(ap)
+Fp = assemble(fp)
 
-# Assemble
-A, b = assemble_system(a, L, bcs)
-
-# Setup fieldsplit solver
-solver = PCDFieldSplitSolver(W, "gmres")
+# Set up field split solver
+solver = FieldSplitSolver(W, "gmres")
 solver.parameters["monitor_convergence"] = True
 solver.parameters["relative_tolerance"] = 1e-6
 solver.parameters["maximum_iterations"] = 100
 solver.parameters["nonzero_initial_guess"] = True
 solver.parameters["error_on_nonconvergence"] = False
-solver.parameters['gmres']['restart'] = 100
+solver.parameters["gmres"]["restart"] = 100
+# Preconditioner options
+pc_prm = solver.parameters["preconditioner"]
+pc_prm["side"] = "right"
+pc_prm["fieldsplit"]["type"] = "schur"
+pc_prm["fieldsplit"]["schur"]["fact_type"] = "upper"
 
-# AMG approximation to 0,0-block inverse
-#PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
-#PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
-##PETScOptions.set("fieldsplit_u_pc_type", "gamg") # Does not work
-#PETScOptions.set("fieldsplit_u_pc_type", "ml")
-#PETScOptions.set("fieldsplit_u_mg_levels_ksp_type", "chebyshev")
-#PETScOptions.set("fieldsplit_u_mg_levels_ksp_max_it", 2)
-#PETScOptions.set("fieldsplit_u_mg_levels_pc_type", "sor")
-#PETScOptions.set("fieldsplit_u_mg_levels_pc_sor_its", 2)
-
-# LU 0,0-block inverse
-PETScOptions.set("fieldsplit_u_ksp_type", "preonly")
-PETScOptions.set("fieldsplit_u_pc_type", "lu")
-#PETScOptions.set("fieldsplit_u_pc_factor_mat_solver_package", "mumps")
+# Set up subsolvers
+OptDB_00, OptDB_11 = solver.get_subopts()
+# Approximation of 00-block inverse
+OptDB_00["ksp_type"] = "preonly"
+OptDB_00["pc_type"] = "lu"
+#OptDB_00["pc_factor_mat_solver_package"] = "mumps"
+# Approximation of 11-block inverse
+OptDB_11["ksp_type"] = "preonly"
+OptDB_11["pc_type"] = "python"
+OptDB_11["pc_python_type"] = "fenapack.PCDPC_ESW"
+# PCD specific options: Ap factorization
+OptDB_11["PCD_Ap_ksp_type"] = "preonly"
+OptDB_11["PCD_Ap_pc_type"] = "lu"
+# PCD specific options: Mp factorization
+OptDB_11["PCD_Mp_ksp_type"] = "preonly"
+OptDB_11["PCD_Mp_pc_type"] = "lu"
 
 # Compute solution using Ossen approximation
+it = 0
+max_its = 50 # safety parameter
 w = Function(W)
 solver.set_operator(A)
-solver.setup(mp, fp, ap, Lp, bcs_pcd, strategy)
-solver.solve(w.vector(), b)
-while True:
+solver.custom_setup(Ap, Fp, Mp, bcs_pcd)
+solver.solve(w.vector(), b) # solve Stokes system (u0 = 0)
+while it <= max_its:
+    it += 1
     u0.assign(w.sub(0, deepcopy=True))
     A, b = assemble_system(a, L, bcs)
     solver.set_operator(A)
-    # End when num iterations is zero (residual is small)
+    Fp = assemble(fp)
+    solver.custom_setup(Ap, Fp, Mp, bcs_pcd)
+    # Stop when number of iterations is zero (residual is small)
     if solver.solve(w.vector(), b) == 0:
         break
 
 # Split the mixed solution using a shallow copy
-(u, p) = w.split()
+u, p = w.split()
 
-# Save solution in VTK format
-#File("velocity.xdmf") << u
-#File("pressure.xdmf") << p
+# Save solution in XDMF format
+filename = sys.argv[0][:-3]
+File("results/%s_velocity.xdmf" % filename) << u
+File("results/%s_pressure.xdmf" % filename) << p
 
 # Plot solution
-plot(u)
-plot(p)
+plot(u, title="velocity")
+plot(p, title="pressure", scale=2.0)
 interactive()
