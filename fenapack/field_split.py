@@ -105,19 +105,29 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         """Return option databases enabling to set up subsolvers."""
         return self._OptDB_00, self._OptDB_11
 
-    def custom_setup(self, *args):
+    def custom_setup(self, *args, **kwargs):
         """Must be called between 'self.set_operators' and 'self.solve'."""
         # Update global option database
         self._set_from_parameters()
         # Set up KSP
         self._ksp.setFromOptions()
         self._ksp.setUp() # NOTE: this includes operations within 'PCSetUp'
+        # Get subKSP and subPC objects
+        ksp0, ksp1 = self._ksp.getPC().getFieldSplitSubKSP()
+        pc0, pc1 = ksp0.getPC(), ksp1.getPC()
         # Check if python context has been set up to define approximation of
-        # 11-block inverse. If so, use *args to set up this context.
+        # 11-block inverse. If so, use *args, **kwargs to set up this context.
         if self._OptDB_11.hasName("pc_python_type"):
-            ksp0, ksp1 = self._ksp.getPC().getFieldSplitSubKSP()
-            ctx = ksp1.getPC().getPythonContext()
-            ctx.custom_setup(self._is0, self._is1, *args)
+            ctx = pc1.getPythonContext()
+            ctx.custom_setup(self._is0, self._is1, *args, **kwargs)
+        # # Set up each subPC explicitly before calling 'self.solve'. In such
+        # # a case, the time needed for setup is not included in timings under
+        # # "PETSc Krylov Solver".
+        # timer = dolfin.Timer("FENaPack: set up subPC objects")
+        # timer.start()
+        # pc0.setUp()
+        # pc1.setUp()
+        # timer.stop()
 
     def _set_from_parameters(self):
         """Set up extra parameters added to parent class."""

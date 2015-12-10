@@ -138,22 +138,27 @@ OptDB_11["PCD_Mp_ksp_type"] = "preonly"
 OptDB_11["PCD_Mp_pc_type"] = "lu"
 
 # Compute solution using Ossen approximation
+timer = Timer("Nonlinear solver (Oseen)")
+timer.start()
 it = 0
 max_its = 50 # safety parameter
 w = Function(W)
 solver.set_operator(A)
-solver.custom_setup(Ap, Fp, Mp, bcs_pcd)
+solver.custom_setup(Ap=Ap, Fp=Fp, Mp=Mp, bcs=bcs_pcd)
 solver.solve(w.vector(), b) # solve Stokes system (u0 = 0)
+# Release some memory
+del Ap, Mp # these constant matrices are now stored inside 'solver'
 while it <= max_its:
     it += 1
     u0.assign(w.sub(0, deepcopy=True))
     A, b = assemble_system(a, L, bcs)
     solver.set_operator(A)
     Fp = assemble(fp)
-    solver.custom_setup(Ap, Fp, Mp, bcs_pcd)
+    solver.custom_setup(Fp=Fp)
     # Stop when number of iterations is zero (residual is small)
     if solver.solve(w.vector(), b) == 0:
         break
+timer.stop()
 
 # Split the mixed solution using a shallow copy
 u, p = w.split()
@@ -162,6 +167,10 @@ u, p = w.split()
 filename = sys.argv[0][:-3]
 File("results/%s_velocity.xdmf" % filename) << u
 File("results/%s_pressure.xdmf" % filename) << p
+
+# Print summary of timings
+info("")
+list_timings(TimingClear_keep, [TimingType_wall])
 
 # Plot solution
 plot(u, title="velocity")

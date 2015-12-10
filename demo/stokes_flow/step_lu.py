@@ -151,6 +151,10 @@ filename = sys.argv[0][:-3]
 File("results/%s_velocity.xdmf" % filename) << u
 File("results/%s_pressure.xdmf" % filename) << p
 
+# Print summary of timings
+info("")
+list_timings(TimingClear_keep, [TimingType_wall])
+
 # Plot solution
 plot(u, title="velocity")
 plot(p, title="pressure", scale=2.0)

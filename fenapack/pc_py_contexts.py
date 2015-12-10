@@ -31,8 +31,11 @@ class BasePCDPC(object):
     def apply(self, pc, x, y):
         raise NotImplementedError
 
-    def custom_setup(self, *args):
+    def custom_setup(self, *args, **kwargs):
         pass
+
+    def _isset_error(self, kwarg):
+        dolfin.error("Keyword argument '%s' has not been set." % kwarg)
 
     def _prepare_Ap_fact(self):
         # Prepare Ap factorization
@@ -64,42 +67,12 @@ class PCDPC_ESW(BasePCDPC):
     """This class implements PCD preconditioning proposed by Elman, Silvester
     and Wathen (2014)."""
 
-    def custom_setup(self, is0, is1, Ap, Fp, Mp, bcs):
-        # Make sure that 'bcs' is a list
-        if not isinstance(bcs, list):
-            bcs = [bcs]
-        # Get PETSc Mat objects of appropriate size
-        Ap = dolfin.as_backend_type(Ap).mat()
-        Fp = dolfin.as_backend_type(Fp).mat()
-        Mp = dolfin.as_backend_type(Mp).mat()
-        self._Ap = Ap.getSubMatrix(is1, is1)
-        self._Fp = Fp.getSubMatrix(is1, is1)
-        self._Mp = Mp.getSubMatrix(is1, is1)
-        # Apply Dirichlet conditions for Ap and Fp using a ghost layer of
-        # elements outside the outflow boundary (mimic finite differences)
-        indices = [] # to save indices corresponding to outflow boundary
-        for bc in bcs:
-            indices += bc.get_boundary_values().keys()
-        scaling_factor = Ap.getDiagonal() # get long vector
-        scaling_factor.set(1.0)
-        scaling_factor.setValuesLocal(indices, len(indices)*[2.0,])
-        scaling_factor = scaling_factor.getSubVector(is1) # short vector
-        # Augment diagonal of self._Ap with values from "ghost elements"
-        diag = self._Ap.getDiagonal()
-        diag.pointwiseMult(diag, scaling_factor)
-        self._Ap.setDiagonal(diag)
-        diag.destroy()
-        del diag
-        # Augment diagonal of self._Fp with values from "ghost elements"
-        diag = self._Fp.getDiagonal()
-        diag.pointwiseMult(diag, scaling_factor)
-        self._Fp.setDiagonal(diag)
-        diag.destroy()
-        del diag
-        # Update operators
-        self._ksp_Ap.setOperators(self._Ap)
-        self._ksp_Mp.setOperators(self._Mp)
-        # TODO: Leave constant matrices untouched.
+    def __init__(self):
+        BasePCDPC.__init__(self)
+        self._isset_Ap = False # pressure laplacian
+        self._isset_Fp = False # pressure convection-difusion
+        self._isset_Mp = False # pressure mass matrix
+        self._bc_indices = None # indices corresponding to outflow boundary
 
     def apply(self, pc, x, y):
         """This method implements the action of the inverse of the approximate
@@ -107,12 +80,91 @@ class PCDPC_ESW(BasePCDPC):
 
             $y = \hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x$.
         """
+        timer = dolfin.Timer("FENaPack: call PCDPC_ESW.apply")
+        timer.start()
         self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
         self._Fp.mult(-y, x)     # x = -F_p y
         self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
+        timer.stop()
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
 
+    def custom_setup(self, is0, is1, Ap=None, Fp=None, Mp=None, bcs=None):
+        timer = dolfin.Timer("FENaPack: call PCDPC_ESW.custom_setup")
+        timer.start()
+        # Update bcs
+        if bcs:
+            # Make sure that 'bcs' is a list
+            if not isinstance(bcs, list):
+                bcs = [bcs]
+            # Get indices
+            indices = []
+            for bc in bcs:
+                indices += bc.get_boundary_values().keys()
+            # Remove redundant indices and save the result
+            self._bc_indices = list(set(indices))
+        elif not self._bc_indices:
+            self._isset_error("bcs")
+        # Update Ap
+        if Ap:
+            # Get PETSc Mat object
+            Ap = dolfin.as_backend_type(Ap).mat()
+            # Prepare scaling factor for application of bcs
+            scaling_factor = Ap.getDiagonal() # get long vector
+            scaling_factor.set(1.0)
+            scaling_factor.setValuesLocal(self._bc_indices,
+                                          len(self._bc_indices)*[2.0,])
+            scaling_factor = scaling_factor.getSubVector(is1) # short vector
+            # Get submatrix corresponding to 11-block of the problem matrix
+            Ap = Ap.getSubMatrix(is1, is1)
+            # Apply Dirichlet conditions using a ghost layer of elements
+            # outside the outflow boundary (mimic finite differences,
+            # i.e. augment diagonal with values from "ghost elements")
+            diag = Ap.getDiagonal()
+            diag.pointwiseMult(diag, scaling_factor)
+            Ap.setDiagonal(diag)
+            # Store matrix in the corresponding ksp
+            self._ksp_Ap.setOperators(Ap)
+            # Update flag
+            self._isset_Ap = True
+            # TODO: Think about explicit destruction of PETSc objects.
+        elif not self._isset_Ap:
+            self._isset_error("Ap")
+        # Update Fp
+        if Fp:
+            # Get PETSc Mat object
+            Fp = dolfin.as_backend_type(Fp).mat()
+            # Prepare scaling factor for application of bcs
+            scaling_factor = Fp.getDiagonal() # get long vector
+            scaling_factor.set(1.0)
+            scaling_factor.setValuesLocal(self._bc_indices,
+                                          len(self._bc_indices)*[2.0,])
+            scaling_factor = scaling_factor.getSubVector(is1) # short vector
+            # Get submatrix corresponding to 11-block of the problem matrix
+            Fp = Fp.getSubMatrix(is1, is1)
+            # Apply Dirichlet conditions using a ghost layer of elements
+            # outside the outflow boundary (mimic finite differences,
+            # i.e. augment diagonal with values from "ghost elements")
+            diag = Fp.getDiagonal()
+            diag.pointwiseMult(diag, scaling_factor)
+            Fp.setDiagonal(diag)
+            # Store matrix
+            self._Fp = Fp
+            # Update flag
+            self._isset_Fp = True
+        elif not self._isset_Fp:
+            self._isset_error("Fp")
+        # Update Mp
+        if Mp:
+            Mp = dolfin.as_backend_type(Mp).mat()
+            Mp = Mp.getSubMatrix(is1, is1)
+            # Store matrix in the corresponding ksp
+            self._ksp_Mp.setOperators(Mp)
+            # Update flag
+            self._isset_Mp = True
+        elif not self._isset_Mp:
+            self._isset_error("Mp")
+        timer.stop()
 
 # -----------------------------------------------------------------------------
 # TODO: Re-implement PCDctx following the new template provided above.
