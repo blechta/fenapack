@@ -55,13 +55,13 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
     [Navier-]Stokes flow."""
 
     def __init__(self, space, method):
-        """Create fieldsplit solver on a given space for a particular method.
+        """Create field split solver on a given space for a particular method.
 
         *Arguments*
-            space
-                A :py:class:`FunctionSpace <dolfin.functions.functionspace>`
+            space (:py:class:`FunctionSpace <dolfin.functions.functionspace>`)
+                Mixed function space determining the field split.
             method
-                Type of a PETSc KSP object, see help(PETSc.KSP.Type)
+                Type of a PETSc KSP object, see help(PETSc.KSP.Type).
         """
         # Create KSP
         ksp = self._ksp = PETSc.KSP()
@@ -105,8 +105,20 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         """Return option databases enabling to set up subsolvers."""
         return self._OptDB_00, self._OptDB_11
 
-    def custom_setup(self, *args, **kwargs):
-        """Must be called between 'self.set_operators' and 'self.solve'."""
+    # Discard PETScKrylovSolver::set_operator() method
+    def set_operator(self, A):
+        raise NotImplementedError
+
+    # Overload PETScKrylovSolver::set_operators() method
+    def set_operators(self, *args, **kwargs):
+        A = args[0] # system operator
+        P = args[1] # preconditioning operator
+        dolfin.PETScKrylovSolver.set_operators(self, A, P)
+        #assert self._ksp.getOperators() == \
+        #  (dolfin.as_backend_type(A).mat(), dolfin.as_backend_type(P).mat())
+        self._custom_ksp_setup(*args[2:], **kwargs)
+
+    def _custom_ksp_setup(self, *args, **kwargs):
         # Update global option database
         self._set_from_parameters()
         # Set up KSP
@@ -119,7 +131,7 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         # 11-block inverse. If so, use *args, **kwargs to set up this context.
         if self._OptDB_11.hasName("pc_python_type"):
             ctx = pc1.getPythonContext()
-            ctx.custom_setup(self._is0, self._is1, *args, **kwargs)
+            ctx.set_operators(self._is0, self._is1, *args, **kwargs)
         # # Set up each subPC explicitly before calling 'self.solve'. In such
         # # a case, the time needed for setup is not included in timings under
         # # "PETSc Krylov Solver".

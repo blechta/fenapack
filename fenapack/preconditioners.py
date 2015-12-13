@@ -31,7 +31,7 @@ class BasePCDPC(object):
     def apply(self, pc, x, y):
         raise NotImplementedError
 
-    def custom_setup(self, *args, **kwargs):
+    def set_operators(self, *args, **kwargs):
         pass
 
     def _isset_error(self, kwarg):
@@ -89,8 +89,8 @@ class PCDPC_ESW(BasePCDPC):
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
 
-    def custom_setup(self, is0, is1, Ap=None, Fp=None, Mp=None, bcs=None):
-        timer = dolfin.Timer("FENaPack: call PCDPC_ESW.custom_setup")
+    def set_operators(self, is0, is1, Ap=None, Fp=None, Mp=None, bcs=None):
+        timer = dolfin.Timer("FENaPack: call PCDPC_ESW.set_operators")
         timer.start()
         # Update bcs
         if bcs:

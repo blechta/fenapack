@@ -140,7 +140,6 @@ OptDB_11["pc_type"] = "lu"
 # Compute solution of the Stokes system
 w = Function(W)
 solver.set_operators(A, P)
-solver.custom_setup()
 solver.solve(w.vector(), b)
 
 # Split the mixed solution using a shallow copy

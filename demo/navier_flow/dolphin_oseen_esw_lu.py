@@ -143,8 +143,7 @@ timer.start()
 it = 0
 max_its = 50 # safety parameter
 w = Function(W)
-solver.set_operator(A)
-solver.custom_setup(Ap=Ap, Fp=Fp, Mp=Mp, bcs=bcs_pcd)
+solver.set_operators(A, A, Ap=Ap, Fp=Fp, Mp=Mp, bcs=bcs_pcd)
 solver.solve(w.vector(), b) # solve Stokes system (u0 = 0)
 # Release some memory
 del Ap, Mp # these constant matrices are now stored inside 'solver'
@@ -152,9 +151,8 @@ while it <= max_its:
     it += 1
     u0.assign(w.sub(0, deepcopy=True))
     A, b = assemble_system(a, L, bcs)
-    solver.set_operator(A)
     Fp = assemble(fp)
-    solver.custom_setup(Fp=Fp)
+    solver.set_operators(A, A, Fp=Fp)
     # Stop when number of iterations is zero (residual is small)
     if solver.solve(w.vector(), b) == 0:
         break
