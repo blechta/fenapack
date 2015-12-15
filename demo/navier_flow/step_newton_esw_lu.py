@@ -1,7 +1,7 @@
 """Flow over a backward-facing step. Incompressible Navier-Stokes equations are
-solved using Oseen approximation. Field split solver is based on PCD
+solved using Newton method. Field split inner_solver is based on PCD
 preconditioning proposed by Elman, Silvester and Wathen. All inner linear
-solves are performed by LU solver."""
+solves are performed by LU inner solver."""
 
 # Copyright (C) 2015 Martin Rehor
 #
@@ -21,7 +21,7 @@ solves are performed by LU solver."""
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import *
-from fenapack import FieldSplitSolver
+from fenapack import FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem
 
 # Parse input arguments
 import argparse, sys
@@ -102,49 +102,48 @@ info("Dimension of the function space: %g" % W.dim())
 # Define variational problem
 u, p = TrialFunctions(W)
 v, q = TestFunctions(W)
+# Solution vector
+w = Function(W)
+u_, p_ = split(w)
 # Data
 nu = Constant(args.viscosity)
 f = Constant((0.0, 0.0))
-# Variational forms (Stokes problem)
-a = (nu*inner(grad(u), grad(v)) - p*div(v) - q*div(u))*dx
-L = inner(f, v)*dx
-# Add convective term (Oseen approximation)
-u0 = Function(V)
-a += inner(dot(grad(u), u0), v)*dx
-# Assemble system of linear equations
-A, b = assemble_system(a, L, bcs)
+# Nonlinear residual form
+F = (
+      inner(f, v)
+    - nu*inner(grad(u_), grad(v))
+    - inner(dot(grad(u_), u_), v)
+    + p_*div(v)
+    + q*div(u_)
+)*dx
+# Jacobian
+J = derivative(F, w)
 
 # Define variational forms for PCD preconditioner
 mp = p*q*dx
 ap = inner(grad(p), grad(q))*dx
-fp = (nu*inner(grad(p), grad(q)) + dot(grad(p), u0)*q)*dx
+fp = (nu*inner(grad(p), grad(q)) + dot(grad(p), u_)*q)*dx
 # Correction of fp due to Robin BC
 n = FacetNormal(mesh) # outward unit normal
 ds = Measure("ds")[boundary_markers]
-fp -= (inner(u0, n)*p*q)*ds(1)
-# Assemble PCD operators
-Mp = assemble(mp)
-Ap = assemble(ap)
-Fp = assemble(fp)
-# NOTE: Fp changes in every step of nonlinear iteration,
-#       while Ap and Mp remain constant.
+fp -= (inner(u_, n)*p*q)*ds(1)
 
-# Set up field split solver
-solver = FieldSplitSolver(W, "gmres")
-solver.parameters["monitor_convergence"] = True
-solver.parameters["relative_tolerance"] = 1e-6
-solver.parameters["maximum_iterations"] = 100
-solver.parameters["nonzero_initial_guess"] = True
-solver.parameters["error_on_nonconvergence"] = False
-solver.parameters["gmres"]["restart"] = 100
+# Set up field split inner_solver
+inner_solver = FieldSplitSolver(W, "gmres")
+inner_solver.parameters["monitor_convergence"] = True
+inner_solver.parameters["relative_tolerance"] = 1e-6
+inner_solver.parameters["maximum_iterations"] = 100
+#inner_solver.parameters["nonzero_initial_guess"] = True
+inner_solver.parameters["error_on_nonconvergence"] = False
+inner_solver.parameters["gmres"]["restart"] = 100
 # Preconditioner options
-pc_prm = solver.parameters["preconditioner"]
+pc_prm = inner_solver.parameters["preconditioner"]
 pc_prm["side"] = "right"
 pc_prm["fieldsplit"]["type"] = "schur"
 pc_prm["fieldsplit"]["schur"]["fact_type"] = "upper"
 
 # Set up subsolvers
-OptDB_00, OptDB_11 = solver.get_subopts()
+OptDB_00, OptDB_11 = inner_solver.get_subopts()
 # Approximation of 00-block inverse
 OptDB_00["ksp_type"] = "preonly"
 OptDB_00["pc_type"] = "lu"
@@ -160,24 +159,33 @@ OptDB_11["PCD_Ap_pc_type"] = "lu"
 OptDB_11["PCD_Mp_ksp_type"] = "preonly"
 OptDB_11["PCD_Mp_pc_type"] = "lu"
 
-# Compute solution using Ossen approximation
-timer = Timer("Nonlinear solver (Oseen)")
-it = 0
-max_its = 50 # safety parameter
-w = Function(W)
-solver.set_operators(A, A, Ap=Ap, Fp=Fp, Mp=Mp, bcs=bcs_pcd)
-del Ap, Mp # Release some memory
+# Define nonlinear problem and initialize linear solver
+problem = NonlinearDiscreteProblem(F, J, bcs)
+A = PETScMatrix()
+problem.J(A, w.vector())
+inner_solver.set_operators(
+    A, A, Ap=assemble(ap), Fp=assemble(fp), Mp=assemble(mp), bcs=bcs_pcd)
+
+# Define hook executed at every nonlinear step
+def update_operators(problem, x):
+    # Update Jacobian form and PCD operators
+    problem.J(A, x)
+    inner_solver.set_operators(A, A, Fp=assemble(fp))
+
+# Define nonlinear solver
+solver = NonlinearSolver(inner_solver, update_operators)
+#solver.parameters["absolute_tolerance"] = 1e-10
+solver.parameters["relative_tolerance"] = 1e-5
+solver.parameters["maximum_iterations"] = 25
+solver.parameters["error_on_nonconvergence"] = False
+#solver.parameters["convergence_criterion"] = "incremental"
+#solver.parameters["relaxation_parameter"] = 0.5
+#solver.parameters["report"] = False
+
+# Compute solution
+timer = Timer("Nonlinear solver (Newton)")
 timer.start()
-solver.solve(w.vector(), b) # solve Stokes system (u0 = 0)
-while it <= max_its:
-    it += 1
-    u0.assign(w.sub(0, deepcopy=True))
-    A, b = assemble_system(a, L, bcs)
-    Fp = assemble(fp)
-    solver.set_operators(A, A, Fp=Fp)
-    # Stop when number of iterations is zero (residual is small)
-    if solver.solve(w.vector(), b) == 0:
-        break
+solver.solve(problem, w.vector())
 timer.stop()
 
 # Split the mixed solution using a shallow copy
