@@ -1,6 +1,6 @@
 """Slow flow over a backward-facing step. Stokes equations are solved using
 iterative field split solver with block diagonal preconditioning. Inner linear
-solves are performed by LU solver."""
+solves are performed by iterative solvers."""
 
 # Copyright (C) 2015 Martin Rehor
 #
