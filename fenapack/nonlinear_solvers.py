@@ -166,16 +166,24 @@ class NonlinearSolver(dolfin.NewtonSolver):
 
 class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
     """Class for interfacing with nonlinear solver."""
-    def __init__(self, F, J, bcs):
+    def __init__(self, F, J, bcs, *args):
         dolfin.NonlinearProblem.__init__(self)
         self._F = F
         self._J = J
         self._bcs = bcs
+        if args:
+            self._J_pc = args[0]
     def F(self, b, x):
         dolfin.assemble(self._F, tensor=b)
         for bc in self._bcs:
             bc.apply(b, x)
     def J(self, A, x):
+        # A ... system matrix
         dolfin.assemble(self._J, tensor=A)
         for bc in self._bcs:
             bc.apply(A)
+    def J_pc(self, P, x):
+        # P ... preconditioning matrix
+        dolfin.assemble(self._J_pc, tensor=P)
+        for bc in self._bcs:
+            bc.apply(P)
