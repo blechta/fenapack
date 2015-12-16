@@ -145,6 +145,7 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         """Set up extra parameters added to parent class."""
         # Get access to global option database
         OptDB = PETSc.Options()
+        #OptDB["help"] = True
         # Add extra solver parameters to the global option database
         prm = self.parameters["preconditioner"]
         OptDB["ksp_pc_side"] = \

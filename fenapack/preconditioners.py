@@ -123,6 +123,8 @@ class PCDPC_ESW(BasePCDPC):
             diag = Ap.getDiagonal()
             diag.pointwiseMult(diag, scaling_factor)
             Ap.setDiagonal(diag)
+            # Inform about special properties
+            #Ap.setOption(PETSc.Mat.Option.SPD, True)
             # Store matrix in the corresponding ksp
             self._ksp_Ap.setOperators(Ap)
             # Update flag
@@ -158,6 +160,8 @@ class PCDPC_ESW(BasePCDPC):
         if Mp:
             Mp = dolfin.as_backend_type(Mp).mat()
             Mp = Mp.getSubMatrix(is1, is1)
+            # Inform about special properties
+            #Mp.setOption(PETSc.Mat.Option.SPD, True)
             # Store matrix in the corresponding ksp
             self._ksp_Mp.setOperators(Mp)
             # Update flag

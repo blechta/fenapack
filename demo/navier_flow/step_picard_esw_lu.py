@@ -108,20 +108,19 @@ u_, p_ = split(w)
 # Data
 nu = Constant(args.viscosity)
 f = Constant((0.0, 0.0))
-# Nonlinear residual form
 F = (
-      inner(f, v)
-    - nu*inner(grad(u_), grad(v))
-    - inner(dot(grad(u_), u_), v)
-    + p_*div(v)
-    + q*div(u_)
+      nu*inner(grad(u_), grad(v))
+    + inner(dot(grad(u_), u_), v)
+    - p_*div(v)
+    - q*div(u_)
+    - inner(f, v)
 )*dx
 # Picard correction
 J = (
-    - nu*inner(grad(u), grad(v))
-    - inner(dot(grad(u), u_), v)
-    + p*div(v)
-    + q*div(u)
+      nu*inner(grad(u), grad(v))
+    + inner(dot(grad(u), u_), v)
+    - p*div(v)
+    - q*div(u)
 )*dx
 
 # Define variational forms for PCD preconditioner
@@ -139,13 +138,14 @@ inner_solver.parameters["monitor_convergence"] = True
 inner_solver.parameters["relative_tolerance"] = 1e-6
 inner_solver.parameters["maximum_iterations"] = 100
 #inner_solver.parameters["nonzero_initial_guess"] = True
-#inner_solver.parameters["error_on_nonconvergence"] = False
+inner_solver.parameters["error_on_nonconvergence"] = False
 inner_solver.parameters["gmres"]["restart"] = 100
 # Preconditioner options
 pc_prm = inner_solver.parameters["preconditioner"]
 pc_prm["side"] = "right"
 pc_prm["fieldsplit"]["type"] = "schur"
 pc_prm["fieldsplit"]["schur"]["fact_type"] = "upper"
+pc_prm["fieldsplit"]["schur"]["precondition"] = "user"
 
 # Set up subsolvers
 OptDB_00, OptDB_11 = inner_solver.get_subopts()

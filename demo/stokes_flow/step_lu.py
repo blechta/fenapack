@@ -106,11 +106,11 @@ A, b = assemble_system(a, L, bcs)
 
 # Define variational form for block diagonal preconditioner
 sgn = -1.0 if args.fieldsplit_type == "schur" else 1.0
-a_precon = (inner(grad(u), grad(v)) + Constant(sgn)*p*q)*dx
+a_pc = (inner(grad(u), grad(v)) + Constant(sgn)*p*q)*dx
 # NOTE: For explanation of minus sign above see DIAG on manual
 #       page of PETSc function 'PCFieldSplitSetSchurFactType'.
 # Assemble preconditioner
-assembler = SystemAssembler(a_precon, L, bcs)
+assembler = SystemAssembler(a_pc, L, bcs)
 P = PETScMatrix()
 assembler.assemble(P)
 
@@ -125,6 +125,7 @@ pc_prm = solver.parameters["preconditioner"]
 pc_prm["side"] = "left"
 pc_prm["fieldsplit"]["type"] = args.fieldsplit_type
 pc_prm["fieldsplit"]["schur"]["fact_type"] = "diag"
+pc_prm["fieldsplit"]["schur"]["precondition"] = "a11"
 
 # Set up subsolvers
 OptDB_00, OptDB_11 = solver.get_subopts()

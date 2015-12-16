@@ -110,11 +110,11 @@ nu = Constant(args.viscosity)
 f = Constant((0.0, 0.0))
 # Nonlinear residual form
 F = (
-      inner(f, v)
-    - nu*inner(grad(u_), grad(v))
-    - inner(dot(grad(u_), u_), v)
-    + p_*div(v)
-    + q*div(u_)
+      nu*inner(grad(u_), grad(v))
+    + inner(dot(grad(u_), u_), v)
+    - p_*div(v)
+    - q*div(u_)
+    - inner(f, v)
 )*dx
 # Jacobian
 J = derivative(F, w)
@@ -141,6 +141,7 @@ pc_prm = inner_solver.parameters["preconditioner"]
 pc_prm["side"] = "right"
 pc_prm["fieldsplit"]["type"] = "schur"
 pc_prm["fieldsplit"]["schur"]["fact_type"] = "upper"
+pc_prm["fieldsplit"]["schur"]["precondition"] = "user"
 
 # Set up subsolvers
 OptDB_00, OptDB_11 = inner_solver.get_subopts()
