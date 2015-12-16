@@ -18,7 +18,7 @@
 import dolfin
 from petsc4py import PETSc
 
-__all__ = ['PCDPC_ESW']
+__all__ = ['PCDPC_ESW', 'PCDPC_BMR']
 
 class BasePCDPC(object):
     """Base python context for pressure convection diffusion (PCD)
@@ -72,7 +72,7 @@ class PCDPC_ESW(BasePCDPC):
         self._isset_Ap = False # pressure laplacian
         self._isset_Fp = False # pressure convection-difusion
         self._isset_Mp = False # pressure mass matrix
-        self._bc_indices = None # indices corresponding to outflow boundary
+        self._isset_bc = False # indices corresponding to outflow boundary
 
     def apply(self, pc, x, y):
         """This method implements the action of the inverse of the approximate
@@ -103,7 +103,9 @@ class PCDPC_ESW(BasePCDPC):
                 indices += bc.get_boundary_values().keys()
             # Remove redundant indices and save the result
             self._bc_indices = list(set(indices))
-        elif not self._bc_indices:
+            # Update flag
+            self._isset_bc = True
+        elif not self._isset_bc:
             self._isset_error("bcs")
         # Update Ap
         if Ap:
@@ -123,7 +125,7 @@ class PCDPC_ESW(BasePCDPC):
             diag = Ap.getDiagonal()
             diag.pointwiseMult(diag, scaling_factor)
             Ap.setDiagonal(diag)
-            # Inform about special properties
+            # Set up special options
             #Ap.setOption(PETSc.Mat.Option.SPD, True)
             # Store matrix in the corresponding ksp
             self._ksp_Ap.setOperators(Ap)
@@ -158,13 +160,100 @@ class PCDPC_ESW(BasePCDPC):
             self._isset_error("Fp")
         # Update Mp
         if Mp:
-            Mp = dolfin.as_backend_type(Mp).mat()
-            Mp = Mp.getSubMatrix(is1, is1)
-            # Inform about special properties
+            Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
             #Mp.setOption(PETSc.Mat.Option.SPD, True)
-            # Store matrix in the corresponding ksp
             self._ksp_Mp.setOperators(Mp)
+            self._isset_Mp = True
+        elif not self._isset_Mp:
+            self._isset_error("Mp")
+        timer.stop()
+
+class PCDPC_BMR(BasePCDPC):
+    """This class implements PCD preconditioning proposed by Blechta, Malek,
+    Rehor (201?)."""
+
+    def __init__(self):
+        BasePCDPC.__init__(self)
+        self._isset_Ap = False # pressure laplacian
+        self._isset_Kp = False # pressure convection
+        self._isset_Mp = False # pressure mass matrix
+        self._isset_bc = False # indices corresponding to inflow boundary
+        self._isset_nu = None # kinematic visosity
+
+    def apply(self, pc, x, y):
+        """This method implements the action of the inverse of the approximate
+        Schur complement $\hat{S} = -A_p F_p^{-1} M_p$, that is
+
+            $y = \hat{S}^{-1} x = -M_p^{-1} F_p A_p^{-1} x$.
+        """
+        timer = dolfin.Timer("FENaPack: call PCDPC_BMR.apply")
+        timer.start()
+        x0 = x.copy()
+        x.setValues(self._bc_indices, self._bc_values) # Apply bcs to rhs
+        self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
+        self._Kp.mult(-y, x)
+        x.axpy(-self._nu, x0)    # x = -K_p y - nu*x0
+        self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
+        timer.stop()
+        # TODO: Try matrix-free!
+        # TODO: Is modification of x safe?
+
+    def set_operators(self, is0, is1, Ap=None, Kp=None, Mp=None, bcs=None, nu=None):
+        timer = dolfin.Timer("FENaPack: call PCDPC_BMR.set_operators")
+        timer.start()
+        # Update nu
+        if nu:
+            self._nu = nu
+            self._isset_nu = True
+        elif not self._isset_nu:
+            self._isset_error("nu")
+        # Update bcs
+        if bcs:
+            # Make sure that 'bcs' is a list
+            if not isinstance(bcs, list):
+                bcs = [bcs]
+            # Get indices and values
+            indices = []
+            values = []
+            for bc in bcs:
+                bc_map = bc.get_boundary_values()
+                indices += bc.get_boundary_values().keys()
+                values += bc_map.values()
+            # Get boundary indices for 11-block
+            lgmap = PETSc.LGMap().createIS(is1)
+            self._bc_indices = lgmap.applyInverse(indices).tolist()
+            self._bc_values = values
             # Update flag
+            self._isset_bc = True
+        elif not self._isset_bc:
+            self._isset_error("bcs")
+        # Update Ap
+        if Ap:
+            # Get submatrix corresponding to 11-block of the problem matrix
+            Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
+            # Apply Dirichlet conditions along inflow boundary
+            Ap.zeroRowsColumns(self._bc_indices, diag=1.0)
+            # Set up special options
+            #Ap.setOption(PETSc.Mat.Option.SPD, True)
+            # Store matrix in the corresponding ksp
+            self._ksp_Ap.setOperators(Ap)
+            # Update flag
+            self._isset_Ap = True
+            # TODO: Think about explicit destruction of PETSc objects.
+        elif not self._isset_Ap:
+            self._isset_error("Ap")
+        # Update Kp
+        if Kp:
+            Kp = dolfin.as_backend_type(Kp).mat().getSubMatrix(is1, is1)
+            self._Kp = Kp
+            self._isset_Kp = True
+        elif not self._isset_Kp:
+            self._isset_error("Kp")
+        # Update Mp
+        if Mp:
+            Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
+            #Mp.setOption(PETSc.Mat.Option.SPD, True)
+            self._ksp_Mp.setOperators(Mp)
             self._isset_Mp = True
         elif not self._isset_Mp:
             self._isset_error("Mp")
