@@ -98,6 +98,7 @@ class PCDPC_ESW(BasePCDPC):
             if not isinstance(bcs, list):
                 bcs = [bcs]
             # Get indices
+            # FIXME: Avoid dictionaries!!!
             indices = []
             for bc in bcs:
                 indices += bc.get_boundary_values().keys()
@@ -213,6 +214,7 @@ class PCDPC_BMR(BasePCDPC):
             if not isinstance(bcs, list):
                 bcs = [bcs]
             # Get indices and values
+            # FIXME: Avoid dictionaries!!!
             indices = []
             values = []
             for bc in bcs:
@@ -221,6 +223,7 @@ class PCDPC_BMR(BasePCDPC):
                 values += bc_map.values()
             # Get boundary indices for 11-block
             lgmap = PETSc.LGMap().createIS(is1)
+            # FIXME: This does not work in parallel!
             self._bc_indices = lgmap.applyInverse(indices).tolist()
             self._bc_values = values
             # Update flag
