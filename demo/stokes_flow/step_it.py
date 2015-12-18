@@ -22,6 +22,14 @@ solves are performed by iterative solvers."""
 from dolfin import *
 from fenapack import FieldSplitSolver
 
+# Reduce logging in parallel
+comm = mpi_comm_world()
+rank = MPI.rank(comm)
+set_log_level(INFO if rank == 0 else INFO+1)
+plotting_enabled = True
+if MPI.size(comm) > 1:
+    plotting_enabled = False # Disable interactive plotting in parallel
+
 # Parse input arguments
 import argparse, sys
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=
@@ -168,6 +176,7 @@ elif args.MMP == "cheb":
     OptDB_11["pc_type"] = "jacobi"
     OptDB_11["ksp_max_it"] = 5
     OptDB_11["ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
+    # NOTE: The above estimate is valid for P1 pressure approximation in 2D.
 elif args.MMP == "cg":
     OptDB_11["ksp_type"] = "cg"
     OptDB_11["ksp_max_it"] = 5
@@ -190,6 +199,7 @@ info("")
 list_timings(TimingClear_keep, [TimingType_wall])
 
 # Plot solution
-plot(u, title="velocity")
-plot(p, title="pressure", scale=2.0)
-interactive()
+if plotting_enabled:
+    plot(u, title="velocity")
+    plot(p, title="pressure", scale=2.0)
+    interactive()

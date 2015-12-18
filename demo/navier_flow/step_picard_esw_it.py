@@ -25,6 +25,14 @@ from fenapack import \
      FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem, \
      streamline_diffusion_cpp
 
+# Reduce logging in parallel
+comm = mpi_comm_world()
+rank = MPI.rank(comm)
+set_log_level(INFO if rank == 0 else INFO+1)
+plotting_enabled = True
+if MPI.size(comm) > 1:
+    plotting_enabled = False # Disable interactive plotting in parallel
+
 # Parse input arguments
 import argparse, sys
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=
@@ -202,7 +210,7 @@ def update_operators(problem, x):
     problem.J(A, x)
     problem.J_pc(P, x)
     inner_solver.set_operators(A, P, Fp=assemble(fp))
-    if get_log_level() <= PROGRESS:
+    if plotting_enabled and get_log_level() <= PROGRESS:
         plot(delta, mesh=mesh, title="stabilization parameter delta")
 
 # Define nonlinear solver
@@ -234,6 +242,7 @@ info("")
 list_timings(TimingClear_keep, [TimingType_wall])
 
 # Plot solution
-plot(u, title="velocity")
-plot(p, title="pressure", scale=2.0)
-interactive()
+if plotting_enabled:
+    plot(u, title="velocity")
+    plot(p, title="pressure", scale=2.0)
+    interactive()
