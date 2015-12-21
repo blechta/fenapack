@@ -160,7 +160,7 @@ OptDB_00, OptDB_11 = inner_solver.get_subopts()
 # Approximation of 00-block inverse
 OptDB_00["ksp_type"] = "preonly"
 OptDB_00["pc_type"] = "lu"
-#OptDB_00["pc_factor_mat_solver_package"] = "mumps"
+OptDB_00["pc_factor_mat_solver_package"] = "mumps"
 #OptDB_00["pc_factor_mat_solver_package"] = "superlu_dist"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
@@ -169,26 +169,32 @@ OptDB_11["pc_python_type"] = "fenapack.PCDPC_BMR"
 # PCD specific options: Ap factorization
 OptDB_11["PCD_Ap_ksp_type"] = "preonly"
 OptDB_11["PCD_Ap_pc_type"] = "lu"
-#OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
 #OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "superlu_dist"
 # PCD specific options: Mp factorization
 OptDB_11["PCD_Mp_ksp_type"] = "preonly"
 OptDB_11["PCD_Mp_pc_type"] = "lu"
-#OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
 #OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "superlu_dist"
 
 # Define nonlinear problem and initialize linear solver
 problem = NonlinearDiscreteProblem(F, J, bcs)
 A = PETScMatrix()
 problem.J(A, w.vector())
+Ap = assemble(ap)
+for bc in bcs_pcd:
+    bc.apply(Ap)
 inner_solver.set_operators(
-    A, A, Ap=assemble(ap), Kp=assemble(kp), Mp=assemble(mp),
+    A, A, Ap=Ap, Kp=assemble(kp), Mp=assemble(mp),
     bcs=bcs_pcd, nu=args.viscosity)
 
 # Define hook executed at every nonlinear step
+# FIXME: Why is problem updated through 'debug' hook and not intended mechanism,
+#        i.e. NonlinearProblem::[form|F|J]?
 def update_operators(problem, x):
+    # FIXME: This is totally unintuitive! Global A, kp?
     # Update Jacobian form and PCD operators
-    problem.J(A, x)
+    problem.J(A, x) # FIXME: Why is this called here?
     inner_solver.set_operators(A, A, Kp=assemble(kp))
 
 # Define nonlinear solver
