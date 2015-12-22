@@ -66,6 +66,7 @@ bc_dofs_cpp_code = """
 #include <dolfin/fem/DirichletBC.h>
 #include <dolfin/fem/GenericDofMap.h>
 #include <dolfin/la/PETScObject.h>
+#include <dolfin/common/MPI.h>
 #include <dolfin/log/log.h>
 
 namespace dolfin {
@@ -83,8 +84,8 @@ namespace dolfin {
     DirichletBC::Map bv_local;
     bc.get_boundary_values(bv_local);
     // FIXME: Is gather needed?!
-    //if (MPI.size(index_map.mpi_comm()) > 1 && bc.method() != "pointwise")
-    //  bc.gather(bv_local);
+    if (MPI::size(index_map.mpi_comm()) > 1 && bc.method() != "pointwise")
+      bc.gather(bv_local);
 
     DirichletBC::Map bv_global;
     bv_global.reserve(bv_local.size());
@@ -93,7 +94,7 @@ namespace dolfin {
     bv_local.clear();
 
     la_index subfield_size;
-    ierr = ISGetSize(subfield_is, &subfield_size);
+    ierr = ISGetLocalSize(subfield_is, &subfield_size);
     if (ierr != 0)
       PETScObject::petsc_error(ierr, "field_split.py", "ISGetSize");
 
@@ -107,14 +108,21 @@ namespace dolfin {
     subfield_bc_indices.reserve(bv_global.size());
     subfield_bc_values.reserve(bv_global.size());
 
+    const std::size_t subfield_offset
+      = MPI::global_offset(index_map.mpi_comm(),
+                           std::size_t(subfield_size), true);
+    //std::cout << "offset " << subfield_offset << std::endl;
+
     DirichletBC::Map::const_iterator it;
     const auto end = bv_global.cend();
     for (std::size_t i=0; i < subfield_size; ++i)
     {
+      // NOTE: subfield_indices contains only owned part!
+      // FIXME: Isn't lookup between unowned dofs also needed?
       it = bv_global.find(subfield_indices[i]);
       if (it != end)
       {
-        subfield_bc_indices.push_back(it->first);
+        subfield_bc_indices.push_back(i+subfield_offset);
         subfield_bc_values.push_back(it->second);
       }
     }
@@ -133,6 +141,17 @@ namespace dolfin {
     std::vector<double> values;
     compute_subfield_bc(indices, values, bc, dofmap, subfield_is);
     dolfin_assert(indices.size() == values.size());
+
+    int rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    //std::cout << rank << ':';
+    //for (const auto& i: indices)
+    //  std::cout << i << ' ';
+    //std::cout << std::endl;
+    //for (const auto& i: values)
+    //  std::cout << i << ' ';
+    //std::cout << std::endl;
+
     ierr = VecSetValues(x, indices.size(), indices.data(), values.data(),
                         INSERT_VALUES);
     if (ierr != 0)

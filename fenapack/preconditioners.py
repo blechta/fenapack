@@ -195,8 +195,16 @@ class PCDPC_BMR(BasePCDPC):
         x.assemble() # FIXME: Why is this needed?!
         x0 = x.copy()
         #x.setValues(self._bc_indices, self._bc_values) # Apply bcs to rhs
+        rank = dolfin.MPI.rank(dolfin.mpi_comm_world())
+        #print rank, x.owner_range
+        #print rank, x.owner_ranges
+        #print rank, self._is1.local_size
+        #print rank, len(self._Ap_bc.function_space().dofmap().dofs())
+        #print rank, self._Ap_bc.function_space().dofmap().dofs()
         test_subfield_bc(x, self._Ap_bc, self._Ap_bc.function_space().dofmap(),
                          self._is1)
+        #import pdb; pdb.set_trace()
+        #exit()
         x.assemble() # FIXME: Why is this needed?!
         self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
         self._Kp.mult(-y, x)
