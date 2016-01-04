@@ -173,21 +173,10 @@ OptDB_11["PCD_Mp_pc_type"] = "lu"
 #OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
 #OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "superlu_dist"
 
-# Define nonlinear problem and initialize linear solver
-problem = NonlinearDiscreteProblem(F, J, bcs)
-A = PETScMatrix()
-problem.J(A, w.vector())
-inner_solver.set_operators(
-    A, A, Ap=assemble(ap), Fp=assemble(fp), Mp=assemble(mp), bcs=bcs_pcd)
-
-# Define hook executed at every nonlinear step
-def update_operators(problem, x):
-    # Update Jacobian form and PCD operators
-    problem.J(A, x)
-    inner_solver.set_operators(A, A, Fp=assemble(fp))
-
-# Define nonlinear solver
-solver = NonlinearSolver(inner_solver, update_operators)
+# Define nonlinear problem and solver
+problem = NonlinearDiscreteProblem(
+    F, bcs, J, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
+solver = NonlinearSolver(inner_solver)
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25

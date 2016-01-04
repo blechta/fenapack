@@ -179,7 +179,7 @@ class PCDPC_BMR(BasePCDPC):
         self._isset_Kp = False # pressure convection
         self._isset_Mp = False # pressure mass matrix
         self._isset_bc = False # indices corresponding to inflow boundary
-        self._isset_nu = None # kinematic visosity
+        self._isset_nu = False # kinematic visosity
 
     def apply(self, pc, x, y):
         """This method implements the action of the inverse of the approximate

@@ -21,19 +21,19 @@ __all__ = ['NonlinearSolver', 'NonlinearDiscreteProblem']
 
 class NonlinearSolver(dolfin.NewtonSolver):
     """This class derives from 'dolfin.NewtonSolver' and takes linear solver as
-    the first input argument. Additional setup of the linear solver can be made
-    via keyword argument named 'update_hook'."""
+    the first input argument plus one optional keyword argument 'debug_hook'
+    which may specify a function executed on every convergence test during
+    successive nonlinear iterations as defined by
+      'dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem,
+                                     size_t iteration)'.
+    Provided function takes the same arguments."""
 
-    def __init__(self, solver, update_hook=None):
+    def __init__(self, solver, debug_hook=None):
         """Create nonlinear variational solver for given problem.
 
         *Arguments*
             solver (:py:class:`GenericLinearSolver`)
                 A nonlinear variational problem.
-            update_hook
-                A function to update operators of linear solver during
-                successive nonlinear steps. Provided function is called within
-                'dolfin::NewtonSolver::solve' and takes the same arguments.
         """
         factory = dolfin.PETScFactory.instance()
         dolfin.NewtonSolver.__init__(self, solver, factory)
@@ -41,36 +41,46 @@ class NonlinearSolver(dolfin.NewtonSolver):
         #             need no updates from outer nonlinear solver.
         self.parameters.remove("krylov_solver")
         self.parameters.remove("lu_solver")
-        # This is a temporary hack due to the following bug in DOLFIN:
+        # This is temporary hack due to the following bug in DOLFIN:
         #   dolfin::PETScKrylovSolver::parameters_type returns "default"
         #   instead of "krylov_solver".
         self.parameters.add(dolfin.Parameters("default"))
         # Store arguments
-        self._hook = update_hook
+        self._hook = debug_hook
         # Homebrewed implementation
         self._solver = solver
         self._matA = dolfin.Matrix()
+        self._matP = dolfin.Matrix()
+        self._matAp = dolfin.Matrix()
+        self._matFp = dolfin.Matrix()
+        self._matKp = dolfin.Matrix()
+        self._matMp = dolfin.Matrix()
         self._dx = dolfin.Vector()
         self._b = dolfin.Vector()
         self._residual = 0.0
         self._residual0 = 0.0
 
     def converged(self, r, problem, newton_iteration):
-        # A Python rewrite of 'dolfin::NewtonSolver::converged'
-        # with modified reporting message
+        # A Python rewrite of 'dolfin::NewtonSolver::converged' with
+        # possibility to call debugging hook.
+        if self._hook:
+            dolfin.debug('Calling debugging hook of NonlinearSolver::converged'
+                         ' at iteration %d' % newton_iteration)
+            self._hook(r, problem, newton_iteration)
         rtol = self.parameters["relative_tolerance"]
         atol = self.parameters["absolute_tolerance"]
         report = self.parameters["report"]
         self._residual = r.norm("l2")
         if newton_iteration == 0:
-          self._residual0 = self._residual
+            self._residual0 = self._residual
         relative_residual = self._residual/self._residual0
+        # Print modified report message
         if report and dolfin.MPI.rank(dolfin.mpi_comm_world()) == 0:
-          dolfin.info("Nonlinear iteration %d:"
-                      " r (abs) = %.3e (tol = %.3e)"
-                      " r (rel) = %.3e (tol = %.3e)"
-                      % (newton_iteration,
-                         self._residual, atol,
+            dolfin.info("Nonlinear iteration %d:"
+                        " r (abs) = %.3e (tol = %.3e)"
+                        " r (rel) = %.3e (tol = %.3e)"
+                        % (newton_iteration,
+                           self._residual, atol,
                          relative_residual, rtol))
         return relative_residual < rtol or self._residual < atol
 
@@ -110,14 +120,34 @@ class NonlinearSolver(dolfin.NewtonSolver):
         relaxation = self.parameters["relaxation_parameter"]
 
         while not newton_converged and self._newton_iteration < maxiter:
-            # MODIFICATION
-            if self._hook:
-                dolfin.debug('Calling updating hook to set up linear solver at'
-                             ' iteration %d' % self._newton_iteration)
-                self._hook(problem, x)
-            else:
-                problem.J(self._matA, x)
-                self._solver.set_operator(self._matA)
+            problem.J(self._matA, x)
+            # MODIFICATION: Custom setup of linear solver at each iteration step.
+            #self._solver.set_operator(self._matA)
+            setargs = [self._matA]
+            try:
+                problem.J_pc(self._matP, x)
+                setargs.append(self._matP)
+            except AttributeError: # J_pc == J
+                setargs.append(self._matA)
+            setkwargs = dict()
+            for key in ["Fp", "Kp"]:
+                try:
+                    getattr(problem, key.lower())(getattr(self, "_mat"+key), x)
+                    setkwargs[key] = getattr(self, "_mat"+key)
+                except AttributeError:
+                    pass
+            if self._newton_iteration == 0:
+                setkwargs["bcs"] = problem.bcs_pcd()
+                if setkwargs.has_key("Kp"): # Hack for fenapack.PCDPC_BMR
+                    setkwargs["nu"] = problem.nu()
+                for key in ["Ap", "Mp"]:
+                    try:
+                        getattr(problem, key.lower())(getattr(self, "_mat"+key), x)
+                        setkwargs[key] = getattr(self, "_mat"+key)
+                    except AttributeError:
+                        pass
+            # Finally call 'set_operators'
+            self._solver.set_operators(*setargs, **setkwargs)
 
             if not self._dx.empty():
                 self._dx.zero()
@@ -166,14 +196,24 @@ class NonlinearSolver(dolfin.NewtonSolver):
 
 class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
     """Class for interfacing with nonlinear solver."""
-    def __init__(self, F, J, bcs, *args):
+    def __init__(self, F, bcs, J, J_pc=None, **kwargs):
         dolfin.NonlinearProblem.__init__(self)
         self._F = F
-        self._J = J
         self._bcs = bcs
-        if args:
-            self._J_pc = args[0]
+        self._J = J
+        if J_pc:
+            self._J_pc = J_pc
+        # Optional keyword arguments [ap, fp, kp, mp, bcs_pcd]
+        for item in kwargs.items():
+            setattr(self, "_"+item[0], item[1])
+        # Check boundary conditions for PCD preconditioning
+        try: # make sure that 'bcs_pcd' is a list
+            if not isinstance(self._bcs_pcd, list):
+                self._bcs_pcd = [self._bcs_pcd]
+        except AttributeError: # 'bcs_pcd' has not been provided
+            self._bcs_pcd = []
     def F(self, b, x):
+        # b ... residual vector
         dolfin.assemble(self._F, tensor=b)
         for bc in self._bcs:
             bc.apply(b, x)
@@ -187,3 +227,21 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
         dolfin.assemble(self._J_pc, tensor=P)
         for bc in self._bcs:
             bc.apply(P)
+    def ap(self, Ap, x):
+        # Ap ... pressure Laplacian matrix
+        dolfin.assemble(self._ap, tensor=Ap)
+    def fp(self, Fp, x):
+        # Fp ... pressure convection-diffusion matrix
+        dolfin.assemble(self._fp, tensor=Fp)
+    def kp(self, Kp, x):
+        # Kp ... pressure convection matrix
+        dolfin.assemble(self._kp, tensor=Kp)
+    def mp(self, Mp, x):
+        # Mp ... pressure mass matrix
+        dolfin.assemble(self._mp, tensor=Mp)
+    def bcs_pcd(self):
+        # Return boundary conditions for PCD preconditioning
+        return self._bcs_pcd
+    def nu(self):
+        # Hack for fenapack.PCDPC_BMR (needs to know viscosity explicitly)
+        return self._nu

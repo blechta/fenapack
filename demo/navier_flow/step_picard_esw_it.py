@@ -133,15 +133,16 @@ J = (
     - p*div(v)
     - q*div(u)
 )*dx
-# Preconditioner operator
-J_pc = J
-# J_pc = (
-#       nu*inner(grad(u), grad(v))
-#     + inner(dot(grad(u), u_), v)
-#     - p*div(v)
-#     + Constant(0.0)*p*q
-# )*dx
-# Add stabilization (streamline diffusion)
+# Preconditioner
+inu = Constant(1.0/args.viscosity)
+J_pc = (
+      nu*inner(grad(u), grad(v))
+    + inner(dot(grad(u), u_), v)
+    - p*div(v)
+    + inu*p*q # this term is irrelevant when using PCD
+)*dx
+#J_pc = J # this is also possible when using PCD
+# Add stabilization (streamline diffusion) to preconditioner
 delta = Expression(streamline_diffusion_cpp)
 delta.nu = args.viscosity
 delta.mesh = mesh
@@ -195,26 +196,15 @@ OptDB_11["PCD_Mp_ksp_max_it"] = 5
 OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
 # NOTE: The above estimate is valid for P1 pressure approximation in 2D.
 
-# Define nonlinear problem and initialize linear solver
-problem = NonlinearDiscreteProblem(F, J, bcs, J_pc)
-A = PETScMatrix()
-P = PETScMatrix()
-problem.J(A, w.vector())
-problem.J_pc(P, w.vector())
-inner_solver.set_operators(
-    A, P, Ap=assemble(ap), Fp=assemble(fp), Mp=assemble(mp), bcs=bcs_pcd)
-
-# Define hook executed at every nonlinear step
-def update_operators(problem, x):
-    # Update Jacobian form and PCD operators
-    problem.J(A, x)
-    problem.J_pc(P, x)
-    inner_solver.set_operators(A, P, Fp=assemble(fp))
+# Define debugging hook executed at every nonlinear step
+def debug_hook(*args, **kwargs):
     if plotting_enabled and get_log_level() <= PROGRESS:
         plot(delta, mesh=mesh, title="stabilization parameter delta")
 
-# Define nonlinear solver
-solver = NonlinearSolver(inner_solver, update_operators)
+# Define nonlinear problem and solver
+problem = NonlinearDiscreteProblem(
+    F, bcs, J, J_pc, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
+solver = NonlinearSolver(inner_solver, debug_hook)
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25
@@ -224,6 +214,7 @@ solver.parameters["error_on_nonconvergence"] = False
 #solver.parameters["report"] = False
 
 # Compute solution
+#set_log_level(PROGRESS)
 timer = Timer("Nonlinear solver (Picard)")
 timer.start()
 solver.solve(problem, w.vector())
