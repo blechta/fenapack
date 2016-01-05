@@ -156,7 +156,7 @@ OptDB_00, OptDB_11 = solver.get_subopts()
 # Approximation of 00-block inverse
 OptDB_00["ksp_type"] = "preonly"
 OptDB_00["pc_type"] = "lu"
-#OptDB_00["pc_factor_mat_solver_package"] = "mumps"
+OptDB_00["pc_factor_mat_solver_package"] = "mumps"
 #OptDB_00["pc_factor_mat_solver_package"] = "superlu_dist"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
@@ -165,12 +165,12 @@ OptDB_11["pc_python_type"] = "fenapack.PCDPC_ESW"
 # PCD specific options: Ap factorization
 OptDB_11["PCD_Ap_ksp_type"] = "preonly"
 OptDB_11["PCD_Ap_pc_type"] = "lu"
-#OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
 #OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "superlu_dist"
 # PCD specific options: Mp factorization
 OptDB_11["PCD_Mp_ksp_type"] = "preonly"
 OptDB_11["PCD_Mp_pc_type"] = "lu"
-#OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
 #OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "superlu_dist"
 
 # Compute solution using Ossen approximation
