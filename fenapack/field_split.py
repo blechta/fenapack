@@ -30,15 +30,21 @@ dofmap_dofs_is_cpp_code = """
 #include <vector>
 #include <petscis.h>
 #include <dolfin/fem/GenericDofMap.h>
+#include <dolfin/la/PETScObject.h>
+#include <dolfin/log/log.h>
 
 namespace dolfin {
 
   IS dofmap_dofs_is(const GenericDofMap& dofmap)
   {
+    PetscErrorCode ierr;
     const std::vector<dolfin::la_index> dofs = dofmap.dofs();
     IS is;
-    ISCreateGeneral(PETSC_COMM_WORLD, dofs.size(), dofs.data(),
-                    PETSC_COPY_VALUES, &is);
+    dolfin_assert(dofmap.index_map());
+    ierr = ISCreateGeneral(dofmap.index_map()->mpi_comm(), dofs.size(),
+                           dofs.data(), PETSC_COPY_VALUES, &is);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "ISCreateGeneral");
     return is;
   }
 
@@ -47,6 +53,116 @@ namespace dolfin {
 dofmap_dofs_is = \
     dolfin.compile_extension_module(dofmap_dofs_is_cpp_code).dofmap_dofs_is
 del dofmap_dofs_is_cpp_code
+# -----------------------------------------------------------------------------
+# Function for preparing BC indices/values for FieldSplitted Vec
+bc_dofs_cpp_code = """
+#ifdef SWIG
+%include "petsc4py/petsc4py.i"
+#endif
+
+#include <vector>
+#include <petscis.h>
+#include <petscvec.h>
+#include <dolfin/fem/DirichletBC.h>
+#include <dolfin/fem/GenericDofMap.h>
+#include <dolfin/la/PETScObject.h>
+#include <dolfin/common/MPI.h>
+#include <dolfin/log/log.h>
+
+namespace dolfin {
+
+  void compute_subfield_bc(std::vector<la_index>& subfield_bc_indices,
+                           std::vector<double>& subfield_bc_values,
+                           const DirichletBC& bc, const GenericDofMap& dofmap,
+                           const IS subfield_is)
+  {
+    PetscErrorCode ierr;
+
+    dolfin_assert(dofmap.index_map());
+    const IndexMap& index_map = *dofmap.index_map();
+
+    DirichletBC::Map bv_local;
+    bc.get_boundary_values(bv_local);
+    // FIXME: Is gather needed?!
+    if (MPI::size(index_map.mpi_comm()) > 1 && bc.method() != "pointwise")
+      bc.gather(bv_local);
+
+    DirichletBC::Map bv_global;
+    bv_global.reserve(bv_local.size());
+    for (const auto& v : bv_local)
+      bv_global[index_map.local_to_global(v.first)] = v.second;
+    bv_local.clear();
+
+    la_index subfield_size;
+    ierr = ISGetLocalSize(subfield_is, &subfield_size);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "ISGetSize");
+
+    const la_index* subfield_indices;
+    ierr = ISGetIndices(subfield_is, &subfield_indices);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "ISGetIndices");
+
+    subfield_bc_indices.clear();
+    subfield_bc_values.clear();
+    subfield_bc_indices.reserve(bv_global.size());
+    subfield_bc_values.reserve(bv_global.size());
+
+    const std::size_t subfield_offset
+      = MPI::global_offset(index_map.mpi_comm(),
+                           std::size_t(subfield_size), true);
+    //std::cout << "offset " << subfield_offset << std::endl;
+
+    DirichletBC::Map::const_iterator it;
+    const auto end = bv_global.cend();
+    for (std::size_t i=0; i < subfield_size; ++i)
+    {
+      // NOTE: subfield_indices contains only owned part!
+      // FIXME: Isn't lookup between unowned dofs also needed?
+      it = bv_global.find(subfield_indices[i]);
+      if (it != end)
+      {
+        subfield_bc_indices.push_back(i+subfield_offset);
+        subfield_bc_values.push_back(it->second);
+      }
+    }
+
+    ierr = ISRestoreIndices(subfield_is, &subfield_indices);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "ISRestoreIndices");
+  }
+
+
+  void test_subfield_bc(Vec x, const DirichletBC& bc,
+                        const GenericDofMap& dofmap, const IS subfield_is)
+  {
+    PetscErrorCode ierr;
+    std::vector<la_index> indices;
+    std::vector<double> values;
+    compute_subfield_bc(indices, values, bc, dofmap, subfield_is);
+    dolfin_assert(indices.size() == values.size());
+
+    int rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    //std::cout << rank << ':';
+    //for (const auto& i: indices)
+    //  std::cout << i << ' ';
+    //std::cout << std::endl;
+    //for (const auto& i: values)
+    //  std::cout << i << ' ';
+    //std::cout << std::endl;
+
+    ierr = VecSetValues(x, indices.size(), indices.data(), values.data(),
+                        INSERT_VALUES);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "VecSetValues");
+  }
+
+}
+"""
+test_subfield_bc = \
+    dolfin.compile_extension_module(bc_dofs_cpp_code).test_subfield_bc
+del bc_dofs_cpp_code
 # -----------------------------------------------------------------------------
 
 class FieldSplitSolver(dolfin.PETScKrylovSolver):

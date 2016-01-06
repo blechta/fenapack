@@ -28,8 +28,8 @@ comm = mpi_comm_world()
 rank = MPI.rank(comm)
 set_log_level(INFO if rank == 0 else INFO+1)
 plotting_enabled = True
-if MPI.size(comm) > 1:
-    plotting_enabled = False # Disable interactive plotting in parallel
+#if MPI.size(comm) > 1:
+#    plotting_enabled = False # Disable interactive plotting in parallel
 
 # Parse input arguments
 import argparse, sys
@@ -63,6 +63,9 @@ if args.stretch != 1.0:
             x[it] = 5.0*(0.2*xi)**args.stretch
         it += 1
     del it
+
+#plot(mesh, interactive=True)
+
 
 # Define function spaces (Taylor-Hood)
 V = VectorFunctionSpace(mesh, "Lagrange", 2)
@@ -101,6 +104,32 @@ bc2 = DirichletBC(W.sub(1), zero, boundary_markers, 1)
 # Collect boundary conditions
 bcs = [bc0, bc1]
 bcs_pcd = [bc2]
+
+bc_gather_cpp_code = """
+#ifdef SWIG
+%include "dolfin/swig/typemaps/std_map.i"
+#endif
+
+#include <dolfin/fem/DirichletBC.h>
+
+namespace dolfin {
+
+  void bc_gather(DirichletBC::Map& boundary_values, const DirichletBC& bc)
+  {
+    bc.get_boundary_values(boundary_values);
+    bc.gather(boundary_values);
+  }
+
+}
+"""
+bc_gather = compile_extension_module(bc_gather_cpp_code).bc_gather
+comm = mesh.mpi_comm()
+rank = MPI.rank(comm)
+print 'BC process size', MPI.sum(comm, bool(bc2.get_boundary_values()))
+print 'BC gathered process size', MPI.sum(comm, bool(bc_gather(bc2)))
+print 'BC', rank, bc2.get_boundary_values()
+print 'BC gathered', rank, bc_gather(bc2)
+#exit()
 
 # Provide some info about the current problem
 Re = 2.0/args.viscosity # Reynolds number
@@ -181,6 +210,13 @@ OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
 problem = NonlinearDiscreteProblem(
     F, bcs, J, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd, nu=args.viscosity)
 solver = NonlinearSolver(inner_solver)
+# FIXME:
+#   To fully resolve the conflict, application of bcs on Ap must be done
+#   within 'PCDPC_BMR.set_operators()'
+# Ap = assemble(ap)
+# for bc in bcs_pcd:
+#     bc.apply(Ap)
+#
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25
@@ -200,8 +236,8 @@ u, p = w.split()
 
 # Save solution in XDMF format
 filename = sys.argv[0][:-3]
-File("results/%s_velocity.xdmf" % filename) << u
-File("results/%s_pressure.xdmf" % filename) << p
+#File("results/%s_velocity.xdmf" % filename) << u
+#File("results/%s_pressure.xdmf" % filename) << p
 
 # Print summary of timings
 info("")

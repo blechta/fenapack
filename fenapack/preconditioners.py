@@ -17,6 +17,9 @@
 
 import dolfin
 from petsc4py import PETSc
+import numpy as np
+
+from fenapack.field_split import test_subfield_bc
 
 __all__ = ['PCDPC_ESW', 'PCDPC_BMR']
 
@@ -189,8 +192,20 @@ class PCDPC_BMR(BasePCDPC):
         """
         timer = dolfin.Timer("FENaPack: call PCDPC_BMR.apply")
         timer.start()
+        x.assemble() # FIXME: Why is this needed?!
         x0 = x.copy()
-        x.setValues(self._bc_indices, self._bc_values) # Apply bcs to rhs
+        #x.setValues(self._bc_indices, self._bc_values) # Apply bcs to rhs
+        rank = dolfin.MPI.rank(dolfin.mpi_comm_world())
+        #print rank, x.owner_range
+        #print rank, x.owner_ranges
+        #print rank, self._is1.local_size
+        #print rank, len(self._Ap_bc.function_space().dofmap().dofs())
+        #print rank, self._Ap_bc.function_space().dofmap().dofs()
+        test_subfield_bc(x, self._Ap_bc, self._Ap_bc.function_space().dofmap(),
+                         self._is1)
+        #import pdb; pdb.set_trace()
+        #exit()
+        x.assemble() # FIXME: Why is this needed?!
         self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
         self._Kp.mult(-y, x)
         x.axpy(-self._nu, x0)    # x = -K_p y - nu*x0
@@ -213,19 +228,28 @@ class PCDPC_BMR(BasePCDPC):
             # Make sure that 'bcs' is a list
             if not isinstance(bcs, list):
                 bcs = [bcs]
-            # Get indices and values
-            # FIXME: Avoid dictionaries!!!
-            indices = []
-            values = []
-            for bc in bcs:
-                bc_map = bc.get_boundary_values()
-                indices += bc.get_boundary_values().keys()
-                values += bc_map.values()
-            # Get boundary indices for 11-block
-            lgmap = PETSc.LGMap().createIS(is1)
-            # FIXME: This does not work in parallel!
-            self._bc_indices = lgmap.applyInverse(indices).tolist()
-            self._bc_values = values
+            assert len(bcs) == 1
+            self._Ap_bc = bcs[0]
+            self._is1 = is1
+            ## Get indices and values
+            ## FIXME: Avoid dictionaries!!!
+            #indices = []
+            #values = []
+            #for bc in bcs:
+            #    bc_map = bc.get_boundary_values()
+            #    indices += bc_map.keys()
+            #    values += bc_map.values()
+            ## Get boundary indices for 11-block
+            #lgmap = PETSc.LGMap().createIS(is1)
+            ## FIXME: This does not work in parallel!
+            ##self._bc_indices = lgmap.applyInverse(indices, PETSc.LGMap.MapType.DROP).tolist()
+            #self._bc_indices = lgmap.applyInverse(indices, PETSc.LGMap.MapType.MASK)#.tolist()
+            #self._bc_values = np.array(values)
+            ##import pdb; pdb.set_trace()
+            #rank = dolfin.MPI.rank(dolfin.mpi_comm_world())
+            #print rank, self._bc_indices
+            #self._bc_values = self._bc_values[self._bc_indices>=0]
+            #self._bc_indices = self._bc_indices[self._bc_indices>=0]
             # Update flag
             self._isset_bc = True
         elif not self._isset_bc:
@@ -235,7 +259,7 @@ class PCDPC_BMR(BasePCDPC):
             # Get submatrix corresponding to 11-block of the problem matrix
             Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
             # Apply Dirichlet conditions along inflow boundary
-            Ap.zeroRowsColumns(self._bc_indices, diag=1.0)
+            #Ap.zeroRowsColumns(self._bc_indices, diag=1.0)
             # Set up special options
             #Ap.setOption(PETSc.Mat.Option.SPD, True)
             # Store matrix in the corresponding ksp
