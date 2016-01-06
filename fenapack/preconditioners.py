@@ -18,7 +18,7 @@
 import dolfin
 from petsc4py import PETSc
 
-from fenapack.field_split import test_subfield_bc
+from fenapack import apply_subfield_bc
 
 __all__ = ['PCDPC_ESW', 'PCDPC_BMR']
 
@@ -197,10 +197,7 @@ class PCDPC_BMR(BasePCDPC):
         # FIXME: Shouldn't we treat list of boundary conditions at once
         #        within the C++ layer?
         for bc in self._bcs:
-            test_subfield_bc(x, bc, bc.function_space().dofmap(), self._is1)
-        # NOTE: The following routine should be called after completing all
-        #       calls to 'VecSetValues()'.
-        x.assemble() # FIXME: Move this to routine which calls 'VecSetValues()'
+            apply_subfield_bc(x, bc, bc.function_space().dofmap(), self._is1)
         self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
         self._Kp.mult(-y, x)
         x.axpy(-self._nu, x0)    # x = -K_p y - nu*x0

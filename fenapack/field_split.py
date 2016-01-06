@@ -18,7 +18,7 @@
 import dolfin
 from petsc4py import PETSc
 
-__all__ = ['FieldSplitSolver']
+__all__ = ['apply_subfield_bc', 'dofmap_dofs_is', 'FieldSplitSolver']
 
 # -----------------------------------------------------------------------------
 # Function converting dofs (dolfin) to IS (PETSc)
@@ -54,7 +54,7 @@ dofmap_dofs_is = \
     dolfin.compile_extension_module(dofmap_dofs_is_cpp_code).dofmap_dofs_is
 del dofmap_dofs_is_cpp_code
 # -----------------------------------------------------------------------------
-# Function for preparing BC indices/values for FieldSplitted Vec
+# Functions for preparation and application of BC for FieldSplitted Vec
 bc_dofs_cpp_code = """
 #ifdef SWIG
 %include "petsc4py/petsc4py.i"
@@ -133,7 +133,7 @@ namespace dolfin {
   }
 
 
-  void test_subfield_bc(Vec x, const DirichletBC& bc,
+  void apply_subfield_bc(Vec x, const DirichletBC& bc,
                         const GenericDofMap& dofmap, const IS subfield_is)
   {
     PetscErrorCode ierr;
@@ -142,29 +142,23 @@ namespace dolfin {
     compute_subfield_bc(indices, values, bc, dofmap, subfield_is);
     dolfin_assert(indices.size() == values.size());
 
-    int rank;
-    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-    //std::cout << rank << ':';
-    //for (const auto& i: indices)
-    //  std::cout << i << ' ';
-    //std::cout << std::endl;
-    //for (const auto& i: values)
-    //  std::cout << i << ' ';
-    //std::cout << std::endl;
-
     ierr = VecSetValues(x, indices.size(), indices.data(), values.data(),
                         INSERT_VALUES);
     if (ierr != 0)
       PETScObject::petsc_error(ierr, "field_split.py", "VecSetValues");
+
+    // Assemble vector after completing all calls to VecSetValues()
+    VecAssemblyBegin(x);
+    VecAssemblyEnd(x);
   }
 
 }
 """
-test_subfield_bc = \
-    dolfin.compile_extension_module(bc_dofs_cpp_code).test_subfield_bc
+apply_subfield_bc = \
+    dolfin.compile_extension_module(bc_dofs_cpp_code).apply_subfield_bc
 del bc_dofs_cpp_code
 # -----------------------------------------------------------------------------
-
+# Main class representing field split solver
 class FieldSplitSolver(dolfin.PETScKrylovSolver):
     """This class derives from 'dolfin.PETScKrylovSolver' and implements
     field split preconditioner for saddle point problems like incompressible
