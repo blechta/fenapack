@@ -69,7 +69,7 @@ if args.stretch != 1.0:
 # Define function spaces (Taylor-Hood)
 V = VectorFunctionSpace(mesh, "Lagrange", 2)
 Q = FunctionSpace(mesh, "Lagrange", 1)
-W = MixedFunctionSpace((V, Q))
+W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
 
 # Define boundary conditions
 class Gamma0(SubDomain):
@@ -155,7 +155,7 @@ ap = inner(grad(p), grad(q))*dx
 fp = (nu*inner(grad(p), grad(q)) + dot(grad(p), u_)*q)*dx
 # Correction of fp due to Robin BC
 n = FacetNormal(mesh) # outward unit normal
-ds = Measure("ds")[boundary_markers]
+ds = Measure("ds", subdomain_data=boundary_markers)
 fp -= (inner(u_, n)*p*q)*ds(1)
 
 # Set up field split inner_solver

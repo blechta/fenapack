@@ -64,10 +64,10 @@ sub_domains = MeshFunction("size_t", mesh, "../../data/dolfin_fine_subdomains.xm
 #     sub_domains = adapt(sub_domains, mesh)
 
 # Define function spaces (Taylor-Hood)
-V = VectorFunctionSpace(mesh, 'Lagrange', 2)
-Q = FunctionSpace(mesh, 'Lagrange', 1)
-W = MixedFunctionSpace((V, Q))
-info('Dimension of the function space %g' % W.dim())
+V = VectorFunctionSpace(mesh, "Lagrange", 2)
+Q = FunctionSpace(mesh, "Lagrange", 1)
+W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
+info("Dimension of the function space %g" % W.dim())
 
 # No-slip boundary condition for velocity
 noslip = Constant((0.0, 0.0))
@@ -107,7 +107,7 @@ ap = inner(grad(p), grad(q))*dx
 fp = (nu*inner(grad(p), grad(q)) + dot(grad(p), u0)*q)*dx
 # Correction of fp due to Robin BC
 n = FacetNormal(mesh) # outward unit normal
-ds = Measure("ds")[sub_domains]
+ds = Measure("ds", subdomain_data=sub_domains)
 fp -= (inner(u0, n)*p*q)*ds(1)
 # Assemble PCD operators
 Mp = assemble(mp)

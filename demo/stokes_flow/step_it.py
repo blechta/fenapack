@@ -73,7 +73,7 @@ if args.stretch != 1.0:
 # Define function spaces (Taylor-Hood)
 V = VectorFunctionSpace(mesh, "Lagrange", 2)
 Q = FunctionSpace(mesh, "Lagrange", 1)
-W = MixedFunctionSpace((V, Q))
+W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
 
 # Define boundary conditions
 class Gamma0(SubDomain):
