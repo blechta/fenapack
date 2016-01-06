@@ -210,13 +210,6 @@ OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
 problem = NonlinearDiscreteProblem(
     F, bcs, J, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd, nu=args.viscosity)
 solver = NonlinearSolver(inner_solver)
-# FIXME:
-#   To fully resolve the conflict, application of bcs on Ap must be done
-#   within 'PCDPC_BMR.set_operators()'
-# Ap = assemble(ap)
-# for bc in bcs_pcd:
-#     bc.apply(Ap)
-#
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25

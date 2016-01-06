@@ -256,10 +256,11 @@ class PCDPC_BMR(BasePCDPC):
             self._isset_error("bcs")
         # Update Ap
         if Ap:
+            # Apply Dirichlet conditions along inflow boundary
+            for bc in bcs:
+                bc.apply(Ap)
             # Get submatrix corresponding to 11-block of the problem matrix
             Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
-            # Apply Dirichlet conditions along inflow boundary
-            #Ap.zeroRowsColumns(self._bc_indices, diag=1.0)
             # Set up special options
             #Ap.setOption(PETSc.Mat.Option.SPD, True)
             # Store matrix in the corresponding ksp
