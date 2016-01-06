@@ -18,7 +18,7 @@
 import dolfin
 from petsc4py import PETSc
 
-__all__ = ['apply_subfield_bc', 'dofmap_dofs_is', 'FieldSplitSolver']
+__all__ = ['FieldSplitSolver']
 
 # -----------------------------------------------------------------------------
 # Function converting dofs (dolfin) to IS (PETSc)
@@ -61,8 +61,10 @@ bc_dofs_cpp_code = """
 #endif
 
 #include <vector>
+#include <algorithm>
 #include <petscis.h>
 #include <petscvec.h>
+#include <petscmat.h>
 #include <dolfin/fem/DirichletBC.h>
 #include <dolfin/fem/GenericDofMap.h>
 #include <dolfin/la/PETScObject.h>
@@ -133,8 +135,8 @@ namespace dolfin {
   }
 
 
-  void apply_subfield_bc(Vec x, const DirichletBC& bc,
-                        const GenericDofMap& dofmap, const IS subfield_is)
+  void apply_subfield_bc_BMR(Vec x, const DirichletBC& bc,
+                             const GenericDofMap& dofmap, const IS subfield_is)
   {
     PetscErrorCode ierr;
     std::vector<la_index> indices;
@@ -148,14 +150,72 @@ namespace dolfin {
       PETScObject::petsc_error(ierr, "field_split.py", "VecSetValues");
 
     // Assemble vector after completing all calls to VecSetValues()
-    VecAssemblyBegin(x);
-    VecAssemblyEnd(x);
+    ierr = VecAssemblyBegin(x);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "VecAssemblyBegin");
+    ierr = VecAssemblyEnd(x);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "VecAssemblyEnd");
+  }
+
+  void apply_subfield_bc_ESW(Mat A, const DirichletBC& bc,
+                             const GenericDofMap& dofmap, const IS subfield_is)
+  {
+    PetscErrorCode ierr;
+    PetscScalar one = 1.0, two = 2.0;
+    Vec diag, udiag, sc_factor;
+    std::vector<la_index> indices;
+    std::vector<double> values;
+    compute_subfield_bc(indices, values, bc, dofmap, subfield_is);
+    dolfin_assert(indices.size() == values.size());
+
+    // Create a vector such that diagonal of A can be stored in it
+    ierr = MatCreateVecs(A, &udiag, NULL);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "MatCreateVecs");
+
+    // Get the diagonal of the matrix A
+    ierr = MatGetDiagonal(A, udiag);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "MatGetDiagonal");
+
+    // Prepare factor which will be used to scale the diagonal
+    ierr = VecDuplicate(udiag, &sc_factor);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "VecDuplicate");
+    ierr = VecSet(sc_factor, one); // set ones
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "VecSet");
+    std::fill(values.begin(), values.end(), two); // set twos
+    ierr = VecSetValues(sc_factor, indices.size(), indices.data(),
+                        values.data(), INSERT_VALUES);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "VecSetValues");
+    ierr = VecAssemblyBegin(sc_factor);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "VecAssemblyBegin");
+    ierr = VecAssemblyEnd(sc_factor);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "VecAssemblyEnd");
+
+    // Scale the diagonal
+    ierr = VecDuplicate(udiag, &diag);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "VecDuplicate");
+    ierr = VecPointwiseMult(diag, sc_factor, udiag);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "VecPointwiseMult");
+    ierr = MatDiagonalSet(A, diag, INSERT_VALUES);
+    if (ierr != 0)
+      PETScObject::petsc_error(ierr, "field_split.py", "MatDiagonalSet");
   }
 
 }
 """
-apply_subfield_bc = \
-    dolfin.compile_extension_module(bc_dofs_cpp_code).apply_subfield_bc
+apply_subfield_bc_BMR = \
+    dolfin.compile_extension_module(bc_dofs_cpp_code).apply_subfield_bc_BMR
+apply_subfield_bc_ESW = \
+    dolfin.compile_extension_module(bc_dofs_cpp_code).apply_subfield_bc_ESW
 del bc_dofs_cpp_code
 # -----------------------------------------------------------------------------
 # Main class representing field split solver

@@ -18,7 +18,8 @@
 import dolfin
 from petsc4py import PETSc
 
-from fenapack import apply_subfield_bc
+from fenapack.field_split import \
+     apply_subfield_bc_BMR, apply_subfield_bc_ESW
 
 __all__ = ['PCDPC_ESW', 'PCDPC_BMR']
 
@@ -74,7 +75,7 @@ class PCDPC_ESW(BasePCDPC):
         self._isset_Ap = False # pressure laplacian
         self._isset_Fp = False # pressure convection-difusion
         self._isset_Mp = False # pressure mass matrix
-        self._isset_bc = False # indices corresponding to outflow boundary
+        self._isset_bc = False # boundary conditions
 
     def apply(self, pc, x, y):
         """This method implements the action of the inverse of the approximate
@@ -99,35 +100,22 @@ class PCDPC_ESW(BasePCDPC):
             # Make sure that 'bcs' is a list
             if not isinstance(bcs, list):
                 bcs = [bcs]
-            # Get indices
-            # FIXME: Avoid dictionaries!!!
-            indices = []
-            for bc in bcs:
-                indices += bc.get_boundary_values().keys()
-            # Remove redundant indices and save the result
-            self._bc_indices = list(set(indices))
+            self._bcs = bcs
             # Update flag
             self._isset_bc = True
         elif not self._isset_bc:
             self._isset_error("bcs")
         # Update Ap
         if Ap:
-            # Get PETSc Mat object
-            Ap = dolfin.as_backend_type(Ap).mat()
-            # Prepare scaling factor for application of bcs
-            scaling_factor = Ap.getDiagonal() # get long vector
-            scaling_factor.set(1.0)
-            scaling_factor.setValuesLocal(self._bc_indices,
-                                          len(self._bc_indices)*[2.0,])
-            scaling_factor = scaling_factor.getSubVector(is1) # short vector
             # Get submatrix corresponding to 11-block of the problem matrix
-            Ap = Ap.getSubMatrix(is1, is1)
+            Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
             # Apply Dirichlet conditions using a ghost layer of elements
             # outside the outflow boundary (mimic finite differences,
             # i.e. augment diagonal with values from "ghost elements")
-            diag = Ap.getDiagonal()
-            diag.pointwiseMult(diag, scaling_factor)
-            Ap.setDiagonal(diag)
+            # FIXME: Shouldn't we treat list of boundary conditions at once
+            #        within the C++ layer?
+            for bc in self._bcs:
+                apply_subfield_bc_ESW(Ap, bc, bc.function_space().dofmap(), is1)
             # Set up special options
             #Ap.setOption(PETSc.Mat.Option.SPD, True)
             # Store matrix in the corresponding ksp
@@ -139,22 +127,15 @@ class PCDPC_ESW(BasePCDPC):
             self._isset_error("Ap")
         # Update Fp
         if Fp:
-            # Get PETSc Mat object
-            Fp = dolfin.as_backend_type(Fp).mat()
-            # Prepare scaling factor for application of bcs
-            scaling_factor = Fp.getDiagonal() # get long vector
-            scaling_factor.set(1.0)
-            scaling_factor.setValuesLocal(self._bc_indices,
-                                          len(self._bc_indices)*[2.0,])
-            scaling_factor = scaling_factor.getSubVector(is1) # short vector
             # Get submatrix corresponding to 11-block of the problem matrix
-            Fp = Fp.getSubMatrix(is1, is1)
+            Fp = dolfin.as_backend_type(Fp).mat().getSubMatrix(is1, is1)
             # Apply Dirichlet conditions using a ghost layer of elements
             # outside the outflow boundary (mimic finite differences,
             # i.e. augment diagonal with values from "ghost elements")
-            diag = Fp.getDiagonal()
-            diag.pointwiseMult(diag, scaling_factor)
-            Fp.setDiagonal(diag)
+            # FIXME: Shouldn't we treat list of boundary conditions at once
+            #        within the C++ layer?
+            for bc in self._bcs:
+                apply_subfield_bc_ESW(Fp, bc, bc.function_space().dofmap(), is1)
             # Store matrix
             self._Fp = Fp
             # Update flag
@@ -180,7 +161,7 @@ class PCDPC_BMR(BasePCDPC):
         self._isset_Ap = False # pressure laplacian
         self._isset_Kp = False # pressure convection
         self._isset_Mp = False # pressure mass matrix
-        self._isset_bc = False # indices corresponding to inflow boundary
+        self._isset_bc = False # boundary conditions
         self._isset_nu = False # kinematic visosity
 
     def apply(self, pc, x, y):
@@ -197,7 +178,7 @@ class PCDPC_BMR(BasePCDPC):
         # FIXME: Shouldn't we treat list of boundary conditions at once
         #        within the C++ layer?
         for bc in self._bcs:
-            apply_subfield_bc(x, bc, bc.function_space().dofmap(), self._is1)
+            apply_subfield_bc_BMR(x, bc, bc.function_space().dofmap(), self._is1)
         self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
         self._Kp.mult(-y, x)
         x.axpy(-self._nu, x0)    # x = -K_p y - nu*x0
