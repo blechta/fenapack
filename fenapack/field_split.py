@@ -54,7 +54,7 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
     field split preconditioner for saddle point problems like incompressible
     [Navier-]Stokes flow."""
 
-    def __init__(self, space, method):
+    def __init__(self, space, method, options_prefix=""):
         """Create field split solver on a given space for a particular method.
 
         *Arguments*
@@ -67,6 +67,7 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         ksp = self._ksp = PETSc.KSP()
         ksp.create(PETSc.COMM_WORLD)
         ksp.setType(method)
+        ksp.setOptionsPrefix(options_prefix)
         # Init parent class
         dolfin.PETScKrylovSolver.__init__(self, ksp)
         # Set up FIELDSPLIT preconditioning
@@ -76,8 +77,8 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         self._is1 = dofmap_dofs_is(space.sub(1).dofmap())
         pc.setFieldSplitIS(["u", self._is0], ["p", self._is1])
         # Initiate option databases for subsolvers
-        self._OptDB_00 = PETSc.Options("fieldsplit_u_")
-        self._OptDB_11 = PETSc.Options("fieldsplit_p_")
+        self._OptDB_00 = PETSc.Options(options_prefix+"fieldsplit_u_")
+        self._OptDB_11 = PETSc.Options(options_prefix+"fieldsplit_p_")
         # Set default parameter values
         self.parameters = self.default_parameters()
 
@@ -144,7 +145,7 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
     def _set_from_parameters(self):
         """Set up extra parameters added to parent class."""
         # Get access to global option database
-        OptDB = PETSc.Options()
+        OptDB = PETSc.Options(self._ksp.getOptionsPrefix())
         #OptDB["help"] = True
         # Add extra solver parameters to the global option database
         prm = self.parameters["preconditioner"]

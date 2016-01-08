@@ -31,6 +31,15 @@ class BasePCDPC(object):
     def apply(self, pc, x, y):
         raise NotImplementedError
 
+    def setFromOptions(self, pc):
+        options_prefix = pc.getOptionsPrefix()
+        # Update Ap
+        self._ksp_Ap.setOptionsPrefix(options_prefix+"PCD_Ap_")
+        self._ksp_Ap.setFromOptions()
+        # Update Mp
+        self._ksp_Mp.setOptionsPrefix(options_prefix+"PCD_Mp_")
+        self._ksp_Mp.setFromOptions()
+
     def set_operators(self, *args, **kwargs):
         pass
 
@@ -44,9 +53,6 @@ class BasePCDPC(object):
         ksp.setType(PETSc.KSP.Type.PREONLY)
         pc = ksp.getPC()
         pc.setType(PETSc.PC.Type.LU)
-        # Update settings
-        ksp.setOptionsPrefix("fieldsplit_p_PCD_Ap_")
-        ksp.setFromOptions()
         # Return created ksp
         return ksp
 
@@ -57,9 +63,6 @@ class BasePCDPC(object):
         ksp.setType(PETSc.KSP.Type.PREONLY)
         pc = ksp.getPC()
         pc.setType(PETSc.PC.Type.LU)
-        # Update settings
-        ksp.setOptionsPrefix("fieldsplit_p_PCD_Mp_")
-        ksp.setFromOptions()
         # Return created ksp
         return ksp
 

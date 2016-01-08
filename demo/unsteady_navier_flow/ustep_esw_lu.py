@@ -179,7 +179,7 @@ n = FacetNormal(mesh) # outward unit normal
 ds = Measure("ds")[boundary_markers]
 fp_BE -= (inner(u_, n)*p*q)*ds(1) # correction of fp due to Robin BC
 # Set up inner solver
-inner_solver_BE = FieldSplitSolver(W, "gmres")
+inner_solver_BE = FieldSplitSolver(W, "gmres", "solver_BE_")
 inner_solver_BE.parameters["monitor_convergence"] = True
 inner_solver_BE.parameters["relative_tolerance"] = 1e-6
 inner_solver_BE.parameters["maximum_iterations"] = 100
@@ -252,7 +252,7 @@ ds = Measure("ds")[boundary_markers]
 fp_SA -= (inner(u_star, n)*p*q)*ds(1) # correction of fp due to Robin BC
 # Set up linear solver
 # FIXME: Get rid of boilerplate code.
-solver_SA = FieldSplitSolver(W, "gmres")
+solver_SA = FieldSplitSolver(W, "gmres", "solver_SA_")
 solver_SA.parameters["monitor_convergence"] = True
 solver_SA.parameters["relative_tolerance"] = 1e-6
 solver_SA.parameters["maximum_iterations"] = 100
