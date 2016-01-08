@@ -147,7 +147,7 @@ ik = Constant(1.0/dt)
 nu = Constant(args.viscosity)
 f = Constant((0.0, 0.0))
 # -----------------------------------------------------------------------------
-# Define backward Euler scheme with nonlinear Picard iteration
+# Define nonlinear backward Euler scheme
 F_BE = (
       ik*inner(u_-u_0, v)
     + inner(dot(grad(u_), u_), v)
@@ -167,17 +167,59 @@ else:
         - p*div(v)
         - q*div(u)
     )*dx
+# Variational forms for PCD preconditioner
+mp = p*q*dx
+ap = inner(grad(p), grad(q))*dx
+fp_BE = (
+      ik*p*q
+    + dot(grad(p), u_)*q
+    + nu*inner(grad(p), grad(q))
+)*dx
+n = FacetNormal(mesh) # outward unit normal
+ds = Measure("ds")[boundary_markers]
+fp_BE -= (inner(u_, n)*p*q)*ds(1) # correction of fp due to Robin BC
+# Set up inner solver
+inner_solver_BE = FieldSplitSolver(W, "gmres")
+inner_solver_BE.parameters["monitor_convergence"] = True
+inner_solver_BE.parameters["relative_tolerance"] = 1e-6
+inner_solver_BE.parameters["maximum_iterations"] = 100
+#inner_solver_BE.parameters["nonzero_initial_guess"] = True
+#inner_solver_BE.parameters["error_on_nonconvergence"] = False
+inner_solver_BE.parameters["gmres"]["restart"] = 100
+pc_prm = inner_solver_BE.parameters["preconditioner"]
+pc_prm["side"] = "right"
+pc_prm["fieldsplit"]["type"] = "schur"
+pc_prm["fieldsplit"]["schur"]["fact_type"] = "upper"
+pc_prm["fieldsplit"]["schur"]["precondition"] = "user"
+# Set up subsolvers
+OptDB_00, OptDB_11 = inner_solver_BE.get_subopts()
+# Approximation of 00-block inverse
+OptDB_00["ksp_type"] = "preonly"
+OptDB_00["pc_type"] = "lu"
+#OptDB_00["pc_factor_mat_solver_package"] = "mumps"
+# Approximation of 11-block inverse
+OptDB_11["ksp_type"] = "preonly"
+OptDB_11["pc_type"] = "python"
+OptDB_11["pc_python_type"] = "fenapack.PCDPC_ESW"
+# PCD specific options: Ap factorization
+OptDB_11["PCD_Ap_ksp_type"] = "preonly"
+OptDB_11["PCD_Ap_pc_type"] = "lu"
+#OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
+# PCD specific options: Mp factorization
+OptDB_11["PCD_Mp_ksp_type"] = "preonly"
+OptDB_11["PCD_Mp_pc_type"] = "lu"
+#OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
 # Nonlinear problem and solver
-problem_BE = NonlinearVariationalProblem(F_BE, w, bcs=bcs, J=J_BE)
-solver_BE = NonlinearVariationalSolver(problem_BE)
-prm_BE = solver_BE.parameters["newton_solver"]
-#prm_BE["absolute_tolerance"] = 1e-10
-prm_BE["relative_tolerance"] = 1e-5
-prm_BE["maximum_iterations"] = 25
-prm_BE["error_on_nonconvergence"] = False
-#prm_BE["convergence_criterion"] = "incremental"
-#prm_BE["relaxation_parameter"] = 0.5
-prm_BE["report"] = False
+problem_BE = NonlinearDiscreteProblem(
+    F_BE, bcs, J_BE, ap=ap, fp=fp_BE, mp=mp, bcs_pcd=bcs_pcd)
+solver_BE = NonlinearSolver(inner_solver_BE)
+#solver_BE.parameters["absolute_tolerance"] = 1e-10
+solver_BE.parameters["relative_tolerance"] = 1e-5
+solver_BE.parameters["maximum_iterations"] = 25
+#solver_BE.parameters["error_on_nonconvergence"] = False
+#solver_BE.parameters["convergence_criterion"] = "incremental"
+#solver_BE.parameters["relaxation_parameter"] = 0.5
+#solver_BE.parameters["report"] = False
 # -----------------------------------------------------------------------------
 # Define Simo-Armero scheme
 theta = 0.5
@@ -199,7 +241,53 @@ L_SA = (
     + ctheta2*p_0*div(v)
     + ctheta2*q*div(u_0)
 )*dx
-solver_SA = LUSolver("default")
+# Variational forms for PCD preconditioner
+fp_SA = (
+      ik*p*q
+    + dot(grad(p), u_star)*q
+    + nu*inner(grad(p), grad(q))
+)*dx
+n = FacetNormal(mesh) # outward unit normal
+ds = Measure("ds")[boundary_markers]
+fp_SA -= (inner(u_star, n)*p*q)*ds(1) # correction of fp due to Robin BC
+# Set up linear solver
+# FIXME: Get rid of boilerplate code.
+solver_SA = FieldSplitSolver(W, "gmres")
+solver_SA.parameters["monitor_convergence"] = True
+solver_SA.parameters["relative_tolerance"] = 1e-6
+solver_SA.parameters["maximum_iterations"] = 100
+#solver_SA.parameters["nonzero_initial_guess"] = True
+#solver_SA.parameters["error_on_nonconvergence"] = False
+solver_SA.parameters["gmres"]["restart"] = 100
+pc_prm = solver_SA.parameters["preconditioner"]
+pc_prm["side"] = "right"
+pc_prm["fieldsplit"]["type"] = "schur"
+pc_prm["fieldsplit"]["schur"]["fact_type"] = "upper"
+pc_prm["fieldsplit"]["schur"]["precondition"] = "user"
+# Set up subsolvers
+OptDB_00, OptDB_11 = solver_SA.get_subopts()
+# Approximation of 00-block inverse
+OptDB_00["ksp_type"] = "preonly"
+OptDB_00["pc_type"] = "lu"
+#OptDB_00["pc_factor_mat_solver_package"] = "mumps"
+# Approximation of 11-block inverse
+OptDB_11["ksp_type"] = "preonly"
+OptDB_11["pc_type"] = "python"
+OptDB_11["pc_python_type"] = "fenapack.PCDPC_ESW"
+# PCD specific options: Ap factorization
+OptDB_11["PCD_Ap_ksp_type"] = "preonly"
+OptDB_11["PCD_Ap_pc_type"] = "lu"
+#OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
+# PCD specific options: Mp factorization
+OptDB_11["PCD_Mp_ksp_type"] = "preonly"
+OptDB_11["PCD_Mp_pc_type"] = "lu"
+#OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
+# Set operators
+A = assemble(a_SA)
+for bc in bcs:
+    bc.apply(A)
+solver_SA.set_operators(
+    A, A, Ap=assemble(ap), Fp=assemble(fp_SA), Mp=assemble(mp), bcs=bcs_pcd)
 # -----------------------------------------------------------------------------
 
 # Save solution in XDMF format
@@ -235,7 +323,7 @@ while t < T_END:
     begin("t = %g:" % t)
     if t <= 2.0: #*dt:
         info("Performing a single step of backward Euler scheme.")
-        solver_BE.solve()
+        solver_BE.solve(problem_BE, w.vector())
     else:
         info("Performing a single step of Simo-Armero scheme.")
         #A, b = assemble_system(a_SA, L_SA, bcs)
@@ -243,7 +331,8 @@ while t < T_END:
         b = assemble(L_SA)
         for bc in bcs:
             bc.apply(A, b)
-        solver_SA.solve(A, w.vector(), b)
+        solver_SA.set_operators(A, A, Fp=assemble(fp_SA))
+        solver_SA.solve(w.vector(), b)
     end()
     # Update solution variables at previous time steps
     w1.assign(w0)
