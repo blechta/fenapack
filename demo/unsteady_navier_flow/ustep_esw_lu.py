@@ -168,6 +168,7 @@ else:
         - q*div(u)
     )*dx
 # Variational forms for PCD preconditioner
+mu = inner(u, v)*dx
 mp = p*q*dx
 ap = inner(grad(p), grad(q))*dx
 fp_BE = (
@@ -200,7 +201,7 @@ OptDB_00["pc_type"] = "lu"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
-OptDB_11["pc_python_type"] = "fenapack.PCDPC_ESW"
+OptDB_11["pc_python_type"] = "fenapack.UnsteadyPCDPC_ESW"
 # PCD specific options: Ap factorization
 OptDB_11["PCD_Ap_ksp_type"] = "preonly"
 OptDB_11["PCD_Ap_pc_type"] = "lu"
@@ -211,7 +212,7 @@ OptDB_11["PCD_Mp_pc_type"] = "lu"
 #OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
 # Nonlinear problem and solver
 problem_BE = NonlinearDiscreteProblem(
-    F_BE, bcs, J_BE, ap=ap, fp=fp_BE, mp=mp, bcs_pcd=bcs_pcd)
+    F_BE, bcs, J_BE, mu=mu, fp=fp_BE, mp=mp, bcs_pcd=bcs_pcd)
 solver_BE = NonlinearSolver(inner_solver_BE)
 #solver_BE.parameters["absolute_tolerance"] = 1e-10
 solver_BE.parameters["relative_tolerance"] = 1e-5
@@ -273,7 +274,7 @@ OptDB_00["pc_type"] = "lu"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
-OptDB_11["pc_python_type"] = "fenapack.PCDPC_ESW"
+OptDB_11["pc_python_type"] = "fenapack.UnsteadyPCDPC_ESW"
 # PCD specific options: Ap factorization
 OptDB_11["PCD_Ap_ksp_type"] = "preonly"
 OptDB_11["PCD_Ap_pc_type"] = "lu"
@@ -287,7 +288,7 @@ A = assemble(a_SA)
 for bc in bcs:
     bc.apply(A)
 solver_SA.set_operators(
-    A, A, Ap=assemble(ap), Fp=assemble(fp_SA), Mp=assemble(mp), bcs=bcs_pcd)
+    A, A, Mu=assemble(mu), Fp=assemble(fp_SA), Mp=assemble(mp), bcs=bcs_pcd)
 # -----------------------------------------------------------------------------
 
 # Save solution in XDMF format

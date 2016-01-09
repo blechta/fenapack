@@ -18,7 +18,7 @@
 import dolfin
 from petsc4py import PETSc
 
-__all__ = ['PCDPC_ESW', 'PCDPC_BMR']
+__all__ = ['PCDPC_ESW', 'UnsteadyPCDPC_ESW', 'PCDPC_BMR']
 
 class BasePCDPC(object):
     """Base python context for pressure convection diffusion (PCD)
@@ -174,6 +174,54 @@ class PCDPC_ESW(BasePCDPC):
             self._isset_Mp = True
         elif not self._isset_Mp:
             self._isset_error("Mp")
+        timer.stop()
+
+class UnsteadyPCDPC_ESW(PCDPC_ESW):
+    """This class implements PCD preconditioning proposed by Elman, Silvester
+    and Wathen (2014) appropriate for unsteady problems. It derives from
+    PCDPC_ESW but pressure Laplacian Ap is approximated by B*diag(Mu)^{-1}*Bt,
+    where Mu is the velocity mass matrix, B corresponds to 10-block of the
+    system matrix ('-div' operator) and Bt is its transpose, i.e. 01-block of
+    the system matrix ('grad' operator).
+
+    Note that Bt contains zero rows corresponding to dofs on the Dirichlet
+    boundary since bcs have been applied on A. Moreover, B*diag(Mu)^{-1}*Bt is
+    nonsingular for inflow-outflow problems, thus we do not need to prescribe
+    any artificial boundary conditions for pressure.
+    """
+
+    def set_operators(self, is0, is1, A, *args, **kwargs):
+        timer = dolfin.Timer("FENaPack: call UnsteadyPCDPC_ESW.set_operators")
+        timer.start()
+        # Assemble Ap
+        Mu = kwargs.get("Mu")
+        if Mu:
+            # Get velocity mass matrix as PETSc Mat object
+            Mu = dolfin.as_backend_type(Mu).mat().getSubMatrix(is0, is0)
+            # Get diagonal of the velocity mass matrix
+            diagMu = Mu.getDiagonal()
+            # Make inverse of diag(Mu)
+            diagMu.reciprocal() # diag(Mu)^{-1}
+            # Make square root of the diagonal and use it for scaling
+            diagMu.sqrtabs() # \sqrt{diag(Mu)^{-1}}
+            # Extract 01-block, i.e. "grad", from the matrix operator A
+            Bt = A.getSubMatrix(is0, is1)
+            Bt.diagonalScale(L=diagMu) # scale rows of Bt
+            # Get Ap
+            Ap = Bt.transposeMatMult(Bt) # Ap = Bt^T*Bt
+            # Set up special options
+            #Ap.setOption(PETSc.Mat.Option.SPD, True)
+            # Store matrix in the corresponding ksp
+            self._ksp_Ap.setOperators(Ap)
+            # Update flag
+            self._isset_Ap = True
+        elif not self._isset_Ap:
+            self._isset_error("Ap")
+        # Update remaining operators in the same way as in the parent class
+        Fp  = kwargs.get("Fp")
+        Mp  = kwargs.get("Mp")
+        bcs = kwargs.get("bcs")
+        PCDPC_ESW.set_operators(self, is0, is1,Fp=Fp, Mp=Mp, bcs=bcs)
         timer.stop()
 
 class PCDPC_BMR(BasePCDPC):

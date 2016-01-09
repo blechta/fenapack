@@ -129,8 +129,9 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         # Check if python context has been set up to define approximation of
         # 11-block inverse. If so, use *args, **kwargs to set up this context.
         if self._OptDB_11.hasName("pc_python_type"):
+            A, P = self._ksp.getOperators()
             ctx = pc1.getPythonContext()
-            ctx.set_operators(self._is0, self._is1, *args, **kwargs)
+            ctx.set_operators(self._is0, self._is1, A, *args, **kwargs)
         # # Set up each subPC explicitly before calling 'self.solve'. In such
         # # a case, the time needed for setup is not included in timings under
         # # "PETSc Krylov Solver".
