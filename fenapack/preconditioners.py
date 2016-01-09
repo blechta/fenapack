@@ -92,10 +92,11 @@ class PCDPC_ESW(BasePCDPC):
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
 
-    def set_operators(self, is0, is1, Ap=None, Fp=None, Mp=None, bcs=None):
+    def set_operators(self, is0, is1, *args, **kwargs):
         timer = dolfin.Timer("FENaPack: call PCDPC_ESW.set_operators")
         timer.start()
         # Update bcs
+        bcs = kwargs.get("bcs")
         if bcs:
             # Make sure that 'bcs' is a list
             if not isinstance(bcs, list):
@@ -112,6 +113,7 @@ class PCDPC_ESW(BasePCDPC):
         elif not self._isset_bc:
             self._isset_error("bcs")
         # Update Ap
+        Ap = kwargs.get("Ap")
         if Ap:
             # Get PETSc Mat object
             Ap = dolfin.as_backend_type(Ap).mat()
@@ -139,6 +141,7 @@ class PCDPC_ESW(BasePCDPC):
         elif not self._isset_Ap:
             self._isset_error("Ap")
         # Update Fp
+        Fp = kwargs.get("Fp")
         if Fp:
             # Get PETSc Mat object
             Fp = dolfin.as_backend_type(Fp).mat()
@@ -163,6 +166,7 @@ class PCDPC_ESW(BasePCDPC):
         elif not self._isset_Fp:
             self._isset_error("Fp")
         # Update Mp
+        Mp = kwargs.get("Mp")
         if Mp:
             Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
             #Mp.setOption(PETSc.Mat.Option.SPD, True)
@@ -202,16 +206,18 @@ class PCDPC_BMR(BasePCDPC):
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
 
-    def set_operators(self, is0, is1, Ap=None, Kp=None, Mp=None, bcs=None, nu=None):
+    def set_operators(self, is0, is1, *args, **kwargs):
         timer = dolfin.Timer("FENaPack: call PCDPC_BMR.set_operators")
         timer.start()
         # Update nu
+        nu = kwargs.get("nu")
         if nu:
             self._nu = nu
             self._isset_nu = True
         elif not self._isset_nu:
             self._isset_error("nu")
         # Update bcs
+        bcs = kwargs.get("bcs")
         if bcs:
             # Make sure that 'bcs' is a list
             if not isinstance(bcs, list):
@@ -234,6 +240,7 @@ class PCDPC_BMR(BasePCDPC):
         elif not self._isset_bc:
             self._isset_error("bcs")
         # Update Ap
+        Ap = kwargs.get("Ap")
         if Ap:
             # Get submatrix corresponding to 11-block of the problem matrix
             Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
@@ -249,6 +256,7 @@ class PCDPC_BMR(BasePCDPC):
         elif not self._isset_Ap:
             self._isset_error("Ap")
         # Update Kp
+        Kp = kwargs.get("Kp")
         if Kp:
             Kp = dolfin.as_backend_type(Kp).mat().getSubMatrix(is1, is1)
             self._Kp = Kp
@@ -256,6 +264,7 @@ class PCDPC_BMR(BasePCDPC):
         elif not self._isset_Kp:
             self._isset_error("Kp")
         # Update Mp
+        Mp = kwargs.get("Mp")
         if Mp:
             Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
             #Mp.setOption(PETSc.Mat.Option.SPD, True)

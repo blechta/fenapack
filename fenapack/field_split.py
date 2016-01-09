@@ -111,13 +111,11 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         raise NotImplementedError
 
     # Overload PETScKrylovSolver::set_operators() method
-    def set_operators(self, *args, **kwargs):
-        A = args[0] # system operator
-        P = args[1] # preconditioning operator
+    def set_operators(self, A, P, *args, **kwargs):
         dolfin.PETScKrylovSolver.set_operators(self, A, P)
         #assert self._ksp.getOperators() == \
         #  (dolfin.as_backend_type(A).mat(), dolfin.as_backend_type(P).mat())
-        self._custom_ksp_setup(*args[2:], **kwargs)
+        self._custom_ksp_setup(*args, **kwargs)
 
     def _custom_ksp_setup(self, *args, **kwargs):
         # Update global option database
