@@ -55,6 +55,7 @@ class NonlinearSolver(dolfin.NewtonSolver):
         self._matFp = dolfin.Matrix()
         self._matKp = dolfin.Matrix()
         self._matMp = dolfin.Matrix()
+        self._matMu = dolfin.Matrix()
         self._dx = dolfin.Vector()
         self._b = dolfin.Vector()
         self._residual = 0.0
@@ -140,7 +141,7 @@ class NonlinearSolver(dolfin.NewtonSolver):
                 setkwargs["bcs"] = problem.bcs_pcd()
                 if setkwargs.has_key("Kp"): # Hack for fenapack.PCDPC_BMR
                     setkwargs["nu"] = problem.nu()
-                for key in ["Ap", "Mp"]:
+                for key in ["Ap", "Mp", "Mu"]:
                     try:
                         getattr(problem, key.lower())(getattr(self, "_mat"+key), x)
                         setkwargs[key] = getattr(self, "_mat"+key)
@@ -203,7 +204,7 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
         self._J = J
         if J_pc:
             self._J_pc = J_pc
-        # Optional keyword arguments [ap, fp, kp, mp, bcs_pcd]
+        # Optional keyword arguments [ap, fp, kp, mp, mu, bcs_pcd]
         for item in kwargs.items():
             setattr(self, "_"+item[0], item[1])
         # Check boundary conditions for PCD preconditioning
@@ -239,6 +240,9 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
     def mp(self, Mp, x):
         # Mp ... pressure mass matrix
         dolfin.assemble(self._mp, tensor=Mp)
+    def mu(self, Mu, x):
+        # Mu ... velocity mass matrix
+        dolfin.assemble(self._mu, tensor=Mu)
     def bcs_pcd(self):
         # Return boundary conditions for PCD preconditioning
         return self._bcs_pcd
