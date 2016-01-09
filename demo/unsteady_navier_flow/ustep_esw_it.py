@@ -22,7 +22,9 @@ solves are performed by LU inner solver."""
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import *
-from fenapack import FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem
+from fenapack import \
+     FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem, \
+     streamline_diffusion_cpp
 
 # Reduce logging in parallel
 comm = mpi_comm_world()
@@ -167,7 +169,24 @@ else:
         - p*div(v)
         - q*div(u)
     )*dx
-# Variational forms for PCD preconditioner
+
+# Preconditioner
+inu = Constant(1.0/args.viscosity)
+J_BE_pc = (
+      ik*inner(u, v)
+    + inner(dot(grad(u), u_), v)
+    + nu*inner(grad(u), grad(v))
+    - p*div(v)
+    + inu*p*q # this term is irrelevant when using PCD
+)*dx
+#J_BE_pc = J_BE # this is also possible when using PCD
+# Add stabilization (streamline diffusion) to preconditioner
+delta = Expression(streamline_diffusion_cpp)
+delta.nu = args.viscosity
+delta.mesh = mesh
+delta.wind = w.sub(0, deepcopy=False)
+J_BE_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
+# Variational forms for PCD
 mu = inner(u, v)*dx
 mp = p*q*dx
 ap = inner(grad(p), grad(q))*dx
@@ -179,12 +198,12 @@ fp_BE = (
 n = FacetNormal(mesh) # outward unit normal
 ds = Measure("ds")[boundary_markers]
 fp_BE -= (inner(u_, n)*p*q)*ds(1) # correction of fp due to Robin BC
+
 # Set up inner solver
 inner_solver_BE = FieldSplitSolver(W, "gmres", "solver_BE_")
 inner_solver_BE.parameters["monitor_convergence"] = True
 inner_solver_BE.parameters["relative_tolerance"] = 1e-6
 inner_solver_BE.parameters["maximum_iterations"] = 100
-#inner_solver_BE.parameters["nonzero_initial_guess"] = True
 #inner_solver_BE.parameters["error_on_nonconvergence"] = False
 inner_solver_BE.parameters["gmres"]["restart"] = 100
 pc_prm = inner_solver_BE.parameters["preconditioner"]
@@ -192,28 +211,41 @@ pc_prm["side"] = "right"
 pc_prm["fieldsplit"]["type"] = "schur"
 pc_prm["fieldsplit"]["schur"]["fact_type"] = "upper"
 pc_prm["fieldsplit"]["schur"]["precondition"] = "user"
+
 # Set up subsolvers
 OptDB_00, OptDB_11 = inner_solver_BE.get_subopts()
 # Approximation of 00-block inverse
-OptDB_00["ksp_type"] = "preonly"
-OptDB_00["pc_type"] = "lu"
-#OptDB_00["pc_factor_mat_solver_package"] = "mumps"
+OptDB_00["ksp_type"] = "richardson"
+OptDB_00["pc_type"] = "hypre"
+OptDB_00["ksp_max_it"] = 1
+OptDB_00["pc_hypre_type"] = "boomeramg"
+#OptDB_00["pc_hypre_boomeramg_cycle_type"] = "W"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
 OptDB_11["pc_python_type"] = "fenapack.UnsteadyPCDPC_ESW"
 # PCD specific options: Ap factorization
-OptDB_11["PCD_Ap_ksp_type"] = "preonly"
-OptDB_11["PCD_Ap_pc_type"] = "lu"
-#OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Ap_ksp_type"] = "richardson"
+OptDB_11["PCD_Ap_pc_type"] = "hypre"
+OptDB_11["PCD_Ap_ksp_max_it"] = 2
+OptDB_11["PCD_Ap_pc_hypre_type"] = "boomeramg"
 # PCD specific options: Mp factorization
-OptDB_11["PCD_Mp_ksp_type"] = "preonly"
-OptDB_11["PCD_Mp_pc_type"] = "lu"
-#OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Mp_ksp_type"] = "chebyshev"
+OptDB_11["PCD_Mp_pc_type"] = "jacobi"
+OptDB_11["PCD_Mp_ksp_max_it"] = 5
+OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
+# NOTE: The above estimate is valid for P1 pressure approximation in 2D.
+
+# Define debugging hook executed at every nonlinear step
+#set_log_level(PROGRESS)
+def debug_hook(*args, **kwargs):
+    if plotting_enabled and get_log_level() <= PROGRESS:
+        plot(delta, mesh=mesh, title="stabilization parameter delta")
+
 # Nonlinear problem and solver
 problem_BE = NonlinearDiscreteProblem(
-    F_BE, bcs, J_BE, mu=mu, fp=fp_BE, mp=mp, bcs_pcd=bcs_pcd)
-solver_BE = NonlinearSolver(inner_solver_BE)
+    F_BE, bcs, J_BE, J_BE_pc, mu=mu, fp=fp_BE, mp=mp, bcs_pcd=bcs_pcd)
+solver_BE = NonlinearSolver(inner_solver_BE, debug_hook)
 #solver_BE.parameters["absolute_tolerance"] = 1e-10
 solver_BE.parameters["relative_tolerance"] = 1e-5
 solver_BE.parameters["maximum_iterations"] = 25
@@ -221,6 +253,7 @@ solver_BE.parameters["maximum_iterations"] = 25
 #solver_BE.parameters["convergence_criterion"] = "incremental"
 #solver_BE.parameters["relaxation_parameter"] = 0.5
 #solver_BE.parameters["report"] = False
+
 # -----------------------------------------------------------------------------
 # Define Simo-Armero scheme
 theta = 0.5
@@ -242,7 +275,11 @@ L_SA = (
     + ctheta2*p_0*div(v)
     + ctheta2*q*div(u_0)
 )*dx
-# Variational forms for PCD preconditioner
+
+# Preconditioner with stabilization (streamline diffusion)
+a_SA_pc = a_SA
+a_SA_pc += delta*ctheta1*inner(dot(grad(u), u_star), dot(grad(v), u_star))*dx
+# Variational forms for PCD
 fp_SA = (
       ik*p*q
     + dot(grad(p), u_star)*q
@@ -251,6 +288,7 @@ fp_SA = (
 n = FacetNormal(mesh) # outward unit normal
 ds = Measure("ds")[boundary_markers]
 fp_SA -= (inner(u_star, n)*p*q)*ds(1) # correction of fp due to Robin BC
+
 # Set up linear solver
 solver_SA = FieldSplitSolver(W, "gmres", "solver_SA_")
 solver_SA.parameters["monitor_convergence"] = True
@@ -267,27 +305,34 @@ pc_prm["fieldsplit"]["schur"]["precondition"] = "user"
 # Set up subsolvers
 OptDB_00, OptDB_11 = solver_SA.get_subopts()
 # Approximation of 00-block inverse
-OptDB_00["ksp_type"] = "preonly"
-OptDB_00["pc_type"] = "lu"
-#OptDB_00["pc_factor_mat_solver_package"] = "mumps"
+OptDB_00["ksp_type"] = "richardson"
+OptDB_00["pc_type"] = "hypre"
+OptDB_00["ksp_max_it"] = 1
+OptDB_00["pc_hypre_type"] = "boomeramg"
+#OptDB_00["pc_hypre_boomeramg_cycle_type"] = "W"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
 OptDB_11["pc_python_type"] = "fenapack.UnsteadyPCDPC_ESW"
 # PCD specific options: Ap factorization
-OptDB_11["PCD_Ap_ksp_type"] = "preonly"
-OptDB_11["PCD_Ap_pc_type"] = "lu"
-#OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Ap_ksp_type"] = "richardson"
+OptDB_11["PCD_Ap_pc_type"] = "hypre"
+OptDB_11["PCD_Ap_ksp_max_it"] = 2
+OptDB_11["PCD_Ap_pc_hypre_type"] = "boomeramg"
 # PCD specific options: Mp factorization
-OptDB_11["PCD_Mp_ksp_type"] = "preonly"
-OptDB_11["PCD_Mp_pc_type"] = "lu"
-#OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Mp_ksp_type"] = "chebyshev"
+OptDB_11["PCD_Mp_pc_type"] = "jacobi"
+OptDB_11["PCD_Mp_ksp_max_it"] = 5
+OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
+# NOTE: The above estimate is valid for P1 pressure approximation in 2D.
 # Set operators
 A = assemble(a_SA)
+P = assemble(a_SA_pc)
 for bc in bcs:
     bc.apply(A)
+    bc.apply(P)
 solver_SA.set_operators(
-    A, A, Mu=assemble(mu), Fp=assemble(fp_SA), Mp=assemble(mp), bcs=bcs_pcd)
+    A, P, Mu=assemble(mu), Fp=assemble(fp_SA), Mp=assemble(mp), bcs=bcs_pcd)
 # -----------------------------------------------------------------------------
 
 # Save solution in XDMF format
