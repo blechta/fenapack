@@ -41,7 +41,9 @@ namespace dolfin {
   {
   public:
 
-    /// Constructor
+    /// Constructor. Accepts DirichletBC on subspace and IS which
+    /// should be acquired using
+    ///   IS is = dofmap_dofs_is(subspace->dofmap());
     SubfieldBC(const DirichletBC& bc, const IS subfield_is)
     {
       dolfin_assert(bc.function_space());
@@ -54,18 +56,19 @@ namespace dolfin {
     {
       dolfin_assert(_subfield_bc_indices.size() == _subfield_bc_values.size());
       boundary_values.clear();
+      boundary_values.reserve(_subfield_bc_indices.size());
       for (std::size_t i = 0; i <  _subfield_bc_indices.size(); ++i)
         boundary_values[_subfield_bc_indices[i]] = _subfield_bc_values[i];
     }
 
-    /// Apply bc to PETSc Vec
+    /// Apply bc to PETSc Vec comming from fieldsplit PC
     void apply(Vec x)
     {
       apply_subfield_bc(x, _subfield_bc_indices, _subfield_bc_values);
     }
 
-    /// Apply homogeneous bc to PETSc Mat in finite-difference
-    /// (ghost node) fashion
+    /// Apply homogeneous bc to PETSc Mat (comming from fieldsplit PC)
+    /// in finite-difference (ghost node) fashion
     void apply_fdm(Mat A)
     {
       apply_subfield_bc_fdm(A, _subfield_bc_indices);
@@ -102,6 +105,7 @@ namespace dolfin {
       DirichletBC::Map bv_global;
       bv_global.reserve(bv_local.size());
       for (const auto& v : bv_local)
+        // FIXME: Consider inlining IndexMap::local_to_global()?!
         bv_global[index_map.local_to_global(v.first)] = v.second;
       bv_local.clear();
 
@@ -165,6 +169,7 @@ namespace dolfin {
         PETScObject::petsc_error(ierr, "field_split.py", "VecSetValues");
 
       // Assemble vector after completing all calls to VecSetValues()
+      // FIXME: Maybe wait with assembly?!
       ierr = VecAssemblyBegin(x);
       if (ierr != 0)
         PETScObject::petsc_error(ierr, "field_split.py", "VecAssemblyBegin");
