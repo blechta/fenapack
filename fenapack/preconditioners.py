@@ -18,8 +18,7 @@
 import dolfin
 from petsc4py import PETSc
 
-from fenapack.field_split import \
-     apply_subfield_bc_BMR, apply_subfield_bc_ESW
+from fenapack.field_split_utils import SubfieldBC
 
 __all__ = ['PCDPC_ESW', 'UnsteadyPCDPC_ESW', 'PCDPC_BMR']
 
@@ -78,7 +77,6 @@ class PCDPC_ESW(BasePCDPC):
         self._isset_Ap = False # pressure laplacian
         self._isset_Fp = False # pressure convection-difusion
         self._isset_Mp = False # pressure mass matrix
-        self._isset_bc = False # boundary conditions
 
     def apply(self, pc, x, y):
         """This method implements the action of the inverse of the approximate
@@ -97,18 +95,13 @@ class PCDPC_ESW(BasePCDPC):
 
     def set_operators(self, is0, is1, *args, **kwargs):
         timer = dolfin.Timer("FENaPack: call PCDPC_ESW.set_operators")
-        timer.start()
-        # Update bcs
-        bcs = kwargs.get("bcs")
-        if bcs:
-            # Make sure that 'bcs' is a list
-            if not isinstance(bcs, list):
-                bcs = [bcs]
-            self._bcs = bcs
-            # Update flag
-            self._isset_bc = True
-        elif not self._isset_bc:
-            self._isset_error("bcs")
+
+        # Prepare bcs for adjusting fieldsplit matrix
+        bcs = kwargs.get("bcs", [])
+        if not hasattr(bcs, "__iter__"):
+            bcs = [bcs]
+        bcs = [SubfieldBC(bc, is1) for bc in bcs]
+
         # Update Ap
         Ap = kwargs.get("Ap")
         if Ap:
@@ -117,10 +110,8 @@ class PCDPC_ESW(BasePCDPC):
             # Apply Dirichlet conditions using a ghost layer of elements
             # outside the outflow boundary (mimic finite differences,
             # i.e. augment diagonal with values from "ghost elements")
-            # FIXME: Shouldn't we treat list of boundary conditions at once
-            #        within the C++ layer?
-            for bc in self._bcs:
-                apply_subfield_bc_ESW(Ap, bc, bc.function_space().dofmap(), is1)
+            for bc in bcs:
+                bc.apply_fdm(Ap)
             # Set up special options
             #Ap.setOption(PETSc.Mat.Option.SPD, True)
             # Store matrix in the corresponding ksp
@@ -140,8 +131,8 @@ class PCDPC_ESW(BasePCDPC):
             # i.e. augment diagonal with values from "ghost elements")
             # FIXME: Shouldn't we treat list of boundary conditions at once
             #        within the C++ layer?
-            for bc in self._bcs:
-                apply_subfield_bc_ESW(Fp, bc, bc.function_space().dofmap(), is1)
+            for bc in bcs:
+                bc.apply_fdm(Fp)
             # Store matrix
             self._Fp = Fp
             # Update flag
@@ -216,7 +207,6 @@ class PCDPC_BMR(BasePCDPC):
         self._isset_Ap = False # pressure laplacian
         self._isset_Kp = False # pressure convection
         self._isset_Mp = False # pressure mass matrix
-        self._isset_bc = False # boundary conditions
         self._isset_nu = False # kinematic visosity
 
     def apply(self, pc, x, y):
@@ -226,14 +216,13 @@ class PCDPC_BMR(BasePCDPC):
             $y = \hat{S}^{-1} x = -M_p^{-1} F_p A_p^{-1} x$.
         """
         timer = dolfin.Timer("FENaPack: call PCDPC_BMR.apply")
-        timer.start()
         #x.assemble() # FIXME: Why is this NOT needed?!
         x0 = x.copy()
         # Apply bcs to rhs
         # FIXME: Shouldn't we treat list of boundary conditions at once
         #        within the C++ layer?
         for bc in self._bcs:
-            apply_subfield_bc_BMR(x, bc, bc.function_space().dofmap(), self._is1)
+            bc.apply(x)
         self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
         self._Kp.mult(-y, x)
         x.axpy(-self._nu, x0)    # x = -K_p y - nu*x0
@@ -252,18 +241,13 @@ class PCDPC_BMR(BasePCDPC):
             self._isset_nu = True
         elif not self._isset_nu:
             self._isset_error("nu")
-        # Update bcs
-        bcs = kwargs.get("bcs")
-        if bcs:
-            # Make sure that 'bcs' is a list
-            if not isinstance(bcs, list):
-                bcs = [bcs]
-            self._bcs = bcs
-            self._is1 = is1
-            # Update flag
-            self._isset_bc = True
-        elif not self._isset_bc:
-            self._isset_error("bcs")
+
+        # Prepare bcs for adjusting fieldsplit vector in PC apply
+        bcs = kwargs.get("bcs", [])
+        if not hasattr(bcs, "__iter__"):
+            bcs = [bcs]
+        self._bcs = [SubfieldBC(bc, is1) for bc in bcs]
+
         # Update Ap
         Ap = kwargs.get("Ap")
         if Ap:
