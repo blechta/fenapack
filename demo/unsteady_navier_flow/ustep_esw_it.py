@@ -42,11 +42,11 @@ parser.add_argument("-l", type=int, dest="level", default=4,
                     help="level of mesh refinement")
 parser.add_argument("-s", type=float, dest="stretch", default=1.0,
                     help="parameter specifying grid stretch")
-parser.add_argument("-nu", type=float, dest="viscosity", default=0.02,
+parser.add_argument("--nu", type=float, dest="viscosity", default=0.02,
                     help="kinematic viscosity")
-parser.add_argument("-dt", type=float, dest="dt", default=None,
+parser.add_argument("--dt", type=float, dest="dt", default=None,
                     help="constant time step")
-parser.add_argument("-te", type=float, dest="t_end", default=10.0,
+parser.add_argument("--te", type=float, dest="t_end", default=10.0,
                     help="final time of the simulation")
 parser.add_argument("--nls", type=str, dest="nls",
                     choices=["Newton", "Picard"], default="Picard",
@@ -282,12 +282,10 @@ a_SA_pc += delta*ctheta1*inner(dot(grad(u), u_star), dot(grad(v), u_star))*dx
 # Variational forms for PCD
 fp_SA = (
       ik*p*q
-    + dot(grad(p), u_star)*q
-    + nu*inner(grad(p), grad(q))
+    + ctheta1*dot(grad(p), u_star)*q
+    + ctheta1*nu*inner(grad(p), grad(q))
 )*dx
-n = FacetNormal(mesh) # outward unit normal
-ds = Measure("ds")[boundary_markers]
-fp_SA -= (inner(u_star, n)*p*q)*ds(1) # correction of fp due to Robin BC
+fp_SA -= ctheta1*(inner(u_star, n)*p*q)*ds(1) # correction of fp due to Robin BC
 
 # Set up linear solver
 solver_SA = FieldSplitSolver(W, "gmres", "solver_SA_")
