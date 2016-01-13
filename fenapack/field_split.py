@@ -22,7 +22,6 @@ from fenapack.field_split_utils import dofmap_dofs_is
 
 __all__ = ['FieldSplitSolver']
 
-# Main class representing field split solver
 class FieldSplitSolver(dolfin.PETScKrylovSolver):
     """This class derives from 'dolfin.PETScKrylovSolver' and implements
     field split preconditioner for saddle point problems like incompressible

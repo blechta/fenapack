@@ -45,8 +45,10 @@ class BasePCDPC(object):
     def set_operators(self, *args, **kwargs):
         pass
 
-    def _isset_error(self, kwarg):
-        dolfin.error("Keyword argument '%s' has not been set." % kwarg)
+    def _raise_attribute_error(self, attr):
+        raise AttributeError(
+            "Attribute '_%s' must be set using '%s.set_operators()'"
+            % (attr, type(self).__name__))
 
     def _prepare_Ap_fact(self):
         # Prepare Ap factorization
@@ -72,12 +74,6 @@ class PCDPC_ESW(BasePCDPC):
     """This class implements PCD preconditioning proposed by Elman, Silvester
     and Wathen (2014)."""
 
-    def __init__(self):
-        BasePCDPC.__init__(self)
-        self._isset_Ap = False # pressure laplacian
-        self._isset_Fp = False # pressure convection-difusion
-        self._isset_Mp = False # pressure mass matrix
-
     def apply(self, pc, x, y):
         """This method implements the action of the inverse of the approximate
         Schur complement $\hat{S} = -M_p F_p^{-1} A_p$, that is
@@ -94,60 +90,60 @@ class PCDPC_ESW(BasePCDPC):
         # TODO: Is modification of x safe?
 
     def set_operators(self, is0, is1, *args, **kwargs):
+        """Set operators for PCD preconditioning
+
+        *Arguments*
+            is0, is1 (`petsc4py.PETSc.IS`)
+                The index sets defining blocks in the field splitted matrix.
+
+        *Keyword arguments*
+            Ap (:py:class:`GenericMatrix`)
+                The matrix containing pressure laplacian as its 11-block.
+            Fp (:py:class:`GenericMatrix`)
+                The matrix containing pressure convection-diffusion as its
+                11-block.
+            Mp (:py:class:`GenericMatrix`)
+                The matrix containing pressure mass matrix as its 11-block.
+            bcs (:py:class:`DirichletBC`)
+                List of boundary conditions that will be applied on Ap and Fp.
+        """
         timer = dolfin.Timer("FENaPack: call PCDPC_ESW.set_operators")
-
-        # Prepare bcs for adjusting fieldsplit matrix
-        bcs = kwargs.get("bcs", [])
-        if not hasattr(bcs, "__iter__"):
-            bcs = [bcs]
-        bcs = [SubfieldBC(bc, is1) for bc in bcs]
-
+        # Prepare bcs for adjusting field split matrix
+        bcs = kwargs.get("bcs")
+        if bcs:
+            if not hasattr(bcs, "__iter__"):
+                bcs = [bcs]
+            self._bcs = [SubfieldBC(bc, is1) for bc in bcs]
+        elif not hasattr(self, "_bcs"):
+            self._raise_attribute_error("bcs")
         # Update Ap
         Ap = kwargs.get("Ap")
         if Ap:
-            # Get submatrix corresponding to 11-block of the problem matrix
-            Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
-            # Apply Dirichlet conditions using a ghost layer of elements
-            # outside the outflow boundary (mimic finite differences,
-            # i.e. augment diagonal with values from "ghost elements")
-            for bc in bcs:
-                bc.apply_fdm(Ap)
-            # Set up special options
-            #Ap.setOption(PETSc.Mat.Option.SPD, True)
-            # Store matrix in the corresponding ksp
-            self._ksp_Ap.setOperators(Ap)
-            # Update flag
-            self._isset_Ap = True
-            # TODO: Think about explicit destruction of PETSc objects.
-        elif not self._isset_Ap:
-            self._isset_error("Ap")
+            self._Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
+            # Apply boundary conditions along outflow boundary
+            for bc in self._bcs:
+                bc.apply_fdm(self._Ap)
+            #self._Ap.setOption(PETSc.Mat.Option.SPD, True)
+            self._ksp_Ap.setOperators(self._Ap)
+        elif not hasattr(self, "_Ap"):
+            self._raise_attribute_error("Ap")
         # Update Fp
         Fp = kwargs.get("Fp")
         if Fp:
-            # Get submatrix corresponding to 11-block of the problem matrix
-            Fp = dolfin.as_backend_type(Fp).mat().getSubMatrix(is1, is1)
-            # Apply Dirichlet conditions using a ghost layer of elements
-            # outside the outflow boundary (mimic finite differences,
-            # i.e. augment diagonal with values from "ghost elements")
-            # FIXME: Shouldn't we treat list of boundary conditions at once
-            #        within the C++ layer?
-            for bc in bcs:
-                bc.apply_fdm(Fp)
-            # Store matrix
-            self._Fp = Fp
-            # Update flag
-            self._isset_Fp = True
-        elif not self._isset_Fp:
-            self._isset_error("Fp")
+            self._Fp = dolfin.as_backend_type(Fp).mat().getSubMatrix(is1, is1)
+            # Apply boundary conditions along outflow boundary
+            for bc in self._bcs:
+                bc.apply_fdm(self._Fp)
+        elif not hasattr(self, "_Fp"):
+            self._raise_attribute_error("Fp")
         # Update Mp
         Mp = kwargs.get("Mp")
         if Mp:
-            Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
-            #Mp.setOption(PETSc.Mat.Option.SPD, True)
-            self._ksp_Mp.setOperators(Mp)
-            self._isset_Mp = True
-        elif not self._isset_Mp:
-            self._isset_error("Mp")
+            self._Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
+            #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
+            self._ksp_Mp.setOperators(self._Mp)
+        elif not hasattr(self, "_Mp"):
+            self._raise_attribute_error("Mp")
         timer.stop()
 
 class UnsteadyPCDPC_ESW(PCDPC_ESW):
@@ -165,9 +161,28 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
     """
 
     def set_operators(self, is0, is1, A, *args, **kwargs):
+        """Set operators for PCD preconditioning
+
+        *Arguments*
+            is0, is1 (`petsc4py.PETSc.IS`)
+                The index sets defining blocks in the field splitted matrix.
+            A  (:py:class:`GenericMatrix`)
+                The system matrix.
+
+        *Keyword arguments*
+            Mu (:py:class:`GenericMatrix`)
+                The matrix containing velocity mass matrix as its 00-block.
+            Fp (:py:class:`GenericMatrix`)
+                The matrix containing pressure convection-diffusion as its
+                11-block.
+            Mp (:py:class:`GenericMatrix`)
+                The matrix containing pressure mass matrix as its 11-block.
+            bcs (:py:class:`DirichletBC`)
+                List of boundary conditions that will be applied on Fp.
+        """
         timer = dolfin.Timer("FENaPack: call UnsteadyPCDPC_ESW.set_operators")
         timer.start()
-        # Assemble Ap
+        # Assemble Ap using A and Mu
         Mu = kwargs.get("Mu")
         if Mu:
             # Get velocity mass matrix as PETSc Mat object
@@ -182,32 +197,23 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
             Bt = A.getSubMatrix(is0, is1)
             Bt.diagonalScale(L=diagMu) # scale rows of Bt
             # Get Ap
-            Ap = Bt.transposeMatMult(Bt) # Ap = Bt^T*Bt
+            self._Ap = Bt.transposeMatMult(Bt) # Ap = Bt^T*Bt
             # Set up special options
-            #Ap.setOption(PETSc.Mat.Option.SPD, True)
+            #self._Ap.setOption(PETSc.Mat.Option.SPD, True)
             # Store matrix in the corresponding ksp
-            self._ksp_Ap.setOperators(Ap)
-            # Update flag
-            self._isset_Ap = True
-        elif not self._isset_Ap:
-            self._isset_error("Ap")
+            self._ksp_Ap.setOperators(self._Ap)
+        elif not hasattr(self, "_Ap"):
+            self._raise_attribute_error("Ap")
         # Update remaining operators in the same way as in the parent class
         Fp  = kwargs.get("Fp")
         Mp  = kwargs.get("Mp")
         bcs = kwargs.get("bcs")
-        PCDPC_ESW.set_operators(self, is0, is1,Fp=Fp, Mp=Mp, bcs=bcs)
+        PCDPC_ESW.set_operators(self, is0, is1, Fp=Fp, Mp=Mp, bcs=bcs)
         timer.stop()
 
 class PCDPC_BMR(BasePCDPC):
     """This class implements PCD preconditioning proposed by Blechta, Malek,
     Rehor (201?)."""
-
-    def __init__(self):
-        BasePCDPC.__init__(self)
-        self._isset_Ap = False # pressure laplacian
-        self._isset_Kp = False # pressure convection
-        self._isset_Mp = False # pressure mass matrix
-        self._isset_nu = False # kinematic visosity
 
     def apply(self, pc, x, y):
         """This method implements the action of the inverse of the approximate
@@ -216,12 +222,9 @@ class PCDPC_BMR(BasePCDPC):
             $y = \hat{S}^{-1} x = -M_p^{-1} F_p A_p^{-1} x$.
         """
         timer = dolfin.Timer("FENaPack: call PCDPC_BMR.apply")
-        #x.assemble() # FIXME: Why is this NOT needed?!
         x0 = x.copy()
-        # Apply bcs to rhs
-        # FIXME: Shouldn't we treat list of boundary conditions at once
-        #        within the C++ layer?
-        for bc in self._bcs:
+        # Apply subfield boundary conditions to rhs
+        for bc in self._subfield_bcs:
             bc.apply(x)
         self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
         self._Kp.mult(-y, x)
@@ -232,56 +235,66 @@ class PCDPC_BMR(BasePCDPC):
         # TODO: Is modification of x safe?
 
     def set_operators(self, is0, is1, *args, **kwargs):
+        """Set operators for PCD preconditioning
+
+        *Arguments*
+            is0, is1 (`petsc4py.PETSc.IS`)
+                The index sets defining blocks in the field splitted matrix.
+
+        *Keyword arguments*
+            Ap (:py:class:`GenericMatrix`)
+                The matrix containing pressure laplacian as its 11-block.
+            Kp (:py:class:`GenericMatrix`)
+                The matrix containing pressure convection as its 11-block.
+            Mp (:py:class:`GenericMatrix`)
+                The matrix containing pressure mass matrix as its 11-block.
+            bcs (:py:class:`DirichletBC`)
+                List of boundary conditions that will be applied on Ap.
+            nu (float)
+                Kinematic viscosity.
+        """
         timer = dolfin.Timer("FENaPack: call PCDPC_BMR.set_operators")
         timer.start()
         # Update nu
         nu = kwargs.get("nu")
         if nu:
             self._nu = nu
-            self._isset_nu = True
-        elif not self._isset_nu:
-            self._isset_error("nu")
-
-        # Prepare bcs for adjusting fieldsplit vector in PC apply
-        bcs = kwargs.get("bcs", [])
-        if not hasattr(bcs, "__iter__"):
-            bcs = [bcs]
-        self._bcs = [SubfieldBC(bc, is1) for bc in bcs]
-
+        elif not hasattr(self, "_nu"):
+            self._raise_attribute_error("nu")
+        # Prepare bcs for adjusting field split vector in PC apply
+        bcs = kwargs.get("bcs")
+        if bcs:
+            if not hasattr(bcs, "__iter__"):
+                bcs = [bcs]
+            self._bcs = bcs
+            self._subfield_bcs = [SubfieldBC(bc, is1) for bc in bcs]
+        elif not hasattr(self, "_bcs"):
+            self._raise_attribute_error("bcs")
         # Update Ap
         Ap = kwargs.get("Ap")
         if Ap:
-            # Apply Dirichlet conditions along inflow boundary
-            for bc in bcs:
+            # Apply boundary conditions along inflow boundary
+            for bc in self._bcs:
                 bc.apply(Ap)
-            # Get submatrix corresponding to 11-block of the problem matrix
-            Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
-            # Set up special options
-            #Ap.setOption(PETSc.Mat.Option.SPD, True)
-            # Store matrix in the corresponding ksp
-            self._ksp_Ap.setOperators(Ap)
-            # Update flag
-            self._isset_Ap = True
-            # TODO: Think about explicit destruction of PETSc objects.
-        elif not self._isset_Ap:
-            self._isset_error("Ap")
+            self._Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
+            #self._Ap.setOption(PETSc.Mat.Option.SPD, True)
+            self._ksp_Ap.setOperators(self._Ap)
+        elif not hasattr(self, "_Ap"):
+            self._raise_attribute_error("Ap")
         # Update Kp
         Kp = kwargs.get("Kp")
         if Kp:
-            Kp = dolfin.as_backend_type(Kp).mat().getSubMatrix(is1, is1)
-            self._Kp = Kp
-            self._isset_Kp = True
-        elif not self._isset_Kp:
-            self._isset_error("Kp")
+            self._Kp = dolfin.as_backend_type(Kp).mat().getSubMatrix(is1, is1)
+        elif not hasattr(self, "_Kp"):
+            self._raise_attribute_error("Kp")
         # Update Mp
         Mp = kwargs.get("Mp")
         if Mp:
-            Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
-            #Mp.setOption(PETSc.Mat.Option.SPD, True)
-            self._ksp_Mp.setOperators(Mp)
-            self._isset_Mp = True
-        elif not self._isset_Mp:
-            self._isset_error("Mp")
+            self._Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
+            #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
+            self._ksp_Mp.setOperators(self._Mp)
+        elif not hasattr(self, "_Mp"):
+            self._raise_attribute_error("Mp")
         timer.stop()
 
 # -----------------------------------------------------------------------------
