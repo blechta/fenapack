@@ -80,7 +80,7 @@ class PCDPC_ESW(BasePCDPC):
 
             $y = \hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x$.
         """
-        timer = dolfin.Timer("FENaPack: call PCDPC_ESW.apply")
+        timer = dolfin.Timer("FENaPack: PCDPC_ESW apply")
         timer.start()
         self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
         self._Fp.mult(-y, x)     # x = -F_p y
@@ -107,7 +107,7 @@ class PCDPC_ESW(BasePCDPC):
             bcs (:py:class:`DirichletBC`)
                 List of boundary conditions that will be applied on Ap and Fp.
         """
-        timer = dolfin.Timer("FENaPack: call PCDPC_ESW.set_operators")
+        timer = dolfin.Timer("FENaPack: PCDPC_ESW set_operators")
         # Prepare bcs for adjusting field split matrix
         bcs = kwargs.get("bcs")
         if bcs:
@@ -180,7 +180,7 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
             bcs (:py:class:`DirichletBC`)
                 List of boundary conditions that will be applied on Fp.
         """
-        timer = dolfin.Timer("FENaPack: call UnsteadyPCDPC_ESW.set_operators")
+        timer = dolfin.Timer("FENaPack: UnsteadyPCDPC_ESW set_operators")
         timer.start()
         # Assemble Ap using A and Mu
         Mu = kwargs.get("Mu")
@@ -221,7 +221,7 @@ class PCDPC_BMR(BasePCDPC):
 
             $y = \hat{S}^{-1} x = -M_p^{-1} F_p A_p^{-1} x$.
         """
-        timer = dolfin.Timer("FENaPack: call PCDPC_BMR.apply")
+        timer = dolfin.Timer("FENaPack: PCDPC_BMR apply")
         x0 = x.copy()
         # Apply subfield boundary conditions to rhs
         for bc in self._subfield_bcs:
@@ -253,7 +253,7 @@ class PCDPC_BMR(BasePCDPC):
             nu (float)
                 Kinematic viscosity.
         """
-        timer = dolfin.Timer("FENaPack: call PCDPC_BMR.set_operators")
+        timer = dolfin.Timer("FENaPack: PCDPC_BMR set_operators")
         timer.start()
         # Update nu
         nu = kwargs.get("nu")

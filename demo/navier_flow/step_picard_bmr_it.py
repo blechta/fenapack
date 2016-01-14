@@ -41,8 +41,10 @@ parser.add_argument("-l", type=int, dest="level", default=4,
                     help="level of mesh refinement")
 parser.add_argument("-s", type=float, dest="stretch", default=1.0,
                     help="parameter specifying grid stretch")
-parser.add_argument("-nu", type=float, dest="viscosity", default=0.02,
+parser.add_argument("--nu", type=float, dest="viscosity", default=0.02,
                     help="kinematic viscosity")
+parser.add_argument("--save", action="store_true", dest="save_results",
+                    help="save results")
 args = parser.parse_args(sys.argv[1:])
 
 # Prepare mesh
@@ -223,9 +225,10 @@ timer.stop()
 u, p = w.split()
 
 # Save solution in XDMF format
-filename = sys.argv[0][:-3]
-#File("results/%s_velocity.xdmf" % filename) << u
-#File("results/%s_pressure.xdmf" % filename) << p
+if args.save_results:
+    filename = sys.argv[0][:-3]
+    File("results/%s_velocity.xdmf" % filename) << u
+    File("results/%s_pressure.xdmf" % filename) << p
 
 # Print summary of timings
 info("")

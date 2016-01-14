@@ -176,8 +176,8 @@ u, p = w.split()
 
 # Save solution in XDMF format
 filename = sys.argv[0][:-3]
-File("results/%s_velocity.xdmf" % filename) << u
-File("results/%s_pressure.xdmf" % filename) << p
+#File("results/%s_velocity.xdmf" % filename) << u
+#File("results/%s_pressure.xdmf" % filename) << p
 
 # Print summary of timings
 info("")

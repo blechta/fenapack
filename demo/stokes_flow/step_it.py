@@ -47,6 +47,8 @@ parser.add_argument("--AMG", type=str, dest="AMG",
 parser.add_argument("--MMP", type=str, dest="MMP",
                     choices=["diag", "cheb", "cg"], default="cheb",
                     help="type of mass matrix preconditioner")
+parser.add_argument("--save", action="store_true", dest="save_results",
+                    help="save results")
 args = parser.parse_args(sys.argv[1:])
 
 # Prepare mesh
@@ -190,9 +192,10 @@ solver.solve(w.vector(), b)
 u, p = w.split()
 
 # Save solution in XDMF format
-filename = sys.argv[0][:-3]
-File("results/%s_velocity.xdmf" % filename) << u
-File("results/%s_pressure.xdmf" % filename) << p
+if args.save_results:
+    filename = sys.argv[0][:-3]
+    File("results/%s_velocity.xdmf" % filename) << u
+    File("results/%s_pressure.xdmf" % filename) << p
 
 # Print summary of timings
 info("")
