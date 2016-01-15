@@ -1,7 +1,7 @@
 """Flow over a backward-facing step. Incompressible Navier-Stokes equations are
-solved using Newton method. Field split inner_solver is based on PCD
+solved using Newton method. Field split inner solver is based on PCD
 preconditioning proposed by Elman, Silvester and Wathen. All inner linear
-solves are performed by LU inner solver."""
+solves are performed by LU solver."""
 
 # Copyright (C) 2015 Martin Rehor
 #

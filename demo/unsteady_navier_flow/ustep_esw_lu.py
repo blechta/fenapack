@@ -1,8 +1,8 @@
 """Unsteady flow over a backward-facing step. Incompressible unsteady
 Navier-Stokes equations are solved using fully implicit schemes for time
 discretization of the equations. Field split solver for linearized problems is
-based on PCD preconditioning proposed by Elman, Silvester and Wathen. Linear
-solves are performed by LU inner solver."""
+based on PCD preconditioning proposed by Elman, Silvester and Wathen. Inner
+linear solves are performed by LU solver."""
 
 # Copyright (C) 2016 Martin Rehor
 #
