@@ -41,14 +41,14 @@ parser.add_argument("-s", type=float, dest="stretch", default=1.0,
                     help="parameter specifying grid stretch")
 parser.add_argument("--nu", type=float, dest="viscosity", default=0.02,
                     help="kinematic viscosity")
-parser.add_argument("--save", action="store_true", dest="save_results",
-                    help="save results")
 parser.add_argument("--nls", type=str, dest="nls",
                     choices=["Newton", "Picard"], default="Picard",
                     help="type of nonlinear solver")
 parser.add_argument("--PCD", type=str, dest="pcd_strategy",
                     choices=["BMR", "ESW"], default="ESW",
                     help="strategy used for PCD preconditioning")
+parser.add_argument("--save", action="store_true", dest="save_results",
+                    help="save results")
 args = parser.parse_args(sys.argv[1:])
 
 # Prepare mesh
