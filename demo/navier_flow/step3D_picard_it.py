@@ -1,7 +1,8 @@
 """3D flow over a backward-facing step. Incompressible Navier-Stokes equations
 are solved using Picard iterative method. Field split inner solver is based on
-PCD preconditioning proposed by Elman, Silvester and Wathen. All inner linear
-solves are performed by iterative solvers."""
+PCD preconditioning. All inner linear solves are performed by iterative
+solvers.
+"""
 
 # Copyright (C) 2016 Martin Rehor
 #
@@ -45,6 +46,9 @@ parser.add_argument("--nu", type=float, dest="viscosity", default=0.02,
                     help="kinematic viscosity")
 parser.add_argument("--save", action="store_true", dest="save_results",
                     help="save results")
+parser.add_argument("--PCD", type=str, dest="pcd_strategy",
+                    choices=["BMR", "ESW"], default="ESW",
+                    help="strategy used for PCD preconditioning")
 args = parser.parse_args(sys.argv[1:])
 
 # Prepare mesh
@@ -109,10 +113,11 @@ bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 zero = Constant(0.0)
 bc3 = DirichletBC(W.sub(0).sub(2), zero, boundary_markers, 3)
 # Artificial boundary condition for PCD preconditioning
-bc2 = DirichletBC(W.sub(1), zero, boundary_markers, 2)
+PCD_BND_MARKER = 2 if args.pcd_strategy == "ESW" else 1
+bc_art = DirichletBC(W.sub(1), zero, boundary_markers, PCD_BND_MARKER)
 # Collect boundary conditions
 bcs = [bc0, bc1, bc3]
-bcs_pcd = [bc2]
+bcs_pcd = [bc_art]
 
 # Provide some info about the current problem
 Re = 2.0/args.viscosity # Reynolds number
@@ -154,15 +159,24 @@ J_pc = (
 # Add stabilization (streamline diffusion) to preconditioner
 delta = StabilizationParameterSD(w.sub(0), nu)
 J_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
+# Surface terms
+n = FacetNormal(mesh) # Outward unit normal
+ds = Measure("ds", subdomain_data=boundary_markers)
 
 # Define variational forms for PCD preconditioner
 mp = p*q*dx
 ap = inner(grad(p), grad(q))*dx
-fp = (nu*inner(grad(p), grad(q)) + dot(grad(p), u_)*q)*dx
-# Correction of fp due to Robin BC
-n = FacetNormal(mesh) # outward unit normal
-ds = Measure("ds", subdomain_data=boundary_markers)
-fp -= (inner(u_, n)*p*q)*ds(1)
+kp = dot(grad(p), u_)*q*dx
+fp = nu*ap + kp
+
+# Collect forms to define nonlinear problem
+if args.pcd_strategy == "ESW":
+    fp -= (inner(u_, n)*p*q)*ds(1) # Correction of fp due to Robin BC
+    problem = NonlinearDiscreteProblem(
+        F, bcs, J, J_pc, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
+else:
+    problem = NonlinearDiscreteProblem(
+        F, bcs, J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd, nu=args.viscosity)
 
 # Set up field split inner_solver
 inner_solver = FieldSplitSolver(W, "gmres")
@@ -199,7 +213,7 @@ OptDB_00["pc_hypre_boomeramg_interp_type"] = "multipass"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
-OptDB_11["pc_python_type"] = "fenapack.PCDPC_ESW"
+OptDB_11["pc_python_type"] = "_".join(["fenapack.PCDPC", args.pcd_strategy])
 # PCD specific options: Ap factorization
 OptDB_11["PCD_Ap_ksp_type"] = "richardson"
 OptDB_11["PCD_Ap_pc_type"] = "hypre"
@@ -217,9 +231,7 @@ def debug_hook(*args, **kwargs):
     if plotting_enabled and get_log_level() <= PROGRESS:
         plot(delta, mesh=mesh, title="stabilization parameter delta")
 
-# Define nonlinear problem and solver
-problem = NonlinearDiscreteProblem(
-    F, bcs, J, J_pc, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
+# Set up nonlinear solver
 solver = NonlinearSolver(inner_solver, debug_hook)
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
