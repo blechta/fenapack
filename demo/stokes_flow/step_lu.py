@@ -161,6 +161,8 @@ solver.solve(w.vector(), b)
 
 # Split the mixed solution using a shallow copy
 u, p = w.split()
+u.rename("v", "velocity")
+p.rename("p", "pressure")
 
 # Save solution in XDMF format
 if args.save_results:
