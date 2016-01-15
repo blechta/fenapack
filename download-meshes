@@ -11,3 +11,5 @@ wget -N http://fenicsproject.org/pub/data/meshes/dolfin_fine_subdomains.xml.gz
 
 wget --no-check-certificate -O step_domain.xml.gz \
     https://dev.karlin.mff.cuni.cz/attachments/download/640/step_domain.xml.gz?key=$KEY
+wget --no-check-certificate -O step3D_domain.xml.gz \
+    https://dev.karlin.mff.cuni.cz/attachments/download/647/step3D_domain.xml.gz?key=$KEY

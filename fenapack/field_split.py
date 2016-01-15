@@ -105,14 +105,17 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
             A, P = self._ksp.getOperators()
             ctx = pc1.getPythonContext()
             ctx.set_operators(self._is0, self._is1, A, *args, **kwargs)
-        # # Set up each subPC explicitly before calling 'self.solve'. In such
-        # # a case, the time needed for setup is not included in timings under
-        # # "PETSc Krylov Solver".
-        # timer = dolfin.Timer("FENaPack: set up subPC objects")
-        # timer.start()
-        # pc0.setUp()
-        # pc1.setUp()
-        # timer.stop()
+        # Set up each subPC explicitly before calling 'self.solve'. In such
+        # a case, the time needed for setup is not included in timings under
+        # "PETSc Krylov Solver".
+        timer = dolfin.Timer("FENaPack: set up subPC object pc0")
+        dolfin.log(dolfin.PROGRESS, "Preparing for the use of pc0 (calling PCSetUp).")
+        pc0.setUp()
+        timer.stop()
+        timer = dolfin.Timer("FENaPack: set up subPC object pc1")
+        dolfin.log(dolfin.PROGRESS, "Preparing for the use of pc1 (calling PCSetUp).")
+        pc1.setUp()
+        timer.stop()
 
     def _set_from_parameters(self):
         """Set up extra parameters added to parent class."""
