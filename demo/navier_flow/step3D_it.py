@@ -1,8 +1,7 @@
 """3D flow over a backward-facing step. Incompressible Navier-Stokes equations
-are solved using Picard iterative method. Field split inner solver is based on
-PCD preconditioning. All inner linear solves are performed by iterative
-solvers.
-"""
+are solved using Newton/Picard iterative method. Field split inner solver is
+based on PCD preconditioning. All inner linear solves are performed by
+iterative solvers."""
 
 # Copyright (C) 2016 Martin Rehor
 #
@@ -46,6 +45,9 @@ parser.add_argument("--nu", type=float, dest="viscosity", default=0.02,
                     help="kinematic viscosity")
 parser.add_argument("--save", action="store_true", dest="save_results",
                     help="save results")
+parser.add_argument("--nls", type=str, dest="nls",
+                    choices=["Newton", "Picard"], default="Picard",
+                    help="type of nonlinear solver")
 parser.add_argument("--PCD", type=str, dest="pcd_strategy",
                     choices=["BMR", "ESW"], default="ESW",
                     help="strategy used for PCD preconditioning")
@@ -140,13 +142,16 @@ F = (
     - q*div(u_)
     - inner(f, v)
 )*dx
-# Picard correction
-J = (
-      nu*inner(grad(u), grad(v))
-    + inner(dot(grad(u), u_), v)
-    - p*div(v)
-    - q*div(u)
-)*dx
+# Newton/Picard correction
+if args.nls == "Newton":
+    J = derivative(F, w)
+else:
+    J = (
+          nu*inner(grad(u), grad(v))
+        + inner(dot(grad(u), u_), v)
+        - p*div(v)
+        - q*div(u)
+    )*dx
 # Preconditioner
 inu = Constant(1.0/args.viscosity)
 J_pc = (
@@ -155,7 +160,6 @@ J_pc = (
     - p*div(v)
     + inu*p*q # this term is irrelevant when using PCD
 )*dx
-#J_pc = J # this is also possible when using PCD
 # Add stabilization (streamline diffusion) to preconditioner
 delta = StabilizationParameterSD(w.sub(0), nu)
 J_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
