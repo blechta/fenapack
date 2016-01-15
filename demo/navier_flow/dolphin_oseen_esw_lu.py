@@ -34,6 +34,10 @@
 from dolfin import *
 from fenapack import FieldSplitSolver
 
+# Adjust DOLFIN's global parameters
+parameters["form_compiler"]["representation"] = "uflacs"
+parameters["form_compiler"]["optimize"] = True
+
 # Reduce logging in parallel
 comm = mpi_comm_world()
 rank = MPI.rank(comm)

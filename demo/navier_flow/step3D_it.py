@@ -25,6 +25,10 @@ from fenapack import \
      FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem, \
      StabilizationParameterSD
 
+# Adjust DOLFIN's global parameters
+parameters["form_compiler"]["representation"] = "uflacs"
+parameters["form_compiler"]["optimize"] = True
+
 # Reduce logging in parallel
 comm = mpi_comm_world()
 rank = MPI.rank(comm)
