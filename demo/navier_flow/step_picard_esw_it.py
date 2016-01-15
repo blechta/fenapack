@@ -1,5 +1,5 @@
 """Flow over a backward-facing step. Incompressible Navier-Stokes equations are
-solved using Picard iterative method. Field split inner_solver is based on PCD
+solved using Picard iterative method. Field split inner solver is based on PCD
 preconditioning proposed by Elman, Silvester and Wathen. All inner linear
 solves are performed by iterative solvers."""
 
@@ -23,7 +23,7 @@ solves are performed by iterative solvers."""
 from dolfin import *
 from fenapack import \
      FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem, \
-     streamline_diffusion_cpp
+     StabilizationParameterSD
 
 # Reduce logging in parallel
 comm = mpi_comm_world()
@@ -145,10 +145,7 @@ J_pc = (
 )*dx
 #J_pc = J # this is also possible when using PCD
 # Add stabilization (streamline diffusion) to preconditioner
-delta = Expression(streamline_diffusion_cpp)
-delta.nu = args.viscosity
-delta.mesh = mesh
-delta.wind = w.sub(0, deepcopy=False)
+delta = StabilizationParameterSD(w.sub(0), nu)
 J_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
 
 # Define variational forms for PCD preconditioner

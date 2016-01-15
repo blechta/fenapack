@@ -24,7 +24,7 @@ solves are performed by LU inner solver."""
 from dolfin import *
 from fenapack import \
      FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem, \
-     streamline_diffusion_cpp
+     StabilizationParameterSD
 
 # Reduce logging in parallel
 comm = mpi_comm_world()
@@ -181,10 +181,7 @@ J_BE_pc = (
 )*dx
 #J_BE_pc = J_BE # this is also possible when using PCD
 # Add stabilization (streamline diffusion) to preconditioner
-delta = Expression(streamline_diffusion_cpp)
-delta.nu = args.viscosity
-delta.mesh = mesh
-delta.wind = w.sub(0, deepcopy=False)
+delta = StabilizationParameterSD(w.sub(0), nu)
 J_BE_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
 # Variational forms for PCD
 mu = inner(u, v)*dx
