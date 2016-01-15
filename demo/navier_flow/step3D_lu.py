@@ -65,7 +65,7 @@ for i in range(numrefs):
 if args.stretch != 1.0:
     import numpy as np
     transform_y = lambda y, alpha: np.sign(y)*(abs(y)**alpha)
-    x, y = mesh.coordinates().transpose()
+    x, y, z = mesh.coordinates().transpose()
     y[:] = transform_y(y, args.stretch)
     it = 0
     for xi in x:
@@ -75,7 +75,9 @@ if args.stretch != 1.0:
             x[it] = 5.0*(0.2*xi)**args.stretch
         it += 1
     del it
-
+plot(mesh)
+interactive()
+exit()
 # Define function spaces (Taylor-Hood)
 V = VectorFunctionSpace(mesh, "Lagrange", 2)
 Q = FunctionSpace(mesh, "Lagrange", 1)

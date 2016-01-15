@@ -67,7 +67,7 @@ for i in range(numrefs):
 if args.stretch != 1.0:
     import numpy as np
     transform_y = lambda y, alpha: np.sign(y)*(abs(y)**alpha)
-    x, y = mesh.coordinates().transpose()
+    x, y, z = mesh.coordinates().transpose()
     y[:] = transform_y(y, args.stretch)
     it = 0
     for xi in x:
