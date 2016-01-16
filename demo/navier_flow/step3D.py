@@ -1,8 +1,8 @@
-"""Flow over a backward-facing step. Incompressible Navier-Stokes equations are
-solved using Newton/Picard iterative method. Field split inner solver is based
-on PCD preconditioning. All inner linear solves are performed by LU solver."""
+"""3D flow over a backward-facing step. Incompressible Navier-Stokes equations
+are solved using Newton/Picard iterative method. Field split inner solver is
+based on PCD preconditioning."""
 
-# Copyright (C) 2015 Martin Rehor
+# Copyright (C) 2016 Martin Rehor
 #
 # This file is part of FENaPack.
 #
@@ -20,7 +20,9 @@ on PCD preconditioning. All inner linear solves are performed by LU solver."""
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import *
-from fenapack import FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem
+from fenapack import \
+     FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem, \
+     StabilizationParameterSD
 
 # Adjust DOLFIN's global parameters
 parameters["form_compiler"]["representation"] = "uflacs"
@@ -29,7 +31,7 @@ parameters["form_compiler"]["optimize"] = True
 # Reduce logging in parallel
 comm = mpi_comm_world()
 rank = MPI.rank(comm)
-set_log_level(INFO if rank == 0 else INFO+1)
+set_log_level(PROGRESS if rank == 0 else INFO+1)
 plotting_enabled = True
 if MPI.size(comm) > 1:
     plotting_enabled = False # Disable interactive plotting in parallel
@@ -38,7 +40,7 @@ if MPI.size(comm) > 1:
 import argparse, sys
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=
                                  argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-l", type=int, dest="level", default=4,
+parser.add_argument("-l", type=int, dest="level", default=3,
                     help="level of mesh refinement")
 parser.add_argument("-s", type=float, dest="stretch", default=1.0,
                     help="parameter specifying grid stretch")
@@ -50,12 +52,15 @@ parser.add_argument("--nls", type=str, dest="nls",
 parser.add_argument("--PCD", type=str, dest="pcd_strategy",
                     choices=["BMR", "ESW"], default="ESW",
                     help="strategy used for PCD preconditioning")
+parser.add_argument("--insolver", type=str, dest="insolver",
+                    choices=["lu", "it"], default="lu",
+                    help="direct or iterative inner solver")
 parser.add_argument("--save", action="store_true", dest="save_results",
                     help="save results")
 args = parser.parse_args(sys.argv[1:])
 
 # Prepare mesh
-mesh = Mesh("../../data/step_domain.xml.gz")
+mesh = Mesh("../../data/step3D_domain.xml.gz")
 # Refinement
 numrefs = args.level - 1
 for i in range(numrefs):
@@ -64,7 +69,7 @@ for i in range(numrefs):
 if args.stretch != 1.0:
     import numpy as np
     transform_y = lambda y, alpha: np.sign(y)*(abs(y)**alpha)
-    x, y = mesh.coordinates().transpose()
+    x, y, z = mesh.coordinates().transpose()
     y[:] = transform_y(y, args.stretch)
     it = 0
     for xi in x:
@@ -87,6 +92,8 @@ class Gamma0(SubDomain):
         flag = flag or (near(x[0], 0.0) and x[1] <= 0.0)
         flag = flag or near(x[1], -1.0)
         flag = flag or near(x[1],  1.0)
+        #flag = flag or near(x[2],  0.0)
+        #flag = flag or near(x[2],  1.0)
         return flag and on_boundary
 class Gamma1(SubDomain):
     def inside(self, x, on_boundary):
@@ -94,24 +101,30 @@ class Gamma1(SubDomain):
 class Gamma2(SubDomain):
     def inside(self, x, on_boundary):
         return near(x[0], 5.0) and on_boundary
+class Gamma3(SubDomain):
+    def inside(self, x, on_boundary):
+        return (near(x[2],  0.0) or near(x[2],  1.0)) and on_boundary
 # Mark boundaries
 boundary_markers = FacetFunction("size_t", mesh)
-boundary_markers.set_all(3)
+boundary_markers.set_all(4)
 Gamma0().mark(boundary_markers, 0)
 Gamma1().mark(boundary_markers, 1)
 Gamma2().mark(boundary_markers, 2)
+Gamma3().mark(boundary_markers, 3)
 # No-slip boundary condition for velocity
-noslip = Constant((0.0, 0.0))
+noslip = Constant((0.0, 0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, boundary_markers, 0)
 # Inflow boundary condition for velocity
-inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0"))
+inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0", "0.0"))
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
-# Artificial boundary condition for PCD preconditioning
+# Full slip boundary condition
 zero = Constant(0.0)
+bc3 = DirichletBC(W.sub(0).sub(2), zero, boundary_markers, 3)
+# Artificial boundary condition for PCD preconditioning
 PCD_BND_MARKER = 2 if args.pcd_strategy == "ESW" else 1
 bc_art = DirichletBC(W.sub(1), zero, boundary_markers, PCD_BND_MARKER)
 # Collect boundary conditions
-bcs = [bc0, bc1]
+bcs = [bc0, bc1, bc3]
 bcs_pcd = [bc_art]
 
 # Provide some info about the current problem
@@ -126,8 +139,10 @@ v, q = TestFunctions(W)
 w = Function(W)
 u_, p_ = split(w)
 # Data
+n = FacetNormal(mesh) # outward unit normal
+ds = Measure("ds", subdomain_data=boundary_markers)
 nu = Constant(args.viscosity)
-f = Constant((0.0, 0.0))
+f = Constant((0.0, 0.0, 0.0))
 F = (
       nu*inner(grad(u_), grad(v))
     + inner(dot(grad(u_), u_), v)
@@ -145,9 +160,18 @@ else:
         - p*div(v)
         - q*div(u)
     )*dx
-# Surface terms
-n = FacetNormal(mesh) # Outward unit normal
-ds = Measure("ds", subdomain_data=boundary_markers)
+# Preconditioner
+if args.insolver == "it":
+    inu = Constant(1.0/args.viscosity)
+    J_pc = (
+          nu*inner(grad(u), grad(v))
+        + inner(dot(grad(u), u_), v)
+        - p*div(v)
+        - inu*p*q # this term is irrelevant when using PCD
+    )*dx
+    # Add stabilization (streamline diffusion) to preconditioner
+    delta = StabilizationParameterSD(w.sub(0), nu)
+    J_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
 
 # Define variational forms for PCD preconditioner
 mp = p*q*dx
@@ -156,13 +180,15 @@ kp = dot(grad(p), u_)*q*dx
 fp = nu*ap + kp
 
 # Collect forms to define nonlinear problem
+problem_args = [F, bcs, J]
+problem_args += [J_pc] if args.insolver == "it" else []
 if args.pcd_strategy == "ESW":
     fp -= (inner(u_, n)*p*q)*ds(1) # Correction of fp due to Robin BC
     problem = NonlinearDiscreteProblem(
-        F, bcs, J, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
+        *problem_args, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
 else:
     problem = NonlinearDiscreteProblem(
-        F, bcs, J, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd, nu=args.viscosity)
+        *problem_args, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd, nu=args.viscosity)
 
 # Set up field split inner_solver
 inner_solver = FieldSplitSolver(W, "gmres")
@@ -181,28 +207,60 @@ pc_prm["fieldsplit"]["schur"]["precondition"] = "user"
 
 # Set up subsolvers
 OptDB_00, OptDB_11 = inner_solver.get_subopts()
-# Approximation of 00-block inverse
-OptDB_00["ksp_type"] = "preonly"
-OptDB_00["pc_type"] = "lu"
-OptDB_00["pc_factor_mat_solver_package"] = "mumps"
-#OptDB_00["pc_factor_mat_solver_package"] = "superlu_dist"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
 OptDB_11["pc_python_type"] = "_".join(["fenapack.PCDPC", args.pcd_strategy])
-# PCD specific options: Ap factorization
-OptDB_11["PCD_Ap_ksp_type"] = "preonly"
-OptDB_11["PCD_Ap_pc_type"] = "lu"
-OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
-#OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "superlu_dist"
-# PCD specific options: Mp factorization
-OptDB_11["PCD_Mp_ksp_type"] = "preonly"
-OptDB_11["PCD_Mp_pc_type"] = "lu"
-OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
-#OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "superlu_dist"
+if args.insolver == "lu":
+    # Approximation of 00-block inverse
+    OptDB_00["ksp_type"] = "preonly"
+    OptDB_00["pc_type"] = "lu"
+    OptDB_00["pc_factor_mat_solver_package"] = "mumps" # "superlu_dist"
+    # PCD specific options: Ap factorization
+    OptDB_11["PCD_Ap_ksp_type"] = "preonly"
+    OptDB_11["PCD_Ap_pc_type"] = "lu"
+    OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
+    # PCD specific options: Mp factorization
+    OptDB_11["PCD_Mp_ksp_type"] = "preonly"
+    OptDB_11["PCD_Mp_pc_type"] = "lu"
+    OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
+else:
+    # Approximation of 00-block inverse
+    OptDB_00["ksp_type"] = "richardson"
+    OptDB_00["pc_type"] = "hypre"
+    OptDB_00["ksp_max_it"] = 1
+    OptDB_00["pc_hypre_type"] = "boomeramg"
+    #OptDB_00["pc_hypre_boomeramg_cycle_type"] = "W"
+    OptDB_00["pc_hypre_boomeramg_print_statistics"] = 0
+    OptDB_00["pc_hypre_boomeramg_print_debug"] = 0
+    #OptDB_00["pc_hypre_boomeramg_relax_type_down"] = "symmetric-SOR/Jacobi"
+    #OptDB_00["pc_hypre_boomeramg_relax_type_up"] = "symmetric-SOR/Jacobi"
+    #OptDB_00["pc_hypre_boomeramg_relax_type_coarse"] = "Gaussian-elimination"
+    #OptDB_00["pc_hypre_boomeramg_coarsen_type"] = "Falgout"
+    # possibilities: CLJP Ruge-Stueben modifiedRuge-Stueben PMIS PMIS HMIS
+    OptDB_00["pc_hypre_boomeramg_interp_type"] = "multipass"
+    # possibilities: multipass ext+i-cc FF1 FF classical ext+i direct
+    #                multipass-wts standard standard-wts
+    # PCD specific options: Ap factorization
+    OptDB_11["PCD_Ap_ksp_type"] = "richardson"
+    OptDB_11["PCD_Ap_pc_type"] = "hypre"
+    OptDB_11["PCD_Ap_ksp_max_it"] = 2
+    OptDB_11["PCD_Ap_pc_hypre_type"] = "boomeramg"
+    # PCD specific options: Mp factorization
+    OptDB_11["PCD_Mp_ksp_type"] = "chebyshev"
+    OptDB_11["PCD_Mp_pc_type"] = "jacobi"
+    OptDB_11["PCD_Mp_ksp_max_it"] = 5
+    OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.5"
+    # NOTE: The above estimate is valid for P1 pressure approximation in 3D.
+
+# Define debugging hook executed at every nonlinear step
+def plot_delta(*args, **kwargs):
+    if plotting_enabled and get_log_level() <= PROGRESS:
+        plot(delta, mesh=mesh, title="stabilization parameter delta")
 
 # Set up nonlinear solver
-solver = NonlinearSolver(inner_solver)
+hook = plot_delta if args.insolver == "it" else None
+solver = NonlinearSolver(inner_solver, debug_hook=hook)
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25

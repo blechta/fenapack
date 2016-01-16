@@ -137,6 +137,8 @@ v, q = TestFunctions(W)
 w = Function(W)
 u_, p_ = split(w)
 # Data
+n = FacetNormal(mesh) # outward unit normal
+ds = Measure("ds", subdomain_data=boundary_markers)
 nu = Constant(args.viscosity)
 f = Constant((0.0, 0.0, 0.0))
 F = (
@@ -168,9 +170,6 @@ if args.insolver == "it":
     # Add stabilization (streamline diffusion) to preconditioner
     delta = StabilizationParameterSD(w.sub(0), nu)
     J_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
-# Surface terms
-n = FacetNormal(mesh) # Outward unit normal
-ds = Measure("ds", subdomain_data=boundary_markers)
 
 # Define variational forms for PCD preconditioner
 mp = p*q*dx
@@ -232,7 +231,8 @@ else:
     #OptDB_00["pc_hypre_boomeramg_coarsen_type"] = "Falgout"
     # possibilities: CLJP Ruge-Stueben modifiedRuge-Stueben PMIS PMIS HMIS
     OptDB_00["pc_hypre_boomeramg_interp_type"] = "multipass"
-    # possibilities: multipass ext+i-cc FF1 FF classical ext+i direct multipass-wts standard standard-wts
+    # possibilities: multipass ext+i-cc FF1 FF classical ext+i direct
+    #                multipass-wts standard standard-wts
     # PCD specific options: Ap factorization
     OptDB_11["PCD_Ap_ksp_type"] = "richardson"
     OptDB_11["PCD_Ap_pc_type"] = "hypre"
@@ -245,8 +245,14 @@ else:
     OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.5"
     # NOTE: The above estimate is valid for P1 pressure approximation in 3D.
 
+# Define debugging hook executed at every nonlinear step
+def plot_delta(*args, **kwargs):
+    if plotting_enabled and get_log_level() <= PROGRESS:
+        plot(delta, mesh=mesh, title="stabilization parameter delta")
+
 # Set up nonlinear solver
-solver = NonlinearSolver(inner_solver)
+hook = plot_delta if args.insolver == "it" else None
+solver = NonlinearSolver(inner_solver, debug_hook=hook)
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25

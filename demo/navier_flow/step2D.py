@@ -1,7 +1,6 @@
 """Flow over a backward-facing step. Incompressible Navier-Stokes equations are
 solved using Newton/Picard iterative method. Field split inner solver is based
-on PCD preconditioning. All inner linear solves are performed by iterative
-solvers."""
+on PCD preconditioning."""
 
 # Copyright (C) 2015 Martin Rehor
 #
@@ -53,6 +52,9 @@ parser.add_argument("--nls", type=str, dest="nls",
 parser.add_argument("--PCD", type=str, dest="pcd_strategy",
                     choices=["BMR", "ESW"], default="ESW",
                     help="strategy used for PCD preconditioning")
+parser.add_argument("--insolver", type=str, dest="insolver",
+                    choices=["lu", "it"], default="lu",
+                    help="direct or iterative inner solver")
 parser.add_argument("--save", action="store_true", dest="save_results",
                     help="save results")
 args = parser.parse_args(sys.argv[1:])
@@ -129,6 +131,8 @@ v, q = TestFunctions(W)
 w = Function(W)
 u_, p_ = split(w)
 # Data
+n = FacetNormal(mesh) # outward unit normal
+ds = Measure("ds", subdomain_data=boundary_markers)
 nu = Constant(args.viscosity)
 f = Constant((0.0, 0.0))
 # Nonlinear residual form
@@ -150,20 +154,17 @@ else:
         - q*div(u)
     )*dx
 # Preconditioner
-inu = Constant(1.0/args.viscosity)
-J_pc = (
-      nu*inner(grad(u), grad(v))
-    + inner(dot(grad(u), u_), v)
-    - p*div(v)
-    - inu*p*q # this term is irrelevant when using PCD
-)*dx
-#J_pc = J # this is also possible when using PCD
-# Add stabilization (streamline diffusion) to preconditioner
-delta = StabilizationParameterSD(w.sub(0), nu)
-J_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
-# Surface terms
-n = FacetNormal(mesh) # Outward unit normal
-ds = Measure("ds", subdomain_data=boundary_markers)
+if args.insolver == "it":
+    inu = Constant(1.0/args.viscosity)
+    J_pc = (
+          nu*inner(grad(u), grad(v))
+        + inner(dot(grad(u), u_), v)
+        - p*div(v)
+        - inu*p*q # this term is irrelevant when using PCD
+    )*dx
+    # Add stabilization (streamline diffusion) to preconditioner
+    delta = StabilizationParameterSD(w.sub(0), nu)
+    J_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
 
 # Define variational forms for PCD preconditioner
 mp = p*q*dx
@@ -172,13 +173,15 @@ kp = dot(grad(p), u_)*q*dx
 fp = nu*ap + kp
 
 # Collect forms to define nonlinear problem
+problem_args = [F, bcs, J]
+problem_args += [J_pc] if args.insolver == "it" else []
 if args.pcd_strategy == "ESW":
     fp -= (inner(u_, n)*p*q)*ds(1) # Correction of fp due to Robin BC
     problem = NonlinearDiscreteProblem(
-        F, bcs, J, J_pc, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
+        *problem_args, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
 else:
     problem = NonlinearDiscreteProblem(
-        F, bcs, J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd, nu=args.viscosity)
+        *problem_args, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd, nu=args.viscosity)
 
 # Set up field split inner_solver
 inner_solver = FieldSplitSolver(W, "gmres")
@@ -196,35 +199,50 @@ pc_prm["fieldsplit"]["schur"]["precondition"] = "user"
 
 # Set up subsolvers
 OptDB_00, OptDB_11 = inner_solver.get_subopts()
-# Approximation of 00-block inverse
-OptDB_00["ksp_type"] = "richardson"
-OptDB_00["pc_type"] = "hypre"
-OptDB_00["ksp_max_it"] = 1
-OptDB_00["pc_hypre_type"] = "boomeramg"
-#OptDB_00["pc_hypre_boomeramg_cycle_type"] = "W"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
 OptDB_11["pc_python_type"] = "_".join(["fenapack.PCDPC", args.pcd_strategy])
-# PCD specific options: Ap factorization
-OptDB_11["PCD_Ap_ksp_type"] = "richardson"
-OptDB_11["PCD_Ap_pc_type"] = "hypre"
-OptDB_11["PCD_Ap_ksp_max_it"] = 2
-OptDB_11["PCD_Ap_pc_hypre_type"] = "boomeramg"
-# PCD specific options: Mp factorization
-OptDB_11["PCD_Mp_ksp_type"] = "chebyshev"
-OptDB_11["PCD_Mp_pc_type"] = "jacobi"
-OptDB_11["PCD_Mp_ksp_max_it"] = 5
-OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
-# NOTE: The above estimate is valid for P1 pressure approximation in 2D.
+if args.insolver == "lu":
+    # Approximation of 00-block inverse
+    OptDB_00["ksp_type"] = "preonly"
+    OptDB_00["pc_type"] = "lu"
+    OptDB_00["pc_factor_mat_solver_package"] = "mumps"
+    # PCD specific options: Ap factorization
+    OptDB_11["PCD_Ap_ksp_type"] = "preonly"
+    OptDB_11["PCD_Ap_pc_type"] = "lu"
+    OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
+    # PCD specific options: Mp factorization
+    OptDB_11["PCD_Mp_ksp_type"] = "preonly"
+    OptDB_11["PCD_Mp_pc_type"] = "lu"
+    OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
+else:
+    # Approximation of 00-block inverse
+    OptDB_00["ksp_type"] = "richardson"
+    OptDB_00["pc_type"] = "hypre"
+    OptDB_00["ksp_max_it"] = 1
+    OptDB_00["pc_hypre_type"] = "boomeramg"
+    #OptDB_00["pc_hypre_boomeramg_cycle_type"] = "W"
+    # PCD specific options: Ap factorization
+    OptDB_11["PCD_Ap_ksp_type"] = "richardson"
+    OptDB_11["PCD_Ap_pc_type"] = "hypre"
+    OptDB_11["PCD_Ap_ksp_max_it"] = 2
+    OptDB_11["PCD_Ap_pc_hypre_type"] = "boomeramg"
+    # PCD specific options: Mp factorization
+    OptDB_11["PCD_Mp_ksp_type"] = "chebyshev"
+    OptDB_11["PCD_Mp_pc_type"] = "jacobi"
+    OptDB_11["PCD_Mp_ksp_max_it"] = 5
+    OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
+    # NOTE: The above estimate is valid for P1 pressure approximation in 2D.
 
 # Define debugging hook executed at every nonlinear step
-def debug_hook(*args, **kwargs):
+def plot_delta(*args, **kwargs):
     if plotting_enabled and get_log_level() <= PROGRESS:
         plot(delta, mesh=mesh, title="stabilization parameter delta")
 
 # Set up nonlinear solver
-solver = NonlinearSolver(inner_solver, debug_hook)
+hook = plot_delta if args.insolver == "it" else None
+solver = NonlinearSolver(inner_solver, debug_hook=hook)
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25
