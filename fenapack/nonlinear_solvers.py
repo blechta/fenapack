@@ -35,27 +35,16 @@ class NonlinearSolver(dolfin.NewtonSolver):
             solver (:py:class:`GenericLinearSolver`)
                 A nonlinear variational problem.
         """
+        self._hook = debug_hook
         factory = dolfin.PETScFactory.instance()
         dolfin.NewtonSolver.__init__(self, solver, factory)
-        # CONVENTION: Linear solver is provided with parameters that
-        #             need no updates from outer nonlinear solver.
-        self.parameters.remove("krylov_solver")
-        self.parameters.remove("lu_solver")
         # This is temporary hack due to the following bug in DOLFIN:
         #   dolfin::PETScKrylovSolver::parameters_type returns "default"
         #   instead of "krylov_solver".
         self.parameters.add(dolfin.Parameters("default"))
-        # Store arguments
-        self._hook = debug_hook
         # Homebrewed implementation
         self._solver = solver
         self._matA = dolfin.Matrix()
-        self._matP = dolfin.Matrix()
-        self._matAp = dolfin.Matrix()
-        self._matFp = dolfin.Matrix()
-        self._matKp = dolfin.Matrix()
-        self._matMp = dolfin.Matrix()
-        self._matMu = dolfin.Matrix()
         self._dx = dolfin.Vector()
         self._b = dolfin.Vector()
         self._residual = 0.0
@@ -88,18 +77,16 @@ class NonlinearSolver(dolfin.NewtonSolver):
     # Homebrewed implementation
     def solve(self, problem, x):
         # A Python rewrite of 'dolfin::NewtonSolver::solve'
-        # with some slight modifications in linear solver setup
+        # with modification in linear solver setup.
         convergence_criterion = self.parameters["convergence_criterion"]
         maxiter = self.parameters["maximum_iterations"]
 
-        # MODIFICATION: Linear solver is provided to the constructor.
-        # solver_type = self.parameters["linear_solver"]
-        # pc_type = self.parameters["preconditioner"]
-        # if not self._solver:
-        #     self._solver = dolfin.LinearSolver(solver_type, pc_type)
+        solver_type = self.parameters["linear_solver"]
+        pc_type = self.parameters["preconditioner"]
+        if not self._solver:
+            self._solver = dolfin.LinearSolver(solver_type, pc_type)
 
-        # MODIFICATION: Linear solver needs no updates from nonlinear solver.
-        # self._solver.update_parameters(self.parameters[self._solver.parameter_type()])
+        self._solver.update_parameters(self.parameters[self._solver.parameter_type()])
 
         krylov_iterations = 0
         self._newton_iteration = 0
@@ -122,35 +109,15 @@ class NonlinearSolver(dolfin.NewtonSolver):
 
         while not newton_converged and self._newton_iteration < maxiter:
             problem.J(self._matA, x)
-            # MODIFICATION: Custom setup of linear solver at each iteration step.
-            # self._solver.set_operator(self._matA)
-            setargs = [self._matA]
-            try:
-                problem.J_pc(self._matP, x)
-                setargs.append(self._matP)
-            except problem.MissingAttribute:
-                setargs.append(self._matA) # J_pc == J
-            setkwargs = dict()
-            for key in ["Fp", "Kp"]:
-                try:
-                    private_mat_object = getattr(self, "_mat"+key)
-                    getattr(problem, key.lower())(private_mat_object, x)
-                    setkwargs[key] = private_mat_object
-                except problem.MissingAttribute:
-                    pass
-            if self._newton_iteration == 0:
-                setkwargs["bcs"] = problem.bcs_pcd()
-                if setkwargs.has_key("Kp"): # Hack for fenapack.PCDPC_BMR
-                    setkwargs["nu"] = problem.nu()
-                for key in ["Ap", "Mp", "Mu"]:
-                    try:
-                        private_mat_object = getattr(self, "_mat"+key)
-                        getattr(problem, key.lower())(private_mat_object, x)
-                        setkwargs[key] = private_mat_object
-                    except problem.MissingAttribute:
-                        pass
-            # Finally call 'set_operators'
-            self._solver.set_operators(*setargs, **setkwargs)
+            # TODO: Fix this in DOLFIN. Setup of the linear solver should be
+            # handled by some appropriate method of 'NonlinearProblem'.
+            # By default, this method must call
+            #   self._solver.set_operator(self._matA)
+            # in order to retain original functionality of 'NewtonSolver'.
+            # Users should be allowed to overload this method to customize
+            # linear solver setup, e.g. to set preconditioner.
+            problem.linear_solver_setup(
+                self._solver, self._matA, self._newton_iteration)
 
             if not self._dx.empty():
                 self._dx.zero()
@@ -216,6 +183,13 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
                 self._bcs_pcd = [self._bcs_pcd]
         except AttributeError: # 'bcs_pcd' has not been provided
             self._bcs_pcd = []
+        # Matrices used to assemble preconditioner
+        self._matP  = dolfin.Matrix()
+        self._matAp = dolfin.Matrix()
+        self._matFp = dolfin.Matrix()
+        self._matKp = dolfin.Matrix()
+        self._matMp = dolfin.Matrix()
+        self._matMu = dolfin.Matrix()
 
     def F(self, b, x):
         # b ... residual vector
@@ -229,6 +203,35 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
         for bc in self._bcs:
             bc.apply(A)
 
+    def linear_solver_setup(self, solver, matA, it):
+        setargs = [matA]
+        try:
+            self.J_pc(self._matP)
+            setargs.append(self._matP)
+        except self.MissingAttribute:
+            setargs.append(matA) # J_pc == J
+        setkwargs = dict()
+        for key in ["Fp", "Kp"]:
+            try:
+                private_mat_object = getattr(self, "_mat"+key)
+                getattr(self, key.lower())(private_mat_object)
+                setkwargs[key] = private_mat_object
+            except self.MissingAttribute:
+                pass
+        if it == 0:
+            setkwargs["bcs"] = self.bcs_pcd()
+            if setkwargs.has_key("Kp"): # Hack for fenapack.PCDPC_BMR
+                setkwargs["nu"] = self.nu()
+            for key in ["Ap", "Mp", "Mu"]:
+                try:
+                    private_mat_object = getattr(self, "_mat"+key)
+                    getattr(self, key.lower())(private_mat_object)
+                    setkwargs[key] = private_mat_object
+                except self.MissingAttribute:
+                    pass
+        # Finally call 'set_operators'
+        solver.set_operators(*setargs, **setkwargs)
+
     class MissingAttribute(Exception):
         def __init__(self, kwarg):
             self.kwarg = kwarg
@@ -239,7 +242,7 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
                 " has not been set." % self.kwarg
             return error_message
 
-    def J_pc(self, P, x):
+    def J_pc(self, P):
         # P ... preconditioning matrix
         if hasattr(self, "_J_pc"):
             dolfin.assemble(self._J_pc, tensor=P)
@@ -248,35 +251,35 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
         else:
             raise self.MissingAttribute("J_pc")
 
-    def ap(self, Ap, x):
+    def ap(self, Ap):
         # Ap ... pressure Laplacian matrix
         if hasattr(self, "_ap"):
             dolfin.assemble(self._ap, tensor=Ap)
         else:
             raise self.MissingAttribute("ap")
 
-    def fp(self, Fp, x):
+    def fp(self, Fp):
         # Fp ... pressure convection-diffusion matrix
         if hasattr(self, "_fp"):
             dolfin.assemble(self._fp, tensor=Fp)
         else:
             raise self.MissingAttribute("fp")
 
-    def kp(self, Kp, x):
+    def kp(self, Kp):
         # Kp ... pressure convection matrix
         if hasattr(self, "_kp"):
             dolfin.assemble(self._kp, tensor=Kp)
         else:
             raise self.MissingAttribute("kp")
 
-    def mp(self, Mp, x):
+    def mp(self, Mp):
         # Mp ... pressure mass matrix
         if hasattr(self, "_mp"):
             dolfin.assemble(self._mp, tensor=Mp)
         else:
             raise self.MissingAttribute("mp")
 
-    def mu(self, Mu, x):
+    def mu(self, Mu):
         # Mu ... velocity mass matrix
         if hasattr(self, "_mu"):
             dolfin.assemble(self._mu, tensor=Mu)
