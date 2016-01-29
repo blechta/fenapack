@@ -81,30 +81,40 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
 
     # Discard PETScKrylovSolver::set_operator() method
     def set_operator(self, A):
-        raise NotImplementedError
+        raise NotImplementedError(
+            "This has been discarded for 'FieldSplitSolver'."
+            " Use 'set_operators' method instead.")
 
     # Overload PETScKrylovSolver::set_operators() method
-    def set_operators(self, A, P, *args, **kwargs):
+    def set_operators(self, A, P, **schur_approx):
+        """A and P represents a system matrix operator and a preconditioner in the
+        usual sense.
+
+        **Overloaded versions**
+
+          Optional keyword arguments in 'schur_approx' can be used to build an
+          approximate Schur complement matrix. These optional arguments  differ
+          depending on the strategy used for preconditioning.
+        """
         dolfin.PETScKrylovSolver.set_operators(self, A, P)
         #assert self._ksp.getOperators() == \
         #  (dolfin.as_backend_type(A).mat(), dolfin.as_backend_type(P).mat())
-        self._custom_ksp_setup(*args, **kwargs)
 
-    def _custom_ksp_setup(self, *args, **kwargs):
-        # Update global option database
-        self._set_from_parameters()
         # Set up KSP
+        self._set_from_parameters() # update global option database
         self._ksp.setFromOptions()
         self._ksp.setUp() # NOTE: this includes operations within 'PCSetUp'
+
         # Get subKSP and subPC objects
         ksp0, ksp1 = self._ksp.getPC().getFieldSplitSubKSP()
         pc0, pc1 = ksp0.getPC(), ksp1.getPC()
+
         # Check if python context has been set up to define approximation of
-        # 11-block inverse. If so, use *args, **kwargs to set up this context.
+        # 11-block inverse. If so, use **schur_approx to set up this context.
         if self._OptDB_11.hasName("pc_python_type"):
-            A, P = self._ksp.getOperators()
             ctx = pc1.getPythonContext()
-            ctx.set_operators(self._is0, self._is1, A, *args, **kwargs)
+            ctx.set_operators(self._is0, self._is1, A, P, **schur_approx)
+
         # Set up each subPC explicitly before calling 'self.solve'. In such
         # a case, the time needed for setup is not included in timings under
         # "PETSc Krylov Solver".
