@@ -22,6 +22,21 @@ from fenapack.field_split_utils import dofmap_dofs_is
 
 __all__ = ['FieldSplitSolver']
 
+# TODO:
+#   Provide class 'FieldSplitProblem' that will handle assembly of operators
+#   including those needed to approximate the Schur complement.
+#
+#   It means that this class will construct index sets from dofmaps (currently
+#   done by 'FieldSplitSolver') and it will collect all UFL forms defining
+#   particular operators (including system matrix and preconditioner) together
+#   with all boundary conditions. According to chosen strategy it will prepare
+#   operators ready to be used by 'PCDPC' objects.
+#
+#   Such approach should enable consistent implementation of 'PCDPC' objects,
+#   since the responsibility for extracting operators from "huge" matrices,
+#   applying boundary conditions, etc. will be moved out from 'set_operators'
+#   methods.
+
 class FieldSplitSolver(dolfin.PETScKrylovSolver):
     """This class derives from 'dolfin.PETScKrylovSolver' and implements
     field split preconditioner for saddle point problems like incompressible

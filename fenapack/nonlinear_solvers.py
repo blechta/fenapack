@@ -172,24 +172,27 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
         self._F = F
         self._bcs = bcs
         self._J = J
+        # Process optional keyword arguments
+        # TODO:
+        #   Instead of optional kwargs provide an instance of a class
+        #   'FieldSplitProblem' which will handle assembly of operators
+        #   used for preconditioning.
         if J_pc:
             self._J_pc = J_pc
-        # Optional keyword arguments [ap, fp, kp, mp, mu, bcs_pcd, nu]
-        for item in kwargs.items():
-            setattr(self, "_"+item[0], item[1])
-        # Check boundary conditions for PCD preconditioning
-        try: # make sure that 'bcs_pcd' is a list
-            if not isinstance(self._bcs_pcd, list):
-                self._bcs_pcd = [self._bcs_pcd]
-        except AttributeError: # 'bcs_pcd' has not been provided
-            self._bcs_pcd = []
-        # Matrices used to assemble preconditioner
+        for key in ["mp", "mu", "ap", "fp", "kp"]:
+            val = kwargs.get(key)
+            if val:
+                setattr(self, "_"+key, val)
+        self._nu = kwargs.get("nu")
+        self._bcs_pcd = kwargs.get("bcs_pcd", [])
+        # Matrices used to assemble parts of the preconditioner
+        # NOTE: Some of them may be unused.
         self._matP  = dolfin.Matrix()
+        self._matMp = dolfin.Matrix()
+        self._matMu = dolfin.Matrix()
         self._matAp = dolfin.Matrix()
         self._matFp = dolfin.Matrix()
         self._matKp = dolfin.Matrix()
-        self._matMp = dolfin.Matrix()
-        self._matMu = dolfin.Matrix()
 
     def F(self, b, x):
         # b ... residual vector
@@ -203,34 +206,39 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
         for bc in self._bcs:
             bc.apply(A)
 
-    def linear_solver_setup(self, solver, matA, it):
-        setargs = [matA]
+    def linear_solver_setup(self, solver, A, it):
         try:
+            # Check that preconditioner has been provided
             self.J_pc(self._matP)
-            setargs.append(self._matP)
+            P = self._matP
         except self.MissingAttribute:
-            setargs.append(matA) # J_pc == J
-        setkwargs = dict()
+            # Use A in place of preconditioner
+            P = A
+        # Collect operators for approximate Schur complement
+        schur_approx = dict()
         for key in ["Fp", "Kp"]:
             try:
-                private_mat_object = getattr(self, "_mat"+key)
-                getattr(self, key.lower())(private_mat_object)
-                setkwargs[key] = private_mat_object
+                mat_object = getattr(self, "_mat"+key)
+                getattr(self, key.lower())(mat_object)
+                schur_approx[key] = mat_object
             except self.MissingAttribute:
                 pass
-        if it == 0:
-            setkwargs["bcs"] = self.bcs_pcd()
-            if setkwargs.has_key("Kp"): # Hack for fenapack.PCDPC_BMR
-                setkwargs["nu"] = self.nu()
+        if it == 0: # following setup is done only once
+            schur_approx["bcs"] = self._bcs_pcd
+            if schur_approx.has_key("Kp"): # hack for fenapack.PCDPC_BMR
+                schur_approx["nu"] = self._nu
             for key in ["Ap", "Mp", "Mu"]:
                 try:
-                    private_mat_object = getattr(self, "_mat"+key)
-                    getattr(self, key.lower())(private_mat_object)
-                    setkwargs[key] = private_mat_object
+                    mat_object = getattr(self, "_mat"+key)
+                    getattr(self, key.lower())(mat_object)
+                    schur_approx[key] = mat_object
                 except self.MissingAttribute:
                     pass
-        # Finally call 'set_operators'
-        solver.set_operators(*setargs, **setkwargs)
+        # Finally call 'set_operators' method
+        solver.set_operators(A, P, **schur_approx)
+
+    # TODO: Move the following methods into a class 'FieldSplitProblem' as
+    # suggested above.
 
     class MissingAttribute(Exception):
         def __init__(self, kwarg):
@@ -251,6 +259,19 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
         else:
             raise self.MissingAttribute("J_pc")
 
+    def mp(self, Mp):
+        # Mp ... pressure mass matrix
+        if hasattr(self, "_mp"):
+            dolfin.assemble(self._mp, tensor=Mp)
+        else:
+            raise self.MissingAttribute("mp")
+
+    def mu(self, Mu):
+        # Mu ... velocity mass matrix
+        if hasattr(self, "_mu"):
+            dolfin.assemble(self._mu, tensor=Mu)
+        else:
+            raise self.MissingAttribute("mu")
     def ap(self, Ap):
         # Ap ... pressure Laplacian matrix
         if hasattr(self, "_ap"):
@@ -271,31 +292,3 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
             dolfin.assemble(self._kp, tensor=Kp)
         else:
             raise self.MissingAttribute("kp")
-
-    def mp(self, Mp):
-        # Mp ... pressure mass matrix
-        if hasattr(self, "_mp"):
-            dolfin.assemble(self._mp, tensor=Mp)
-        else:
-            raise self.MissingAttribute("mp")
-
-    def mu(self, Mu):
-        # Mu ... velocity mass matrix
-        if hasattr(self, "_mu"):
-            dolfin.assemble(self._mu, tensor=Mu)
-        else:
-            raise self.MissingAttribute("mu")
-
-    def bcs_pcd(self):
-        # Return boundary conditions for PCD preconditioning
-        if hasattr(self, "_bcs_pcd"):
-            return self._bcs_pcd
-        else:
-            raise self.MissingAttribute("bcs_pcd")
-
-    def nu(self):
-        # Hack for fenapack.PCDPC_BMR (needs to know viscosity explicitly)
-        if hasattr(self, "_nu"):
-            return self._nu
-        else:
-            raise self.MissingAttribute("nu")
