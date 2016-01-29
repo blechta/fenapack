@@ -1,6 +1,6 @@
 """Flow over a backward-facing step. Incompressible Navier-Stokes equations are
-solved using Newton/Picard iterative method. Field split inner solver is based
-on PCD preconditioning."""
+solved using Newton/Picard iterative method. Linear solver is based on field
+split PCD preconditioning."""
 
 # Copyright (C) 2015 Martin Rehor
 #
@@ -19,10 +19,16 @@ on PCD preconditioning."""
 # You should have received a copy of the GNU Lesser General Public License
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
+# Begin demo
+
 from dolfin import *
 from fenapack import \
      FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem, \
      StabilizationParameterSD
+
+# -----------------------------------------------------------------------------
+# General setup
+# -----------------------------------------------------------------------------
 
 # Adjust DOLFIN's global parameters
 parameters["form_compiler"]["representation"] = "uflacs"
@@ -34,7 +40,7 @@ rank = MPI.rank(comm)
 set_log_level(INFO if rank == 0 else INFO+1)
 plotting_enabled = True
 if MPI.size(comm) > 1:
-    plotting_enabled = False # Disable interactive plotting in parallel
+    plotting_enabled = False # disable interactive plotting in parallel
 
 # Parse input arguments
 import argparse, sys
@@ -54,18 +60,24 @@ parser.add_argument("--PCD", type=str, dest="pcd_strategy",
                     help="strategy used for PCD preconditioning")
 parser.add_argument("--insolver", type=str, dest="insolver",
                     choices=["lu", "it"], default="lu",
-                    help="direct or iterative inner solver")
+                    help="direct or iterative inner solvers")
 parser.add_argument("--save", action="store_true", dest="save_results",
                     help="save results")
 args = parser.parse_args(sys.argv[1:])
 
-# Prepare mesh
+# -----------------------------------------------------------------------------
+# Geometry setup
+# -----------------------------------------------------------------------------
+
+# Load mesh from file
 mesh = Mesh("../../data/step_domain.xml.gz")
-# Refinement
+
+# Refine the mesh
 numrefs = args.level - 1
 for i in range(numrefs):
     mesh = refine(mesh)
-# Stretching
+
+# Stretch the mesh towards the origin
 if args.stretch != 1.0:
     import numpy as np
     transform_y = lambda y, alpha: np.sign(y)*(abs(y)**alpha)
@@ -80,12 +92,7 @@ if args.stretch != 1.0:
         it += 1
     del it
 
-# Define function spaces (Taylor-Hood)
-V = VectorFunctionSpace(mesh, "Lagrange", 2)
-Q = FunctionSpace(mesh, "Lagrange", 1)
-W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
-
-# Define boundary conditions
+# Define and mark boundaries
 class Gamma0(SubDomain):
     def inside(self, x, on_boundary):
         flag = near(x[1], 0.0) and x[0] <= 0.0
@@ -99,22 +106,34 @@ class Gamma1(SubDomain):
 class Gamma2(SubDomain):
     def inside(self, x, on_boundary):
         return near(x[0], 5.0) and on_boundary
-# Mark boundaries
 boundary_markers = FacetFunction("size_t", mesh)
 boundary_markers.set_all(3)
 Gamma0().mark(boundary_markers, 0)
 Gamma1().mark(boundary_markers, 1)
 Gamma2().mark(boundary_markers, 2)
+
+# -----------------------------------------------------------------------------
+# Function spaces and boundary conditions
+# -----------------------------------------------------------------------------
+
+# Function spaces (Taylor-Hood)
+V = VectorFunctionSpace(mesh, "Lagrange", 2)
+Q = FunctionSpace(mesh, "Lagrange", 1)
+W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
+
 # No-slip boundary condition for velocity
 noslip = Constant((0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, boundary_markers, 0)
+
 # Inflow boundary condition for velocity
 inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0"))
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
+
 # Artificial boundary condition for PCD preconditioning
 zero = Constant(0.0)
 PCD_BND_MARKER = 2 if args.pcd_strategy == "ESW" else 1
 bc_art = DirichletBC(W.sub(1), zero, boundary_markers, PCD_BND_MARKER)
+
 # Collect boundary conditions
 bcs = [bc0, bc1]
 bcs_pcd = [bc_art]
@@ -124,17 +143,24 @@ Re = 2.0/args.viscosity # Reynolds number
 info("Reynolds number: Re = %g" % Re)
 info("Dimension of the function space: %g" % W.dim())
 
-# Define variational problem
+# -----------------------------------------------------------------------------
+# Variational forms
+# -----------------------------------------------------------------------------
+
+# Functions
 u, p = TrialFunctions(W)
 v, q = TestFunctions(W)
-# Solution vector
-w = Function(W)
+w = Function(W) # solution vector
 u_, p_ = split(w)
+
 # Data
 n = FacetNormal(mesh) # outward unit normal
-ds = Measure("ds", subdomain_data=boundary_markers)
 nu = Constant(args.viscosity)
 f = Constant((0.0, 0.0))
+
+# Measures
+ds = Measure("ds", subdomain_data=boundary_markers)
+
 # Nonlinear residual form
 F = (
       nu*inner(grad(u_), grad(v))
@@ -143,6 +169,7 @@ F = (
     - q*div(u_)
     - inner(f, v)
 )*dx
+
 # Newton/Picard correction
 if args.nls == "Newton":
     J = derivative(F, w)
@@ -153,7 +180,9 @@ else:
         - p*div(v)
         - q*div(u)
     )*dx
-# Preconditioner
+
+# Block triangular preconditioner
+J_pc = None
 if args.insolver == "it":
     inu = Constant(1.0/args.viscosity)
     J_pc = (
@@ -166,39 +195,43 @@ if args.insolver == "it":
     delta = StabilizationParameterSD(w.sub(0), nu)
     J_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
 
-# Define variational forms for PCD preconditioner
+# PCD preconditioning
 mp = p*q*dx
 ap = inner(grad(p), grad(q))*dx
 kp = dot(grad(p), u_)*q*dx
 fp = nu*ap + kp
+if args.pcd_strategy == "ESW":
+    fp -= (inner(u_, n)*p*q)*ds(1) # correction of fp due to Robin BC
+
+# -----------------------------------------------------------------------------
+# Problem and solvers
+# -----------------------------------------------------------------------------
 
 # Collect forms to define nonlinear problem
-problem_args = [F, bcs, J]
-problem_args += [J_pc] if args.insolver == "it" else []
+problem_args = [F, bcs, J, J_pc]
 if args.pcd_strategy == "ESW":
-    fp -= (inner(u_, n)*p*q)*ds(1) # Correction of fp due to Robin BC
     problem = NonlinearDiscreteProblem(
         *problem_args, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
 else:
     problem = NonlinearDiscreteProblem(
         *problem_args, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd, nu=args.viscosity)
 
-# Set up field split inner_solver
-inner_solver = FieldSplitSolver(W, "gmres")
-inner_solver.parameters["monitor_convergence"] = True
-inner_solver.parameters["relative_tolerance"] = 1e-6
-inner_solver.parameters["maximum_iterations"] = 100
-inner_solver.parameters["error_on_nonconvergence"] = False
-inner_solver.parameters["gmres"]["restart"] = 100
+# Set up linear field split solver
+fs_solver = FieldSplitSolver(W, "gmres")
+fs_solver.parameters["monitor_convergence"] = True
+fs_solver.parameters["relative_tolerance"] = 1e-6
+fs_solver.parameters["maximum_iterations"] = 100
+fs_solver.parameters["error_on_nonconvergence"] = False
+fs_solver.parameters["gmres"]["restart"] = 100
 # Preconditioner options
-pc_prm = inner_solver.parameters["preconditioner"]
+pc_prm = fs_solver.parameters["preconditioner"]
 pc_prm["side"] = "right"
 pc_prm["fieldsplit"]["type"] = "schur"
 pc_prm["fieldsplit"]["schur"]["fact_type"] = "upper"
 pc_prm["fieldsplit"]["schur"]["precondition"] = "user"
 
 # Set up subsolvers
-OptDB_00, OptDB_11 = inner_solver.get_subopts()
+OptDB_00, OptDB_11 = fs_solver.get_subopts()
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
@@ -242,7 +275,7 @@ def plot_delta(*args, **kwargs):
 
 # Set up nonlinear solver
 hook = plot_delta if args.insolver == "it" else None
-solver = NonlinearSolver(inner_solver, debug_hook=hook)
+solver = NonlinearSolver(fs_solver, debug_hook=hook)
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25
@@ -251,10 +284,12 @@ solver.parameters["error_on_nonconvergence"] = False
 #solver.parameters["relaxation_parameter"] = 0.5
 #solver.parameters["report"] = False
 
-# Compute solution
+# -----------------------------------------------------------------------------
+# Computation and post-processing
+# -----------------------------------------------------------------------------
+
 #set_log_level(PROGRESS)
-timer = Timer("Nonlinear solver (Picard)")
-timer.start()
+timer = Timer("Nonlinear solver")
 solver.solve(problem, w.vector())
 timer.stop()
 
