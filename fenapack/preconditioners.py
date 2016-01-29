@@ -209,7 +209,7 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
             # Make square root of the diagonal and use it for scaling
             diagMu.sqrtabs() # \sqrt{diag(Mu)^{-1}}
             # Extract 01-block, i.e. "grad", from the matrix operator A
-            Bt = A.getSubMatrix(is0, is1)
+            Bt = dolfin.as_backend_type(A).mat().getSubMatrix(is0, is1)
             Bt.diagonalScale(L=diagMu) # scale rows of Bt
             # Get Ap
             self._Ap = Bt.transposeMatMult(Bt) # Ap = Bt^T*Bt
