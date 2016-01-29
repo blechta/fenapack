@@ -102,7 +102,8 @@ class PCDPC_ESW(BasePCDPC):
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
 
-    def set_operators(self, is0, is1, A, P, **schur_approx):
+    def set_operators(self, is0, is1, A, P,
+                      Mp=None, Ap=None, Fp=None, bcs=None):
         """Set operators for the approximate Schur complement matrix
 
         *Arguments*
@@ -126,7 +127,6 @@ class PCDPC_ESW(BasePCDPC):
         """
         timer = dolfin.Timer("FENaPack: PCDPC_ESW set_operators")
         # Prepare bcs for adjusting field split matrix
-        bcs = schur_approx.get("bcs")
         if bcs:
             if not hasattr(bcs, "__iter__"):
                 bcs = [bcs]
@@ -134,7 +134,6 @@ class PCDPC_ESW(BasePCDPC):
         elif not hasattr(self, "_bcs"):
             self._raise_attribute_error("bcs")
         # Update Ap
-        Ap = schur_approx.get("Ap")
         if Ap:
             self._Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
             # Apply boundary conditions along outflow boundary
@@ -145,7 +144,6 @@ class PCDPC_ESW(BasePCDPC):
         elif not hasattr(self, "_Ap"):
             self._raise_attribute_error("Ap")
         # Update Fp
-        Fp = schur_approx.get("Fp")
         if Fp:
             self._Fp = dolfin.as_backend_type(Fp).mat().getSubMatrix(is1, is1)
             # Apply boundary conditions along outflow boundary
@@ -154,7 +152,6 @@ class PCDPC_ESW(BasePCDPC):
         elif not hasattr(self, "_Fp"):
             self._raise_attribute_error("Fp")
         # Update Mp
-        Mp = schur_approx.get("Mp")
         if Mp:
             self._Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
             #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
@@ -177,7 +174,8 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
     any artificial boundary conditions for pressure.
     """
 
-    def set_operators(self, is0, is1, A, P, **schur_approx):
+    def set_operators(self, is0, is1, A, P,
+                      Mp=None, Mu=None, Fp=None, bcs=None):
         """Set operators for the approximate Schur complement matrix
 
         *Arguments*
@@ -186,7 +184,7 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
             A (:py:class:`GenericMatrix`)
                 The system matrix.
             P (:py:class:`GenericMatrix`)
-                The preconditioning matrix.
+                The preconditioning matrix. [NOT USED]
 
         *Keyword arguments*
             Mp (:py:class:`GenericMatrix`)
@@ -200,9 +198,7 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
                 List of boundary conditions that will be applied on Fp.
         """
         timer = dolfin.Timer("FENaPack: UnsteadyPCDPC_ESW set_operators")
-        timer.start()
         # Assemble Ap using A and Mu
-        Mu = schur_approx.get("Mu")
         if Mu:
             # Get velocity mass matrix as PETSc Mat object
             Mu = dolfin.as_backend_type(Mu).mat().getSubMatrix(is0, is0)
@@ -224,10 +220,7 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
         elif not hasattr(self, "_Ap"):
             self._raise_attribute_error("Ap")
         # Update remaining operators in the same way as in the parent class
-        Fp  = schur_approx.get("Fp")
-        Mp  = schur_approx.get("Mp")
-        bcs = schur_approx.get("bcs")
-        PCDPC_ESW.set_operators(self, is0, is1, A, P, Fp=Fp, Mp=Mp, bcs=bcs)
+        PCDPC_ESW.set_operators(self, is0, is1, A, P, Mp=Mp, Fp=Fp, bcs=bcs)
         timer.stop()
 
 class PCDPC_BMR(BasePCDPC):
@@ -253,7 +246,8 @@ class PCDPC_BMR(BasePCDPC):
         # TODO: Try matrix-free!
         # TODO: Is modification of x safe?
 
-    def set_operators(self, is0, is1, A, P, **schur_approx):
+    def set_operators(self, is0, is1, A, P,
+                      Mp=None, Ap=None, Kp=None, nu=None, bcs=None):
         """Set operators for the approximate Schur complement matrix
 
         *Arguments*
@@ -277,15 +271,12 @@ class PCDPC_BMR(BasePCDPC):
                 List of boundary conditions that will be applied on Ap.
         """
         timer = dolfin.Timer("FENaPack: PCDPC_BMR set_operators")
-        timer.start()
         # Update nu
-        nu = schur_approx.get("nu")
         if nu:
             self._nu = nu
         elif not hasattr(self, "_nu"):
             self._raise_attribute_error("nu")
         # Prepare bcs for adjusting field split vector in PC apply
-        bcs = schur_approx.get("bcs")
         if bcs:
             if not hasattr(bcs, "__iter__"):
                 bcs = [bcs]
@@ -294,7 +285,6 @@ class PCDPC_BMR(BasePCDPC):
         elif not hasattr(self, "_bcs"):
             self._raise_attribute_error("bcs")
         # Update Ap
-        Ap = schur_approx.get("Ap")
         if Ap:
             # Apply boundary conditions along inflow boundary
             for bc in self._bcs:
@@ -305,13 +295,11 @@ class PCDPC_BMR(BasePCDPC):
         elif not hasattr(self, "_Ap"):
             self._raise_attribute_error("Ap")
         # Update Kp
-        Kp = schur_approx.get("Kp")
         if Kp:
             self._Kp = dolfin.as_backend_type(Kp).mat().getSubMatrix(is1, is1)
         elif not hasattr(self, "_Kp"):
             self._raise_attribute_error("Kp")
         # Update Mp
-        Mp = schur_approx.get("Mp")
         if Mp:
             self._Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
             #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
