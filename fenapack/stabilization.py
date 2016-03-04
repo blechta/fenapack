@@ -33,48 +33,43 @@ __all__ = ['StabilizationParameterSD']
 #   number (PE), see the implementation below.
 
 _streamline_diffusion_cpp = """
-#include <dolfin/common/Timer.h>
+class StabilizationParameterSD : public Expression
+{
+public:
+  std::shared_ptr<GenericFunction> viscosity;
+  std::shared_ptr<GenericFunction> wind;
 
-namespace dolfin {
+  StabilizationParameterSD() : Expression() { }
 
-  class StabilizationParameterSD : public Expression
+  void eval(Array<double>& values, const Array<double>& x,
+            const ufc::cell& c) const
   {
-  public:
-    std::shared_ptr<GenericFunction> viscosity;
-    std::shared_ptr<GenericFunction> wind;
+    // Get dolfin cell and its diameter
+    // FIXME: Avoid dynamical allocation
+    const std::shared_ptr<const Mesh> mesh = wind->function_space()->mesh();
+    const Cell cell(*mesh, c.index);
+    double h = cell.diameter();
 
-    StabilizationParameterSD() : Expression() { }
+    // Evaluate viscosity at given coordinates
+    // FIXME: Avoid dynamical allocation
+    Array<double> nu(viscosity->value_size());
+    viscosity->eval(nu, x, c);
 
-    void eval(Array<double>& values, const Array<double>& x,
-              const ufc::cell& c) const
-    {
-      Timer timer("FENaPack: SD stabilization");
+    // Compute l2 norm of wind
+    double wind_norm = 0.0;
+    // FIXME: Avoid dynamical allocation
+    Array<double> w(wind->value_size());
+    wind->eval(w, x, c);
+    for (uint i = 0; i < w.size(); ++i)
+      wind_norm += w[i]*w[i];
+    wind_norm = sqrt(wind_norm);
 
-      // Get dolfin cell and its diameter
-      const std::shared_ptr<const Mesh> mesh = wind->function_space()->mesh();
-      const Cell cell(*mesh, c.index);
-      double h = cell.diameter();
-
-      // Evaluate viscosity at given coordinates
-      Array<double> nu(viscosity->value_size());
-      viscosity->eval(nu, x, c);
-
-      // Compute l2 norm of wind
-      double wind_norm = 0.0;
-      Array<double> w(wind->value_size());
-      wind->eval(w, x, c);
-      for (uint i = 0; i < w.size(); ++i)
-        wind_norm += w[i]*w[i];
-      wind_norm = sqrt(wind_norm);
-
-      // Compute Peclet number and evaluate stabilization parameter
-      double PE = 0.5*wind_norm*h/nu[0];
-      values[0] = (PE > 1.0) ? 0.5*h*(1.0 - 1.0/PE)/wind_norm : 0.0;
-    }
-  };
-}
+    // Compute Peclet number and evaluate stabilization parameter
+    double PE = 0.5*wind_norm*h/nu[0];
+    values[0] = (PE > 1.0) ? 0.5*h*(1.0 - 1.0/PE)/wind_norm : 0.0;
+  }
+};
 """
-# TODO: Avoid dynamic allocation of 'dolfin::Cell' and 'dolfin::Array' classes.
 
 def StabilizationParameterSD(wind, viscosity):
     """Returns a subclass of dolfin.Expression defined using the C++ code
