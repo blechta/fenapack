@@ -37,7 +37,7 @@ class NonlinearSolver(dolfin.NewtonSolver):
         """
         self._hook = debug_hook
         factory = dolfin.PETScFactory.instance()
-        dolfin.NewtonSolver.__init__(self, solver, factory)
+        dolfin.NewtonSolver.__init__(self, solver.mpi_comm(), solver, factory)
         # This is temporary hack due to the following bug in DOLFIN:
         #   dolfin::PETScKrylovSolver::parameters_type returns "default"
         #   instead of "krylov_solver".

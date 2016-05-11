@@ -74,6 +74,7 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         """Extend default parameter set of parent class."""
         # Get default parameters for parent class
         prm = dolfin.PETScKrylovSolver().default_parameters()
+        prm.add(dolfin.Parameters("preconditioner"))
         # Add new parameters
         prm["preconditioner"].add("side", "right",
                                   ["left", "right", "symmetric"])

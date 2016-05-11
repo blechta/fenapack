@@ -107,7 +107,8 @@ Gamma2().mark(boundary_markers, 2)
 noslip = Constant((0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, boundary_markers, 0)
 # Inflow boundary condition for velocity
-inflow = Expression(("(1.0 - exp(-5.0*t))*4.0*x[1]*(1.0 - x[1])", "0.0"), t=0.0)
+inflow = Expression(("(1.0 - exp(-5.0*t))*4.0*x[1]*(1.0 - x[1])", "0.0"), t=0.0,
+                    degree=2)
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 # Artificial boundary condition for PCD preconditioning
 zero = Constant(0.0)
@@ -190,7 +191,7 @@ inner_solver_BE.parameters["relative_tolerance"] = 1e-6
 inner_solver_BE.parameters["maximum_iterations"] = 100
 #inner_solver_BE.parameters["nonzero_initial_guess"] = True
 #inner_solver_BE.parameters["error_on_nonconvergence"] = False
-inner_solver_BE.parameters["gmres"]["restart"] = 100
+#inner_solver_BE.parameters["gmres"]["restart"] = 100 # FIXME: Need to set restart through petsc4py
 pc_prm = inner_solver_BE.parameters["preconditioner"]
 pc_prm["side"] = "right"
 pc_prm["fieldsplit"]["type"] = "schur"
@@ -201,7 +202,7 @@ OptDB_00, OptDB_11 = inner_solver_BE.get_subopts()
 # Approximation of 00-block inverse
 OptDB_00["ksp_type"] = "preonly"
 OptDB_00["pc_type"] = "lu"
-#OptDB_00["pc_factor_mat_solver_package"] = "mumps"
+OptDB_00["pc_factor_mat_solver_package"] = "mumps"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
@@ -209,11 +210,11 @@ OptDB_11["pc_python_type"] = "fenapack.UnsteadyPCDPC_ESW"
 # PCD specific options: Ap factorization
 OptDB_11["PCD_Ap_ksp_type"] = "preonly"
 OptDB_11["PCD_Ap_pc_type"] = "lu"
-#OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
 # PCD specific options: Mp factorization
 OptDB_11["PCD_Mp_ksp_type"] = "preonly"
 OptDB_11["PCD_Mp_pc_type"] = "lu"
-#OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
 # Nonlinear problem and solver
 problem_BE = NonlinearDiscreteProblem(
     F_BE, bcs, J_BE, mu=mu, fp=fp_BE, mp=mp, bcs_pcd=bcs_pcd)
@@ -260,7 +261,7 @@ solver_SA.parameters["relative_tolerance"] = 1e-6
 solver_SA.parameters["maximum_iterations"] = 100
 #solver_SA.parameters["nonzero_initial_guess"] = True
 #solver_SA.parameters["error_on_nonconvergence"] = False
-solver_SA.parameters["gmres"]["restart"] = 100
+#solver_SA.parameters["gmres"]["restart"] = 100 # FIXME: Need to set restart through petsc4py
 pc_prm = solver_SA.parameters["preconditioner"]
 pc_prm["side"] = "right"
 pc_prm["fieldsplit"]["type"] = "schur"
@@ -271,7 +272,7 @@ OptDB_00, OptDB_11 = solver_SA.get_subopts()
 # Approximation of 00-block inverse
 OptDB_00["ksp_type"] = "preonly"
 OptDB_00["pc_type"] = "lu"
-#OptDB_00["pc_factor_mat_solver_package"] = "mumps"
+OptDB_00["pc_factor_mat_solver_package"] = "mumps"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
@@ -279,11 +280,11 @@ OptDB_11["pc_python_type"] = "fenapack.UnsteadyPCDPC_ESW"
 # PCD specific options: Ap factorization
 OptDB_11["PCD_Ap_ksp_type"] = "preonly"
 OptDB_11["PCD_Ap_pc_type"] = "lu"
-#OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
 # PCD specific options: Mp factorization
 OptDB_11["PCD_Mp_ksp_type"] = "preonly"
 OptDB_11["PCD_Mp_pc_type"] = "lu"
-#OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
+OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
 # Set operators
 A = assemble(a_SA)
 for bc in bcs:

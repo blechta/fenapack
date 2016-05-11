@@ -109,7 +109,8 @@ Gamma2().mark(boundary_markers, 2)
 noslip = Constant((0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, boundary_markers, 0)
 # Inflow boundary condition for velocity
-inflow = Expression(("(1.0 - exp(-5.0*t))*4.0*x[1]*(1.0 - x[1])", "0.0"), t=0.0)
+inflow = Expression(("(1.0 - exp(-5.0*t))*4.0*x[1]*(1.0 - x[1])", "0.0"), t=0.0,
+                    degree=2)
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 # Artificial boundary condition for PCD preconditioning
 zero = Constant(0.0)
@@ -206,7 +207,7 @@ inner_solver_BE.parameters["monitor_convergence"] = True
 inner_solver_BE.parameters["relative_tolerance"] = 1e-6
 inner_solver_BE.parameters["maximum_iterations"] = 100
 #inner_solver_BE.parameters["error_on_nonconvergence"] = False
-inner_solver_BE.parameters["gmres"]["restart"] = 100
+#inner_solver_BE.parameters["gmres"]["restart"] = 100 # FIXME: Need to set restart through petsc4py
 pc_prm = inner_solver_BE.parameters["preconditioner"]
 pc_prm["side"] = "right"
 pc_prm["fieldsplit"]["type"] = "schur"
@@ -295,7 +296,7 @@ solver_SA.parameters["relative_tolerance"] = 1e-6
 solver_SA.parameters["maximum_iterations"] = 100
 #solver_SA.parameters["nonzero_initial_guess"] = True
 #solver_SA.parameters["error_on_nonconvergence"] = False
-solver_SA.parameters["gmres"]["restart"] = 100
+#solver_SA.parameters["gmres"]["restart"] = 100 # FIXME: Need to set restart through petsc4py
 pc_prm = solver_SA.parameters["preconditioner"]
 pc_prm["side"] = "right"
 pc_prm["fieldsplit"]["type"] = "schur"

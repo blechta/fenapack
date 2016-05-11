@@ -81,10 +81,10 @@ if args.stretch != 1.0:
         it += 1
     del it
 
-# Define function spaces (Taylor-Hood)
-V = VectorFunctionSpace(mesh, "Lagrange", 2)
-Q = FunctionSpace(mesh, "Lagrange", 1)
-W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
+# Define function space (Taylor-Hood)
+P2 = VectorElement("Lagrange", mesh.ufl_cell(), 2)
+P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
+W = FunctionSpace(mesh, P2*P1)
 
 # Define boundary conditions
 class Gamma0(SubDomain):
@@ -113,7 +113,7 @@ Gamma3().mark(boundary_markers, 3)
 noslip = Constant((0.0, 0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, boundary_markers, 0)
 # Inflow boundary condition for velocity
-inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0", "0.0"))
+inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0", "0.0"), degree=2)
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 # Full slip boundary condition
 zero = Constant(0.0)
@@ -195,7 +195,7 @@ inner_solver.parameters["relative_tolerance"] = 1e-6
 inner_solver.parameters["maximum_iterations"] = 100
 #inner_solver.parameters["nonzero_initial_guess"] = True
 inner_solver.parameters["error_on_nonconvergence"] = False
-inner_solver.parameters["gmres"]["restart"] = 100
+#inner_solver.parameters["gmres"]["restart"] = 100 # FIXME: Need to set restart through petsc4py
 # Preconditioner options
 pc_prm = inner_solver.parameters["preconditioner"]
 pc_prm["side"] = "right"

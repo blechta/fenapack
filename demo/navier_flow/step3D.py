@@ -122,17 +122,17 @@ Gamma3().mark(boundary_markers, 3)
 # Function spaces and boundary conditions
 # -----------------------------------------------------------------------------
 
-# Function spaces (Taylor-Hood)
-V = VectorFunctionSpace(mesh, "Lagrange", 2)
-Q = FunctionSpace(mesh, "Lagrange", 1)
-W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
+# Define function space (Taylor-Hood)
+P2 = VectorElement("Lagrange", mesh.ufl_cell(), 2)
+P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
+W = FunctionSpace(mesh, P2*P1)
 
 # No-slip boundary condition for velocity
 noslip = Constant((0.0, 0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, boundary_markers, 0)
 
 # Inflow boundary condition for velocity
-inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0", "0.0"))
+inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0", "0.0"), degree=2)
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 
 # Full slip boundary condition
@@ -232,7 +232,7 @@ fs_solver.parameters["relative_tolerance"] = 1e-6
 fs_solver.parameters["maximum_iterations"] = 100
 #fs_solver.parameters["nonzero_initial_guess"] = True
 fs_solver.parameters["error_on_nonconvergence"] = False
-fs_solver.parameters["gmres"]["restart"] = 100
+#fs_solver.parameters["gmres"]["restart"] = 100 # FIXME: Need to set restart through petsc4py
 # Preconditioner options
 pc_prm = fs_solver.parameters["preconditioner"]
 pc_prm["side"] = "right"

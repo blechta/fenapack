@@ -70,10 +70,10 @@ if args.stretch != 1.0:
         it += 1
     del it
 
-# Define function spaces (Taylor-Hood)
-V = VectorFunctionSpace(mesh, "Lagrange", 2)
-Q = FunctionSpace(mesh, "Lagrange", 1)
-W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
+# Define function space (Taylor-Hood)
+P2 = VectorElement("Lagrange", mesh.ufl_cell(), 2)
+P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
+W = FunctionSpace(mesh, P2*P1)
 
 # Define boundary conditions
 class Gamma0(SubDomain):
@@ -99,7 +99,7 @@ Gamma2().mark(boundary_markers, 2)
 noslip = Constant((0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, boundary_markers, 0)
 # Inflow boundary condition for velocity
-inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0"))
+inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0"), degree=2)
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 # Collect boundary conditions
 bcs = [bc0, bc1]
