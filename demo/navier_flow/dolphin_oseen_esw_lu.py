@@ -1,5 +1,5 @@
 # Copyright (C) 2007 Kristian B. Oelgaard, 2008-2009 Anders Logg
-# Copyright (C) 2014 Jan Blechta
+# Copyright (C) 2014 Jan Blechta, 2015-2016 Martin Rehor
 #
 # This file is part of FENaPack and is based on file from DOLFIN.
 #

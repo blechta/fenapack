@@ -2,7 +2,7 @@
 iterative field split solver with block diagonal preconditioning. Inner linear
 solves are performed by LU solver."""
 
-# Copyright (C) 2015 Martin Rehor
+# Copyright (C) 2015-2016 Martin Rehor
 #
 # This file is part of FENaPack.
 #

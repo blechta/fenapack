@@ -3,7 +3,7 @@ solved using Oseen approximation. Field split solver is based on PCD
 preconditioning proposed by Elman, Silvester and Wathen. All inner linear
 solves are performed by LU solver."""
 
-# Copyright (C) 2015 Martin Rehor
+# Copyright (C) 2015-2016 Martin Rehor
 #
 # This file is part of FENaPack.
 #
