@@ -48,7 +48,7 @@ public:
     // FIXME: Avoid dynamical allocation
     const std::shared_ptr<const Mesh> mesh = wind->function_space()->mesh();
     const Cell cell(*mesh, c.index);
-    double h = cell.diameter();
+    double h = cell.h();
 
     // Evaluate viscosity at given coordinates
     // FIXME: Avoid dynamical allocation

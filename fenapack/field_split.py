@@ -74,7 +74,12 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         """Extend default parameter set of parent class."""
         # Get default parameters for parent class
         prm = dolfin.PETScKrylovSolver().default_parameters()
+        # Hack for development version of DOLFIN
+        if not prm.has_parameter_set("gmres"):
+            prm.add(dolfin.Parameters("gmres"))
+            prm["gmres"].add("restart", 100)
         # Add new parameters
+        prm.add(dolfin.Parameters("preconditioner"))
         prm["preconditioner"].add("side", "right",
                                   ["left", "right", "symmetric"])
         prm_fs = dolfin.Parameters("fieldsplit")
@@ -157,6 +162,9 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
           prm["fieldsplit"]["schur"]["fact_type"]
         OptDB["pc_fieldsplit_schur_precondition"] = \
           prm["fieldsplit"]["schur"]["precondition"]
+        # Hack for development version of DOLFIN
+        OptDB["ksp_gmres_restart"] = \
+          self.parameters["gmres"]["restart"]
 
 if __name__ == "__main__":
     # TODO: Write proper unit test.

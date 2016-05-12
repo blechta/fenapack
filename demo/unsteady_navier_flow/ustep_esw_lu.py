@@ -107,7 +107,8 @@ Gamma2().mark(boundary_markers, 2)
 noslip = Constant((0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, boundary_markers, 0)
 # Inflow boundary condition for velocity
-inflow = Expression(("(1.0 - exp(-5.0*t))*4.0*x[1]*(1.0 - x[1])", "0.0"), t=0.0)
+inflow = Expression(("(1.0 - exp(-5.0*t))*4.0*x[1]*(1.0 - x[1])", "0.0"),
+                        t=0.0, element=V.ufl_element())
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 # Artificial boundary condition for PCD preconditioning
 zero = Constant(0.0)
@@ -307,8 +308,8 @@ u, p = w.split()
 u.rename("v", "velocity")
 p.rename("p", "pressure")
 if args.save_results:
-    vfile << (u, t)
-    pfile << (p, t)
+    vfile.write(u, t)
+    pfile.write(p, t)
 if plotting_enabled:
     plot(u, title="velocity @ t = %g" % t)
     plot(p, title="pressure @ t = %g" % t, scale=2.0)
@@ -341,8 +342,8 @@ while t < T_END:
     w0.assign(w)
     # Save and plot results
     if args.save_results:
-        vfile << (u, t)
-        pfile << (p, t)
+        vfile.write(u, t)
+        pfile.write(p, t)
     if plotting_enabled:
         plot(u, title="velocity @ t = %g" % t)
         plot(p, title="pressure @ t = %g" % t, scale=2.0)

@@ -119,6 +119,8 @@ Gamma2().mark(boundary_markers, 2)
 # Function spaces (Taylor-Hood)
 V = VectorFunctionSpace(mesh, "Lagrange", 2)
 Q = FunctionSpace(mesh, "Lagrange", 1)
+#V = VectorFunctionSpace(mesh, "CR", 1)
+#Q = FunctionSpace(mesh, "DG", 0)
 W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
 
 # No-slip boundary condition for velocity
@@ -126,7 +128,7 @@ noslip = Constant((0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, boundary_markers, 0)
 
 # Inflow boundary condition for velocity
-inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0"))
+inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0"), element=V.ufl_element())
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 
 # Artificial boundary condition for PCD preconditioning
@@ -284,6 +286,9 @@ solver.parameters["error_on_nonconvergence"] = False
 #solver.parameters["relaxation_parameter"] = 0.5
 #solver.parameters["report"] = False
 
+#problem = NonlinearVariationalProblem(F, w, bcs, J)
+#solver = NonlinearVariationalSolver(problem)
+
 # -----------------------------------------------------------------------------
 # Computation and post-processing
 # -----------------------------------------------------------------------------
@@ -291,6 +296,7 @@ solver.parameters["error_on_nonconvergence"] = False
 #set_log_level(PROGRESS)
 timer = Timer("Nonlinear solver")
 solver.solve(problem, w.vector())
+#solver.solve()
 timer.stop()
 
 # Split the mixed solution using a shallow copy
@@ -301,8 +307,8 @@ p.rename("p", "pressure")
 # Save solution in XDMF format
 if args.save_results:
     filename = sys.argv[0][:-3]
-    File("results/%s_velocity.xdmf" % filename) << u
-    File("results/%s_pressure.xdmf" % filename) << p
+    XDMFFile(comm, "results/%s_velocity.xdmf" % filename).write(u)
+    XDMFFile(comm, "results/%s_pressure.xdmf" % filename).write(p)
 
 # Print summary of timings
 info("")

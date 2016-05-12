@@ -81,12 +81,13 @@ class NonlinearSolver(dolfin.NewtonSolver):
         convergence_criterion = self.parameters["convergence_criterion"]
         maxiter = self.parameters["maximum_iterations"]
 
-        solver_type = self.parameters["linear_solver"]
-        pc_type = self.parameters["preconditioner"]
-        if not self._solver:
-            self._solver = dolfin.LinearSolver(solver_type, pc_type)
+        assert hasattr(self, "_solver")
+        # solver_type = self.parameters["linear_solver"]
+        # pc_type = self.parameters["preconditioner"]
+        # if not self._solver:
+        #     self._solver = dolfin.LinearSolver(solver_type, pc_type)
 
-        self._solver.update_parameters(self.parameters[self._solver.parameter_type()])
+        # self._solver.update_parameters(self.parameters[self._solver.parameter_type()])
 
         krylov_iterations = 0
         self._newton_iteration = 0
