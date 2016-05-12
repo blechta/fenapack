@@ -127,14 +127,14 @@ class PCDPC_ESW(BasePCDPC):
         """
         timer = dolfin.Timer("FENaPack: PCDPC_ESW set_operators")
         # Prepare bcs for adjusting field split matrix
-        if bcs:
+        if bcs is not None:
             if not hasattr(bcs, "__iter__"):
                 bcs = [bcs]
             self._bcs = [SubfieldBC(bc, is1) for bc in bcs]
         elif not hasattr(self, "_bcs"):
             self._raise_attribute_error("bcs")
         # Update Ap
-        if Ap:
+        if Ap is not None:
             self._Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
             # Apply boundary conditions along outflow boundary
             for bc in self._bcs:
@@ -144,7 +144,7 @@ class PCDPC_ESW(BasePCDPC):
         elif not hasattr(self, "_Ap"):
             self._raise_attribute_error("Ap")
         # Update Fp
-        if Fp:
+        if Fp is not None:
             self._Fp = dolfin.as_backend_type(Fp).mat().getSubMatrix(is1, is1)
             # Apply boundary conditions along outflow boundary
             for bc in self._bcs:
@@ -199,7 +199,7 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
         """
         timer = dolfin.Timer("FENaPack: UnsteadyPCDPC_ESW set_operators")
         # Assemble Ap using A and Mu
-        if Mu:
+        if Mu is not None:
             # Get velocity mass matrix as PETSc Mat object
             Mu = dolfin.as_backend_type(Mu).mat().getSubMatrix(is0, is0)
             # Get diagonal of the velocity mass matrix
@@ -272,12 +272,12 @@ class PCDPC_BMR(BasePCDPC):
         """
         timer = dolfin.Timer("FENaPack: PCDPC_BMR set_operators")
         # Update nu
-        if nu:
+        if nu is not None:
             self._nu = nu
         elif not hasattr(self, "_nu"):
             self._raise_attribute_error("nu")
         # Prepare bcs for adjusting field split vector in PC apply
-        if bcs:
+        if bcs is not None:
             if not hasattr(bcs, "__iter__"):
                 bcs = [bcs]
             self._bcs = bcs
@@ -285,7 +285,7 @@ class PCDPC_BMR(BasePCDPC):
         elif not hasattr(self, "_bcs"):
             self._raise_attribute_error("bcs")
         # Update Ap
-        if Ap:
+        if Ap is not None:
             # Apply boundary conditions along inflow boundary
             for bc in self._bcs:
                 bc.apply(Ap)
@@ -295,12 +295,12 @@ class PCDPC_BMR(BasePCDPC):
         elif not hasattr(self, "_Ap"):
             self._raise_attribute_error("Ap")
         # Update Kp
-        if Kp:
+        if Kp is not None:
             self._Kp = dolfin.as_backend_type(Kp).mat().getSubMatrix(is1, is1)
         elif not hasattr(self, "_Kp"):
             self._raise_attribute_error("Kp")
         # Update Mp
-        if Mp:
+        if Mp is not None:
             self._Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
             #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
             self._ksp_Mp.setOperators(self._Mp)
