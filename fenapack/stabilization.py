@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Martin Rehor
+# Copyright (C) 2015-2016 Martin Rehor
 #
 # This file is part of FENaPack.
 #

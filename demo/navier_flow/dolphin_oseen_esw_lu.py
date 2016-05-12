@@ -1,5 +1,5 @@
 # Copyright (C) 2007 Kristian B. Oelgaard, 2008-2009 Anders Logg
-# Copyright (C) 2014 Jan Blechta
+# Copyright (C) 2014 Jan Blechta, 2015-2016 Martin Rehor
 #
 # This file is part of FENaPack and is based on file from DOLFIN.
 #
@@ -67,10 +67,10 @@ sub_domains = MeshFunction("size_t", mesh, "../../data/dolfin_fine_subdomains.xm
 #     sub_domains_old.append(sub_domains)
 #     sub_domains = adapt(sub_domains, mesh)
 
-# Define function spaces (Taylor-Hood)
-V = VectorFunctionSpace(mesh, "Lagrange", 2)
-Q = FunctionSpace(mesh, "Lagrange", 1)
-W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
+# Define function space (Taylor-Hood)
+P2 = VectorElement("Lagrange", mesh.ufl_cell(), 2)
+P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
+W = FunctionSpace(mesh, P2*P1)
 info("Dimension of the function space %g" % W.dim())
 
 # No-slip boundary condition for velocity
@@ -78,7 +78,7 @@ noslip = Constant((0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, sub_domains, 0)
 
 # Inflow boundary condition for velocity
-inflow = Expression(("-sin(x[1]*pi)", "0.0"))
+inflow = Expression(("-sin(x[1]*pi)", "0.0"), degree=2)
 bc1 = DirichletBC(W.sub(0), inflow, sub_domains, 1)
 
 # Boundary conditions for PCD preconditioning
@@ -99,7 +99,7 @@ a  = (nu*inner(grad(u), grad(v)) - p*div(v) - q*div(u))*dx
 L  = inner(f, v)*dx
 
 # Add Oseen-like convection
-u0 = Function(V)
+u0 = Function(FunctionSpace(mesh, P2))
 a += inner(dot(grad(u), u0), v)*dx
 
 # Assemble system of linear equations
@@ -125,7 +125,7 @@ solver.parameters["relative_tolerance"] = 1e-6
 solver.parameters["maximum_iterations"] = 100
 solver.parameters["nonzero_initial_guess"] = True
 solver.parameters["error_on_nonconvergence"] = False
-solver.parameters["gmres"]["restart"] = 100
+#solver.parameters["gmres"]["restart"] = 100 # FIXME: Need to set restart through petsc4py
 # Preconditioner options
 pc_prm = solver.parameters["preconditioner"]
 pc_prm["side"] = "right"

@@ -3,7 +3,7 @@ solved using Oseen approximation. Field split solver is based on PCD
 preconditioning proposed by Elman, Silvester and Wathen. All inner linear
 solves are performed by LU solver."""
 
-# Copyright (C) 2015 Martin Rehor
+# Copyright (C) 2015-2016 Martin Rehor
 #
 # This file is part of FENaPack.
 #
@@ -70,10 +70,10 @@ if args.stretch != 1.0:
         it += 1
     del it
 
-# Define function spaces (Taylor-Hood)
-V = VectorFunctionSpace(mesh, "Lagrange", 2)
-Q = FunctionSpace(mesh, "Lagrange", 1)
-W = FunctionSpace(mesh, MixedElement([V.ufl_element(), Q.ufl_element()]))
+# Define function space (Taylor-Hood)
+P2 = VectorElement("Lagrange", mesh.ufl_cell(), 2)
+P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
+W = FunctionSpace(mesh, P2*P1)
 
 # Define boundary conditions
 class Gamma0(SubDomain):
@@ -99,7 +99,7 @@ Gamma2().mark(boundary_markers, 2)
 noslip = Constant((0.0, 0.0))
 bc0 = DirichletBC(W.sub(0), noslip, boundary_markers, 0)
 # Inflow boundary condition for velocity
-inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0"))
+inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0"), degree=2)
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 # Artificial boundary condition for PCD preconditioning
 zero = Constant(0.0)
@@ -123,7 +123,7 @@ f = Constant((0.0, 0.0))
 a = (nu*inner(grad(u), grad(v)) - p*div(v) - q*div(u))*dx
 L = inner(f, v)*dx
 # Add convective term (Oseen approximation)
-u0 = Function(V)
+u0 = Function(FunctionSpace(mesh, P2))
 a += inner(dot(grad(u), u0), v)*dx
 # Assemble system of linear equations
 A, b = assemble_system(a, L, bcs)
@@ -150,7 +150,7 @@ solver.parameters["relative_tolerance"] = 1e-6
 solver.parameters["maximum_iterations"] = 100
 solver.parameters["nonzero_initial_guess"] = True
 solver.parameters["error_on_nonconvergence"] = False
-solver.parameters["gmres"]["restart"] = 100
+#solver.parameters["gmres"]["restart"] = 100 # FIXME: Need to set restart through petsc4py
 # Preconditioner options
 pc_prm = solver.parameters["preconditioner"]
 pc_prm["side"] = "right"
