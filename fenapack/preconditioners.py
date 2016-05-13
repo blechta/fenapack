@@ -83,6 +83,17 @@ class BasePCDPC(object):
         # Return created ksp
         return ksp
 
+
+    def _z(self, v):
+        """Return cached duplicate of PETSc Vec v."""
+        try:
+            return self._z_vec
+        except AttributeError:
+            self._z_vec = v.duplicate()
+            return self._z_vec
+
+
+
 class PCDPC_ESW(BasePCDPC):
     """This class implements PCD preconditioning proposed by Elman, Silvester
     and Wathen (2014)."""
@@ -94,13 +105,17 @@ class PCDPC_ESW(BasePCDPC):
             $y = \hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x$.
         """
         timer = dolfin.Timer("FENaPack: PCDPC_ESW apply")
-        timer.start()
+
+        # Fetch cached duplicate of x
+        z = self._z(x)
+
+        # Apply PCD
         self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
-        self._Fp.mult(-y, x)     # x = -F_p y
-        self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
+        self._Fp.mult(-y, z)     # z = -F_p y
+        self._ksp_Ap.solve(z, y) # y = A_p^{-1} z
+
         timer.stop()
-        # TODO: Try matrix-free!
-        # TODO: Is modification of x safe?
+
 
     def set_operators(self, is0, is1, A, P,
                       Mp=None, Ap=None, Fp=None, bcs=None):
@@ -234,17 +249,22 @@ class PCDPC_BMR(BasePCDPC):
             $y = \hat{S}^{-1} x = -M_p^{-1} F_p A_p^{-1} x$.
         """
         timer = dolfin.Timer("FENaPack: PCDPC_BMR apply")
-        x0 = x.copy()
+
         # Apply subfield boundary conditions to rhs
         for bc in self._subfield_bcs:
             bc.apply(x)
+
+        # Fetch cached duplicate of x
+        z = self._z(x)
+
+        # Apply PCD
         self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
-        self._Kp.mult(-y, x)
-        x.axpy(-self._nu, x0)    # x = -K_p y - nu*x0
-        self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
+        self._Kp.mult(-y, z)
+        z.axpy(-self._nu, x)    # z = -K_p y - nu*x
+        self._ksp_Mp.solve(z, y) # y = M_p^{-1} z
+
         timer.stop()
-        # TODO: Try matrix-free!
-        # TODO: Is modification of x safe?
+
 
     def set_operators(self, is0, is1, A, P,
                       Mp=None, Ap=None, Kp=None, nu=None, bcs=None):
