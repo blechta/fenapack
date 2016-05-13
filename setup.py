@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from distutils.core import setup
-import re, os, glob
+import re, os, glob, subprocess, warnings
 
 version = re.findall('__version__ = "(.*)"',
                      open('fenapack/__init__.py', 'r').read())[0]
@@ -20,6 +20,11 @@ classifiers = CLASSIFIERS.split('\n')[1:-1]
 
 demofiles = glob.glob(os.path.join("demo", "*", "*.py"))
 
+# Download meshes
+if subprocess.call(os.path.join(os.path.curdir, "download-meshes")) != 0:
+    warnings.warn("Download of meshes failed...")
+datafiles = glob.glob(os.path.join("data", "*"))
+
 setup(name="FENaPack",
       version=version,
       author="Jan Blechta, Martin Řehoř",
@@ -32,5 +37,5 @@ setup(name="FENaPack",
       package_dir={"fenapack": "fenapack"},
       package_data={"fenapack": ["*.h"]},
       data_files=[(os.path.join("share", "fenapack", os.path.dirname(f)), [f])
-                  for f in demofiles],
+                  for f in demofiles+datafiles],
     )
