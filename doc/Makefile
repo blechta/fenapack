@@ -19,7 +19,28 @@ ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) sou
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) source
 
-.PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest gettext
+.PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest gettext apidoc gh-pages
+
+gh-pages: | apidoc html
+	# Check that working tree is clean
+	git diff-index --quiet HEAD || (echo 'There are uncommited changes!' && exit 1)
+
+    # Delete everything except doc/ and .git/
+	find .. -maxdepth 1 -mindepth 1 ! -name doc ! -name .git -exec rm -rf {} +
+
+	# Move html build to root dir and delete the rest
+	mv build/html/* ../
+	rm -rf * .[!.]*
+
+	# Commit everything to gh-pages branch
+	git reset --mixed gh-pages
+	cd ../ && git add *
+	git commit -m"Generate doc"
+
+	echo "\nType 'git push origin gh-pages' to push generated doc"
+
+apidoc:
+	./generate-apidoc
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"

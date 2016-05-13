@@ -1,9 +1,9 @@
 First you need to be able to import FEnaPack.
 
-To generate documentation of API run::
+To generate API doc, build HTML and commit it to gh-pages branch::
 
-    ./generate-apidoc
+    make gh-pages
+    git push origin gh-pages
 
-To build the documentation run::
-
-    make html
+FIXME: The drawback is that all untracked/ignored files are lost
+during this procedure. So be careful!
