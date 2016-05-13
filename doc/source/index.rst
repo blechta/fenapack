@@ -1,6 +1,6 @@
 .. title:: FEnaPack
 
-.. include:: ../../README.txt
+.. include:: ../../README.rst
 
 
 Preliminaries
