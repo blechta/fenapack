@@ -1,0 +1,54 @@
+fenapack package
+================
+
+Submodules
+----------
+
+fenapack.field_split module
+---------------------------
+
+.. automodule:: fenapack.field_split
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+fenapack.field_split_utils module
+---------------------------------
+
+.. automodule:: fenapack.field_split_utils
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+fenapack.nonlinear_solvers module
+---------------------------------
+
+.. automodule:: fenapack.nonlinear_solvers
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+fenapack.preconditioners module
+-------------------------------
+
+.. automodule:: fenapack.preconditioners
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+fenapack.stabilization module
+-----------------------------
+
+.. automodule:: fenapack.stabilization
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: fenapack
+    :members:
+    :undoc-members:
+    :show-inheritance:

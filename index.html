@@ -1,0 +1,196 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>FEnaPack &mdash; FEnaPack 1.7.0dev documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.7.0dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="FEnaPack 1.7.0dev documentation" href="#" />
+    <link rel="next" title="fenapack package" href="api-doc/fenapack.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="api-doc/fenapack.html" title="fenapack package"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">FEnaPack 1.7.0dev documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="fenapack-fenics-navier-stokes-preconditioning-package">
+<h1>FENaPack - FEniCS Navier-Stokes preconditioning package<a class="headerlink" href="#fenapack-fenics-navier-stokes-preconditioning-package" title="Permalink to this headline">¶</a></h1>
+<a class="reference external image-reference" href="https://travis-ci.org/blechta/fenapack"><img alt="https://travis-ci.org/blechta/fenapack.svg?branch=master" src="https://travis-ci.org/blechta/fenapack.svg?branch=master" /></a>
+<p>FENaPack is a package implementing preconditioners for Navier-Stokes
+problem using FEniCS and PETSc packages. In particular, PCD
+(pressure-convection-diffussion) preconditioner <a class="footnote-reference" href="#id2" id="id1">[1]</a> is implemented.</p>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Elman H. C., Silvester D. J., Wathen A. J., <em>Finite Elements and Fast
+Iterative Solvers: With Application in Incompressible Fluid Dynamics</em>.
+Oxford University Press 2005. 2nd edition 2014.</td></tr>
+</tbody>
+</table>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>To use FENaPack you need FEniCS (version 1.7.0dev) compiled with PETSc
+and petsc4py. To be able to import FENaPack functions, update your PYTHONPATH
+using &#8216;fenapack.conf&#8217; and do the usual setup needed to run FEniCS.</p>
+<p>Meshes for running demos can be downloaded from FEniCS project
+website by executing &#8216;download-meshes&#8217; script. Demos can be run
+by navigating to a particular demo directory and typing:</p>
+<div class="highlight-python"><div class="highlight"><pre>NP=4
+mpirun -n $NP python demo_foo-bar.py [-h]
+</pre></div>
+</div>
+</div>
+<div class="section" id="authors">
+<h2>Authors<a class="headerlink" href="#authors" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Jan Blechta &lt;<a class="reference external" href="mailto:blechta&#37;&#52;&#48;karlin&#46;mff&#46;cuni&#46;cz">blechta<span>&#64;</span>karlin<span>&#46;</span>mff<span>&#46;</span>cuni<span>&#46;</span>cz</a>&gt;</li>
+<li>Martin Řehoř &lt;<a class="reference external" href="mailto:rehor&#37;&#52;&#48;karlin&#46;mff&#46;cuni&#46;cz">rehor<span>&#64;</span>karlin<span>&#46;</span>mff<span>&#46;</span>cuni<span>&#46;</span>cz</a>&gt;</li>
+</ul>
+</div>
+<div class="section" id="license">
+<h2>License<a class="headerlink" href="#license" title="Permalink to this headline">¶</a></h2>
+<p>FENaPack is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.</p>
+<p>FENaPack is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.</p>
+<p>You should have received a copy of the GNU Lesser General Public License
+along with FENaPack. If not, see &lt;<a class="reference external" href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a>&gt;.</p>
+</div>
+<div class="section" id="preliminaries">
+<h2>Preliminaries<a class="headerlink" href="#preliminaries" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="installation">
+<h3>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="help-and-support">
+<h3>Help and support<a class="headerlink" href="#help-and-support" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="development-and-reporting-bugs">
+<h3>Development and reporting bugs<a class="headerlink" href="#development-and-reporting-bugs" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="manual-and-api-reference">
+<h2>Manual and API Reference<a class="headerlink" href="#manual-and-api-reference" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api-doc/fenapack.html">API Reference</a><ul class="simple">
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">FENaPack - FEniCS Navier-Stokes preconditioning package</a><ul>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#authors">Authors</a></li>
+<li><a class="reference internal" href="#license">License</a></li>
+<li><a class="reference internal" href="#preliminaries">Preliminaries</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#help-and-support">Help and support</a></li>
+<li><a class="reference internal" href="#development-and-reporting-bugs">Development and reporting bugs</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#manual-and-api-reference">Manual and API Reference</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="api-doc/fenapack.html"
+                        title="next chapter">fenapack package</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="api-doc/fenapack.html" title="fenapack package"
+             >next</a> |</li>
+        <li><a href="#">FEnaPack 1.7.0dev documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>

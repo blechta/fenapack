@@ -1,0 +1,473 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>fenapack package &mdash; FEnaPack 1.7.0dev documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.7.0dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="FEnaPack 1.7.0dev documentation" href="../index.html" />
+    <link rel="prev" title="FENaPack - FEniCS Navier-Stokes preconditioning package" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="FENaPack - FEniCS Navier-Stokes preconditioning package"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="fenapack-package">
+<h1>fenapack package<a class="headerlink" href="#fenapack-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-fenapack.field_split">
+<span id="fenapack-field-split-module"></span><h2>fenapack.field_split module<a class="headerlink" href="#module-fenapack.field_split" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="fenapack.field_split.FieldSplitSolver">
+<em class="property">class </em><tt class="descclassname">fenapack.field_split.</tt><tt class="descname">FieldSplitSolver</tt><big>(</big><em>space</em>, <em>method</em>, <em>options_prefix=''</em><big>)</big><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">dolfin.cpp.la.PETScKrylovSolver</span></tt></p>
+<p>This class derives from &#8216;dolfin.PETScKrylovSolver&#8217; and implements
+field split preconditioner for saddle point problems like incompressible
+[Navier-]Stokes flow.</p>
+<dl class="method">
+<dt id="fenapack.field_split.FieldSplitSolver.default_parameters">
+<tt class="descname">default_parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver.default_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver.default_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extend default parameter set of parent class.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenapack.field_split.FieldSplitSolver.get_subopts">
+<tt class="descname">get_subopts</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver.get_subopts"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver.get_subopts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return option databases enabling to set up subsolvers.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenapack.field_split.FieldSplitSolver.set_operator">
+<tt class="descname">set_operator</tt><big>(</big><em>A</em><big>)</big><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver.set_operator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver.set_operator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="fenapack.field_split.FieldSplitSolver.set_operators">
+<tt class="descname">set_operators</tt><big>(</big><em>A</em>, <em>P</em>, <em>**schur_approx</em><big>)</big><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver.set_operators" title="Permalink to this definition">¶</a></dt>
+<dd><p>A and P represents a system matrix operator and a preconditioner in the
+usual sense.</p>
+<p><strong>Overloaded versions</strong></p>
+<blockquote>
+<div>Optional keyword arguments in &#8216;schur_approx&#8217; can be used to build an
+approximate Schur complement matrix. These optional arguments  differ
+depending on the strategy used for preconditioning.</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="fenapack-field-split-utils-module">
+<h2>fenapack.field_split_utils module<a class="headerlink" href="#fenapack-field-split-utils-module" title="Permalink to this headline">¶</a></h2>
+<span class="target" id="module-fenapack.field_split_utils"></span><dl class="function">
+<dt id="fenapack.field_split_utils.dofmap_dofs_is">
+<tt class="descclassname">fenapack.field_split_utils.</tt><tt class="descname">dofmap_dofs_is</tt><big>(</big><em>GenericDofMap dofmap</em><big>)</big> &rarr; IS<a class="headerlink" href="#fenapack.field_split_utils.dofmap_dofs_is" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts DofMap::dofs() to IS</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="fenapack.field_split_utils.SubfieldBC">
+<em class="property">class </em><tt class="descclassname">fenapack.field_split_utils.</tt><tt class="descname">SubfieldBC</tt><big>(</big><em>dolfin::SubfieldBC self</em>, <em>DirichletBC bc</em>, <em>IS const subfield_is</em><big>)</big><a class="headerlink" href="#fenapack.field_split_utils.SubfieldBC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Proxy of C++ dolfin::SubfieldBC class</p>
+<dl class="method">
+<dt id="fenapack.field_split_utils.SubfieldBC.apply">
+<tt class="descname">apply</tt><big>(</big><big>)</big><a class="headerlink" href="#fenapack.field_split_utils.SubfieldBC.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>SubfieldBC_apply(SubfieldBC self, Vec x)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenapack.field_split_utils.SubfieldBC.apply_fdm">
+<tt class="descname">apply_fdm</tt><big>(</big><big>)</big><a class="headerlink" href="#fenapack.field_split_utils.SubfieldBC.apply_fdm" title="Permalink to this definition">¶</a></dt>
+<dd><p>SubfieldBC_apply_fdm(SubfieldBC self, Mat A)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenapack.field_split_utils.SubfieldBC.get_boundary_values">
+<tt class="descname">get_boundary_values</tt><big>(</big><big>)</big><a class="headerlink" href="#fenapack.field_split_utils.SubfieldBC.get_boundary_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>SubfieldBC_get_boundary_values(SubfieldBC self)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="fenapack.field_split_utils.SubfieldBC.thisown">
+<tt class="descname">thisown</tt><a class="headerlink" href="#fenapack.field_split_utils.SubfieldBC.thisown" title="Permalink to this definition">¶</a></dt>
+<dd><p>The membership flag</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-fenapack.nonlinear_solvers">
+<span id="fenapack-nonlinear-solvers-module"></span><h2>fenapack.nonlinear_solvers module<a class="headerlink" href="#module-fenapack.nonlinear_solvers" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="fenapack.nonlinear_solvers.NonlinearSolver">
+<em class="property">class </em><tt class="descclassname">fenapack.nonlinear_solvers.</tt><tt class="descname">NonlinearSolver</tt><big>(</big><em>solver</em>, <em>debug_hook=None</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearSolver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearSolver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">dolfin.cpp.la.NewtonSolver</span></tt></p>
+<p>This class derives from &#8216;dolfin.NewtonSolver&#8217; and takes linear solver as
+the first input argument plus one optional keyword argument &#8216;debug_hook&#8217;
+which may specify a function executed on every convergence test during
+successive nonlinear iterations as defined by</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>&#8216;dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem,</dt>
+<dd>size_t iteration)&#8217;.</dd>
+</dl>
+</div></blockquote>
+<p>Provided function takes the same arguments.</p>
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearSolver.converged">
+<tt class="descname">converged</tt><big>(</big><em>r</em>, <em>problem</em>, <em>newton_iteration</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearSolver.converged"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearSolver.converged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearSolver.solve">
+<tt class="descname">solve</tt><big>(</big><em>problem</em>, <em>x</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearSolver.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearSolver.solve" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem">
+<em class="property">class </em><tt class="descclassname">fenapack.nonlinear_solvers.</tt><tt class="descname">NonlinearDiscreteProblem</tt><big>(</big><em>F</em>, <em>bcs</em>, <em>J</em>, <em>J_pc=None</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">dolfin.cpp.la.NonlinearProblem</span></tt></p>
+<p>Class for interfacing with nonlinear solver.</p>
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.F">
+<tt class="descname">F</tt><big>(</big><em>b</em>, <em>x</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.F"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.F" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.J">
+<tt class="descname">J</tt><big>(</big><em>A</em>, <em>x</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.J"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.J" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.J_pc">
+<tt class="descname">J_pc</tt><big>(</big><em>P</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.J_pc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.J_pc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="exception">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.MissingAttribute">
+<em class="property">exception </em><tt class="descname">MissingAttribute</tt><big>(</big><em>kwarg</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.MissingAttribute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.MissingAttribute" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.ap">
+<tt class="descclassname">NonlinearDiscreteProblem.</tt><tt class="descname">ap</tt><big>(</big><em>Ap</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.ap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.ap" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.fp">
+<tt class="descclassname">NonlinearDiscreteProblem.</tt><tt class="descname">fp</tt><big>(</big><em>Fp</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.fp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.fp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.kp">
+<tt class="descclassname">NonlinearDiscreteProblem.</tt><tt class="descname">kp</tt><big>(</big><em>Kp</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.kp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.kp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.linear_solver_setup">
+<tt class="descclassname">NonlinearDiscreteProblem.</tt><tt class="descname">linear_solver_setup</tt><big>(</big><em>solver</em>, <em>A</em>, <em>it</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.linear_solver_setup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.linear_solver_setup" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.mp">
+<tt class="descclassname">NonlinearDiscreteProblem.</tt><tt class="descname">mp</tt><big>(</big><em>Mp</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.mp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.mp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.mu">
+<tt class="descclassname">NonlinearDiscreteProblem.</tt><tt class="descname">mu</tt><big>(</big><em>Mu</em><big>)</big><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.mu"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.mu" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-fenapack.preconditioners">
+<span id="fenapack-preconditioners-module"></span><h2>fenapack.preconditioners module<a class="headerlink" href="#module-fenapack.preconditioners" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="fenapack.preconditioners.PCDPC_ESW">
+<em class="property">class </em><tt class="descclassname">fenapack.preconditioners.</tt><tt class="descname">PCDPC_ESW</tt><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_ESW"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_ESW" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.BasePCDPC</span></tt></p>
+<p>This class implements PCD preconditioning proposed by Elman, Silvester
+and Wathen (2014).</p>
+<dl class="method">
+<dt id="fenapack.preconditioners.PCDPC_ESW.apply">
+<tt class="descname">apply</tt><big>(</big><em>pc</em>, <em>x</em>, <em>y</em><big>)</big><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_ESW.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_ESW.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method implements the action of the inverse of the approximate
+Schur complement $hat{S} = -M_p F_p^{-1} A_p$, that is</p>
+<blockquote>
+<div>$y = hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x$.</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenapack.preconditioners.PCDPC_ESW.set_operators">
+<tt class="descname">set_operators</tt><big>(</big><em>is0</em>, <em>is1</em>, <em>A</em>, <em>P</em>, <em>Mp=None</em>, <em>Ap=None</em>, <em>Fp=None</em>, <em>bcs=None</em><big>)</big><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_ESW.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_ESW.set_operators" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set operators for the approximate Schur complement matrix</p>
+<dl class="docutils">
+<dt><em>Arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>is0, is1 (<cite>petsc4py.PETSc.IS</cite>)</dt>
+<dd>The index sets defining blocks in the field-splitted matrix.</dd>
+<dt>A (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The system matrix. [NOT USED]</dd>
+<dt>P (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The preconditioning matrix. [NOT USED]</dd>
+</dl>
+</dd>
+<dt><em>Keyword arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>Mp (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The matrix containing pressure mass matrix as its 11-block.</dd>
+<dt>Ap (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The matrix containing pressure laplacian as its 11-block.</dd>
+<dt>Fp (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The matrix containing pressure convection-diffusion as its
+11-block.</dd>
+<dt>bcs (<tt class="xref py py-class docutils literal"><span class="pre">DirichletBC</span></tt>)</dt>
+<dd>List of boundary conditions that will be applied on Ap and Fp.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="fenapack.preconditioners.UnsteadyPCDPC_ESW">
+<em class="property">class </em><tt class="descclassname">fenapack.preconditioners.</tt><tt class="descname">UnsteadyPCDPC_ESW</tt><a class="reference internal" href="../_modules/fenapack/preconditioners.html#UnsteadyPCDPC_ESW"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.UnsteadyPCDPC_ESW" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#fenapack.preconditioners.PCDPC_ESW" title="fenapack.preconditioners.PCDPC_ESW"><tt class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.PCDPC_ESW</span></tt></a></p>
+<p>This class implements PCD preconditioning proposed by Elman, Silvester
+and Wathen (2014) appropriate for unsteady problems. It derives from
+PCDPC_ESW but pressure Laplacian Ap is approximated by B*diag(Mu)^{-1}*Bt,
+where Mu is the velocity mass matrix, B corresponds to 10-block of the
+system matrix (&#8216;-div&#8217; operator) and Bt is its transpose, i.e. 01-block of
+the system matrix (&#8216;grad&#8217; operator).</p>
+<p>Note that Bt contains zero rows corresponding to dofs on the Dirichlet
+boundary since bcs have been applied on A. Moreover, B*diag(Mu)^{-1}*Bt is
+nonsingular for inflow-outflow problems, thus we do not need to prescribe
+any artificial boundary conditions for pressure.</p>
+<dl class="method">
+<dt id="fenapack.preconditioners.UnsteadyPCDPC_ESW.set_operators">
+<tt class="descname">set_operators</tt><big>(</big><em>is0</em>, <em>is1</em>, <em>A</em>, <em>P</em>, <em>Mp=None</em>, <em>Mu=None</em>, <em>Fp=None</em>, <em>bcs=None</em><big>)</big><a class="reference internal" href="../_modules/fenapack/preconditioners.html#UnsteadyPCDPC_ESW.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.UnsteadyPCDPC_ESW.set_operators" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set operators for the approximate Schur complement matrix</p>
+<dl class="docutils">
+<dt><em>Arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>is0, is1 (<cite>petsc4py.PETSc.IS</cite>)</dt>
+<dd>The index sets defining blocks in the field splitted matrix.</dd>
+<dt>A (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The system matrix.</dd>
+<dt>P (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The preconditioning matrix. [NOT USED]</dd>
+</dl>
+</dd>
+<dt><em>Keyword arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>Mp (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The matrix containing pressure mass matrix as its 11-block.</dd>
+<dt>Mu (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The matrix containing velocity mass matrix as its 00-block.</dd>
+<dt>Fp (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The matrix containing pressure convection-diffusion as its
+11-block.</dd>
+<dt>bcs (<tt class="xref py py-class docutils literal"><span class="pre">DirichletBC</span></tt>)</dt>
+<dd>List of boundary conditions that will be applied on Fp.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="fenapack.preconditioners.PCDPC_BMR">
+<em class="property">class </em><tt class="descclassname">fenapack.preconditioners.</tt><tt class="descname">PCDPC_BMR</tt><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_BMR"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_BMR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.BasePCDPC</span></tt></p>
+<p>This class implements PCD preconditioning proposed by Blechta, Malek,
+Rehor (201?).</p>
+<dl class="method">
+<dt id="fenapack.preconditioners.PCDPC_BMR.apply">
+<tt class="descname">apply</tt><big>(</big><em>pc</em>, <em>x</em>, <em>y</em><big>)</big><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_BMR.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_BMR.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method implements the action of the inverse of the approximate
+Schur complement $hat{S} = -A_p F_p^{-1} M_p$, that is</p>
+<blockquote>
+<div>$y = hat{S}^{-1} x = -M_p^{-1} F_p A_p^{-1} x$.</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenapack.preconditioners.PCDPC_BMR.set_operators">
+<tt class="descname">set_operators</tt><big>(</big><em>is0</em>, <em>is1</em>, <em>A</em>, <em>P</em>, <em>Mp=None</em>, <em>Ap=None</em>, <em>Kp=None</em>, <em>nu=None</em>, <em>bcs=None</em><big>)</big><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_BMR.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_BMR.set_operators" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set operators for the approximate Schur complement matrix</p>
+<dl class="docutils">
+<dt><em>Arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>is0, is1 (<cite>petsc4py.PETSc.IS</cite>)</dt>
+<dd>The index sets defining blocks in the field splitted matrix.</dd>
+<dt>A (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The system matrix. [NOT USED]</dd>
+<dt>P (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The preconditioning matrix. [NOT USED]</dd>
+</dl>
+</dd>
+<dt><em>Keyword arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>Mp (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The matrix containing pressure mass matrix as its 11-block.</dd>
+<dt>Ap (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The matrix containing pressure laplacian as its 11-block.</dd>
+<dt>Kp (<tt class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></tt>)</dt>
+<dd>The matrix containing pressure convection as its 11-block.</dd>
+<dt>nu (float)</dt>
+<dd>Kinematic viscosity.</dd>
+<dt>bcs (<tt class="xref py py-class docutils literal"><span class="pre">DirichletBC</span></tt>)</dt>
+<dd>List of boundary conditions that will be applied on Ap.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-fenapack.stabilization">
+<span id="fenapack-stabilization-module"></span><h2>fenapack.stabilization module<a class="headerlink" href="#module-fenapack.stabilization" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="fenapack.stabilization.StabilizationParameterSD">
+<tt class="descclassname">fenapack.stabilization.</tt><tt class="descname">StabilizationParameterSD</tt><big>(</big><em>wind</em>, <em>viscosity</em><big>)</big><a class="reference internal" href="../_modules/fenapack/stabilization.html#StabilizationParameterSD"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.stabilization.StabilizationParameterSD" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a subclass of dolfin.Expression representing streamline
+diffusion stabilization parameter.</p>
+<p>This kind of stabilization is convenient when a multigrid method is used
+for the convection term in the Navier-Stokes equation. The idea of the
+stabilization involves adding an additional term of the form</p>
+<blockquote>
+<div>delta_sd*inner(dot(grad(u), w), dot(grad(v), w))*dx</div></blockquote>
+<p>into the Navier-Stokes equation. Here u is a trial function, v is a test
+function and w defines so-called &#8220;wind&#8221; which is a known vector function.
+Regularization parameter delta_sd is determined by the local mesh Peclet
+number (PE), see the implementation below.</p>
+<dl class="docutils">
+<dt><em>Arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>wind (<tt class="xref py py-class docutils literal"><span class="pre">GenericFunction</span></tt>)</dt>
+<dd>A vector field determining convective velocity.</dd>
+<dt>viscosity (<tt class="xref py py-class docutils literal"><span class="pre">GenericFunction</span></tt>)</dt>
+<dd>A scalar field determining kinematic viscosity.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-fenapack">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-fenapack" title="Permalink to this headline">¶</a></h2>
+<p>This is FENaPack, FEniCS Navier-Stokes preconditioning package.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">fenapack package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-fenapack.field_split">fenapack.field_split module</a></li>
+<li><a class="reference internal" href="#fenapack-field-split-utils-module">fenapack.field_split_utils module</a></li>
+<li><a class="reference internal" href="#module-fenapack.nonlinear_solvers">fenapack.nonlinear_solvers module</a></li>
+<li><a class="reference internal" href="#module-fenapack.preconditioners">fenapack.preconditioners module</a></li>
+<li><a class="reference internal" href="#module-fenapack.stabilization">fenapack.stabilization module</a></li>
+<li><a class="reference internal" href="#module-fenapack">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../index.html"
+                        title="previous chapter">FENaPack - FEniCS Navier-Stokes preconditioning package</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api-doc/fenapack.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="FENaPack - FEniCS Navier-Stokes preconditioning package"
+             >previous</a> |</li>
+        <li><a href="../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>

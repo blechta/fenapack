@@ -1,0 +1,161 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>fenapack.field_split_utils &mdash; FEnaPack 1.7.0dev documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.7.0dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="FEnaPack 1.7.0dev documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for fenapack.field_split_utils</h1><div class="highlight"><pre>
+<span class="c"># Copyright (C) 2015-2016 Jan Blechta</span>
+<span class="c">#</span>
+<span class="c"># This file is part of FENaPack.</span>
+<span class="c">#</span>
+<span class="c"># FENaPack is free software: you can redistribute it and/or modify</span>
+<span class="c"># it under the terms of the GNU Lesser General Public License as published by</span>
+<span class="c"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c"># (at your option) any later version.</span>
+<span class="c">#</span>
+<span class="c"># FENaPack is distributed in the hope that it will be useful,</span>
+<span class="c"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c"># GNU Lesser General Public License for more details.</span>
+<span class="c">#</span>
+<span class="c"># You should have received a copy of the GNU Lesser General Public License</span>
+
+<span class="kn">from</span> <span class="nn">dolfin</span> <span class="kn">import</span> <span class="n">compile_extension_module</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;dofmap_dofs_is&#39;</span><span class="p">,</span> <span class="s">&#39;SubfieldBC&#39;</span><span class="p">]</span>
+
+
+<span class="n">dofmap_dofs_is_doc</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">Converts DofMap::dofs() to IS</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="n">dofmap_dofs_is_cpp_code</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">#ifdef SWIG</span>
+<span class="si">%i</span><span class="s">nclude &quot;petsc4py/petsc4py.i&quot;</span>
+<span class="s">#endif</span>
+
+<span class="s">#include &lt;vector&gt;</span>
+<span class="s">#include &lt;petscis.h&gt;</span>
+<span class="s">#include &lt;dolfin/fem/GenericDofMap.h&gt;</span>
+<span class="s">#include &lt;dolfin/la/PETScObject.h&gt;</span>
+<span class="s">#include &lt;dolfin/log/log.h&gt;</span>
+
+<span class="s">namespace dolfin {</span>
+
+<span class="s">  IS dofmap_dofs_is(const GenericDofMap&amp; dofmap)</span>
+<span class="s">  {</span>
+<span class="s">    PetscErrorCode ierr;</span>
+<span class="s">    const std::vector&lt;dolfin::la_index&gt; dofs = dofmap.dofs();</span>
+<span class="s">    IS is;</span>
+<span class="s">    dolfin_assert(dofmap.index_map());</span>
+<span class="s">    ierr = ISCreateGeneral(dofmap.index_map()-&gt;mpi_comm(), dofs.size(),</span>
+<span class="s">                           dofs.data(), PETSC_COPY_VALUES, &amp;is);</span>
+<span class="s">    if (ierr != 0)</span>
+<span class="s">      PETScObject::petsc_error(ierr, &quot;field_split.py&quot;, &quot;ISCreateGeneral&quot;);</span>
+<span class="s">    return is;</span>
+<span class="s">  }</span>
+
+<span class="s">}</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="c"># Load compiled function dofmap_dofs_is</span>
+<span class="n">module</span> <span class="o">=</span> <span class="n">compile_extension_module</span><span class="p">(</span><span class="n">dofmap_dofs_is_cpp_code</span><span class="p">,</span> <span class="n">cppargs</span><span class="o">=</span><span class="s">&#39;-g -O2&#39;</span><span class="p">)</span>
+<span class="n">dofmap_dofs_is</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">dofmap_dofs_is</span>
+<span class="n">dofmap_dofs_is</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">+=</span> <span class="n">dofmap_dofs_is_doc</span>
+<span class="k">del</span> <span class="n">dofmap_dofs_is_cpp_code</span><span class="p">,</span> <span class="n">dofmap_dofs_is_doc</span><span class="p">,</span> <span class="n">module</span>
+
+
+<span class="c"># Load compiled class SubfieldBC</span>
+<span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">)))</span>
+<span class="n">code</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&quot;SubfieldBC.h&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<span class="n">module</span> <span class="o">=</span> <span class="n">compile_extension_module</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">cppargs</span><span class="o">=</span><span class="s">&#39;-g -O2&#39;</span><span class="p">)</span>
+<span class="n">SubfieldBC</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">SubfieldBC</span>
+<span class="k">del</span> <span class="n">path</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">module</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>

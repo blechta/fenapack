@@ -1,0 +1,183 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>fenapack.stabilization &mdash; FEnaPack 1.7.0dev documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.7.0dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="FEnaPack 1.7.0dev documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for fenapack.stabilization</h1><div class="highlight"><pre>
+<span class="c"># Copyright (C) 2015-2016 Martin Rehor</span>
+<span class="c">#</span>
+<span class="c"># This file is part of FENaPack.</span>
+<span class="c">#</span>
+<span class="c"># FENaPack is free software: you can redistribute it and/or modify</span>
+<span class="c"># it under the terms of the GNU Lesser General Public License as published by</span>
+<span class="c"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c"># (at your option) any later version.</span>
+<span class="c">#</span>
+<span class="c"># FENaPack is distributed in the hope that it will be useful,</span>
+<span class="c"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c"># GNU Lesser General Public License for more details.</span>
+<span class="c">#</span>
+<span class="c"># You should have received a copy of the GNU Lesser General Public License</span>
+<span class="c"># along with FENaPack.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">from</span> <span class="nn">dolfin</span> <span class="kn">import</span> <span class="n">Expression</span><span class="p">,</span> <span class="n">FiniteElement</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;StabilizationParameterSD&#39;</span><span class="p">]</span>
+
+
+<span class="n">_streamline_diffusion_cpp</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">class StabilizationParameterSD : public Expression</span>
+<span class="s">{</span>
+<span class="s">public:</span>
+<span class="s">  std::shared_ptr&lt;GenericFunction&gt; viscosity;</span>
+<span class="s">  std::shared_ptr&lt;GenericFunction&gt; wind;</span>
+
+<span class="s">  StabilizationParameterSD() : Expression() { }</span>
+
+<span class="s">  void eval(Array&lt;double&gt;&amp; values, const Array&lt;double&gt;&amp; x,</span>
+<span class="s">            const ufc::cell&amp; c) const</span>
+<span class="s">  {</span>
+<span class="s">    // Get dolfin cell and its diameter</span>
+<span class="s">    // FIXME: Avoid dynamical allocation</span>
+<span class="s">    const std::shared_ptr&lt;const Mesh&gt; mesh = wind-&gt;function_space()-&gt;mesh();</span>
+<span class="s">    const Cell cell(*mesh, c.index);</span>
+<span class="s">    double h = cell.h();</span>
+
+<span class="s">    // Evaluate viscosity at given coordinates</span>
+<span class="s">    // FIXME: Avoid dynamical allocation</span>
+<span class="s">    Array&lt;double&gt; nu(viscosity-&gt;value_size());</span>
+<span class="s">    viscosity-&gt;eval(nu, x, c);</span>
+
+<span class="s">    // Compute l2 norm of wind</span>
+<span class="s">    double wind_norm = 0.0;</span>
+<span class="s">    // FIXME: Avoid dynamical allocation</span>
+<span class="s">    Array&lt;double&gt; w(wind-&gt;value_size());</span>
+<span class="s">    wind-&gt;eval(w, x, c);</span>
+<span class="s">    for (uint i = 0; i &lt; w.size(); ++i)</span>
+<span class="s">      wind_norm += w[i]*w[i];</span>
+<span class="s">    wind_norm = sqrt(wind_norm);</span>
+
+<span class="s">    // Compute Peclet number and evaluate stabilization parameter</span>
+<span class="s">    double PE = 0.5*wind_norm*h/nu[0];</span>
+<span class="s">    values[0] = (PE &gt; 1.0) ? 0.5*h*(1.0 - 1.0/PE)/wind_norm : 0.0;</span>
+<span class="s">  }</span>
+<span class="s">};</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="StabilizationParameterSD"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.stabilization.StabilizationParameterSD">[docs]</a><span class="k">def</span> <span class="nf">StabilizationParameterSD</span><span class="p">(</span><span class="n">wind</span><span class="p">,</span> <span class="n">viscosity</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns a subclass of dolfin.Expression representing streamline</span>
+<span class="sd">    diffusion stabilization parameter.</span>
+
+<span class="sd">    This kind of stabilization is convenient when a multigrid method is used</span>
+<span class="sd">    for the convection term in the Navier-Stokes equation. The idea of the</span>
+<span class="sd">    stabilization involves adding an additional term of the form</span>
+
+<span class="sd">      delta_sd*inner(dot(grad(u), w), dot(grad(v), w))*dx</span>
+
+<span class="sd">    into the Navier-Stokes equation. Here u is a trial function, v is a test</span>
+<span class="sd">    function and w defines so-called &quot;wind&quot; which is a known vector function.</span>
+<span class="sd">    Regularization parameter delta_sd is determined by the local mesh Peclet</span>
+<span class="sd">    number (PE), see the implementation below.</span>
+
+<span class="sd">    *Arguments*</span>
+<span class="sd">        wind (:py:class:`GenericFunction`)</span>
+<span class="sd">            A vector field determining convective velocity.</span>
+<span class="sd">        viscosity (:py:class:`GenericFunction`)</span>
+<span class="sd">            A scalar field determining kinematic viscosity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mesh</span> <span class="o">=</span> <span class="n">wind</span><span class="o">.</span><span class="n">function_space</span><span class="p">()</span><span class="o">.</span><span class="n">mesh</span><span class="p">()</span>
+    <span class="n">element</span> <span class="o">=</span> <span class="n">FiniteElement</span><span class="p">(</span><span class="s">&quot;DG&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">ufl_cell</span><span class="p">(),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">delta_sd</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">_streamline_diffusion_cpp</span><span class="p">,</span>
+                          <span class="n">element</span><span class="o">=</span><span class="n">element</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">mesh</span><span class="p">)</span>
+    <span class="n">delta_sd</span><span class="o">.</span><span class="n">wind</span> <span class="o">=</span> <span class="n">wind</span>
+    <span class="n">delta_sd</span><span class="o">.</span><span class="n">viscosity</span> <span class="o">=</span> <span class="n">viscosity</span>
+    <span class="k">return</span> <span class="n">delta_sd</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>
