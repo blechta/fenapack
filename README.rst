@@ -2,6 +2,10 @@
 FENaPack - FEniCS Navier-Stokes preconditioning package
 *******************************************************
 
+.. image:: https://travis-ci.org/blechta/fenapack.svg?branch=master
+    :target: https://travis-ci.org/blechta/fenapack
+
+
 FENaPack is a package implementing preconditioners for Navier-Stokes
 problem using FEniCS and PETSc packages. In particular, PCD
 (pressure-convection-diffussion) preconditioner [1]_ is implemented.
