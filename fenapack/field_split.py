@@ -41,7 +41,6 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
     """This class derives from 'dolfin.PETScKrylovSolver' and implements
     field split preconditioner for saddle point problems like incompressible
     [Navier-]Stokes flow."""
-
     def __init__(self, space, method, options_prefix=""):
         """Create field split solver on a given space for a particular method.
 
@@ -56,28 +55,35 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         ksp.create(PETSc.COMM_WORLD)
         ksp.setType(method)
         ksp.setOptionsPrefix(options_prefix)
+
         # Init parent class
         dolfin.PETScKrylovSolver.__init__(self, ksp)
+
         # Set up FIELDSPLIT preconditioning
         pc = ksp.getPC()
         pc.setType(PETSc.PC.Type.FIELDSPLIT)
         self._is0 = dofmap_dofs_is(space.sub(0).dofmap())
         self._is1 = dofmap_dofs_is(space.sub(1).dofmap())
         pc.setFieldSplitIS(["u", self._is0], ["p", self._is1])
+
         # Initiate option databases for subsolvers
         self._OptDB_00 = PETSc.Options(options_prefix+"fieldsplit_u_")
         self._OptDB_11 = PETSc.Options(options_prefix+"fieldsplit_p_")
+
         # Set default parameter values
         self.parameters = self.default_parameters()
+
 
     def default_parameters(self):
         """Extend default parameter set of parent class."""
         # Get default parameters for parent class
         prm = dolfin.PETScKrylovSolver().default_parameters()
+
         # Hack for development version of DOLFIN
         if not prm.has_parameter_set("gmres"):
             prm.add(dolfin.Parameters("gmres"))
             prm["gmres"].add("restart", 100)
+
         # Add new parameters
         prm.add(dolfin.Parameters("preconditioner"))
         prm["preconditioner"].add("side", "right",
@@ -91,21 +97,24 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
                             ["diag", "lower", "upper", "full"])
         prm_fs["schur"].add("precondition", "user",
                             ["self", "selfp", "a11", "user", "full"])
+
         # Add new parameters to 'petsc_krylov_solver' parameters
         prm["preconditioner"].add(prm_fs)
+
         return prm
+
 
     def get_subopts(self):
         """Return option databases enabling to set up subsolvers."""
         return self._OptDB_00, self._OptDB_11
 
-    # Discard PETScKrylovSolver::set_operator() method
+
     def set_operator(self, A):
         raise NotImplementedError(
             "This has been discarded for 'FieldSplitSolver'."
             " Use 'set_operators' method instead.")
 
-    # Overload PETScKrylovSolver::set_operators() method
+
     def set_operators(self, A, P, **schur_approx):
         """A and P represents a system matrix operator and a preconditioner in the
         usual sense.
@@ -147,11 +156,13 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         pc1.setUp()
         timer.stop()
 
+
     def _set_from_parameters(self):
         """Set up extra parameters added to parent class."""
         # Get access to global option database
         OptDB = PETSc.Options(self._ksp.getOptionsPrefix())
         #OptDB["help"] = True
+
         # Add extra solver parameters to the global option database
         prm = self.parameters["preconditioner"]
         OptDB["ksp_pc_side"] = \
@@ -162,16 +173,7 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
           prm["fieldsplit"]["schur"]["fact_type"]
         OptDB["pc_fieldsplit_schur_precondition"] = \
           prm["fieldsplit"]["schur"]["precondition"]
+
         # Hack for development version of DOLFIN
         OptDB["ksp_gmres_restart"] = \
           self.parameters["gmres"]["restart"]
-
-if __name__ == "__main__":
-    # TODO: Write proper unit test.
-    dolfin.info("Tests of %s." % __file__)
-    mesh = dolfin.UnitSquareMesh(2, 2)
-    V = dolfin.VectorFunctionSpace(mesh, "CG", 2)
-    Q = dolfin.FunctionSpace(mesh, "CG", 1)
-    W = V * Q
-    solver = FieldSplitSolver(W, "gmres")
-    dolfin.info(solver.parameters, True)
