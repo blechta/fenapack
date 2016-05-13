@@ -1,6 +1,6 @@
-=======================================================
+*******************************************************
 FENaPack - FEniCS Navier-Stokes preconditioning package
-=======================================================
+*******************************************************
 
 FENaPack is a package implementing preconditioners for Navier-Stokes
 problem using FEniCS and PETSc packages. In particular, PCD
@@ -14,7 +14,7 @@ problem using FEniCS and PETSc packages. In particular, PCD
 Usage
 =====
 
-To use FENaPack you need FEniCS (version 1.7.0 or higher) compiled with PETSc
+To use FENaPack you need FEniCS (version |version|) compiled with PETSc
 and petsc4py. To be able to import FENaPack functions, update your PYTHONPATH
 using 'fenapack.conf' and do the usual setup needed to run FEniCS.
 
@@ -30,7 +30,7 @@ Authors
 =======
 
 - Jan Blechta <blechta@karlin.mff.cuni.cz>
-- Martin Rehor <rehor@karlin.mff.cuni.cz>
+- Martin Řehoř <rehor@karlin.mff.cuni.cz>
 
 
 License

@@ -1,0 +1,9 @@
+First you need to be able to import FEnaPack.
+
+To generate documentation of API run::
+
+    ./generate-apidoc
+
+To build the documentation run::
+
+    make html
