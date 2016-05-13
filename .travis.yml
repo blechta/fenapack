@@ -22,4 +22,4 @@ after_failure:
 
 script:
     - cd $PWD/test/regression
-    - python test.py || cat demo.log
+    - python test.py || (cat demo.log; exit 1)
