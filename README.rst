@@ -18,16 +18,18 @@ problem using FEniCS and PETSc packages. In particular, PCD
 Usage
 =====
 
-To use FENaPack you need FEniCS (version |version|) compiled with PETSc
-and petsc4py. To be able to import FENaPack functions, update your PYTHONPATH
-using 'fenapack.conf' and do the usual setup needed to run FEniCS.
+To use FENaPack matching version of FEniCS (version |version|) compiled with
+PETSc and petsc4py is needed. To use FENaPack either install it by standard
+procedures or ``source fenapack.conf``.
 
-Meshes for running demos can be downloaded from FEniCS project
-website by executing 'download-meshes' script. Demos can be run
+Meshes for running demos can be downloaded from the FEniCS project
+website by executing ``download-meshes`` script. Demos can be run
 by navigating to a particular demo directory and typing::
 
   NP=4
   mpirun -n $NP python demo_foo-bar.py [-h]
+
+Full documentation is available at https://blechta.github.io/fenapack/.
 
 
 Authors
@@ -52,3 +54,12 @@ GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with FENaPack. If not, see <http://www.gnu.org/licenses/>.
+
+
+Links
+=====
+
+- Homepage https://github.com/blechta/fenapack
+- Testing https://travis-ci.org/blechta/fenapack
+- Documentation https://blechta.github.io/fenapack/
+- Bug reports https://github.com/blechta/fenapack/issues

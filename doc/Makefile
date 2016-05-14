@@ -32,6 +32,9 @@ gh-pages: | apidoc html
 	mv build/html/* ../
 	rm -rf * .[!.]*
 
+	# Prevent github ignoring underscored dirs
+	touch ../.nojekyll
+
 	# Commit everything to gh-pages branch
 	git branch -t gh-pages origin/gh-pages || true
 	git symbolic-ref HEAD refs/heads/gh-pages
