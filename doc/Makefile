@@ -33,7 +33,9 @@ gh-pages: | apidoc html
 	rm -rf * .[!.]*
 
 	# Commit everything to gh-pages branch
-	git reset --mixed gh-pages
+	git branch -t gh-pages origin/gh-pages || true
+	git symbolic-ref HEAD refs/heads/gh-pages
+	git reset
 	cd ../ && git add *
 	git commit -m"Generate doc"
 
