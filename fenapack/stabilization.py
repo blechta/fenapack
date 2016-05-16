@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
-from dolfin import Expression, FiniteElement
+from dolfin import Constant, Expression, FiniteElement
 
 __all__ = ['StabilizationParameterSD']
 
@@ -24,7 +24,7 @@ _streamline_diffusion_cpp = """
 class StabilizationParameterSD : public Expression
 {
 public:
-  std::shared_ptr<GenericFunction> viscosity;
+  std::shared_ptr<GenericFunction> viscosity, density;
   std::shared_ptr<GenericFunction> wind;
 
   StabilizationParameterSD() : Expression() { }
@@ -41,7 +41,9 @@ public:
     // Evaluate viscosity at given coordinates
     // FIXME: Avoid dynamical allocation
     Array<double> nu(viscosity->value_size());
+    Array<double> rho(density->value_size());
     viscosity->eval(nu, x, c);
+    density->eval(rho, x, c);
 
     // Compute l2 norm of wind
     double wind_norm = 0.0;
@@ -53,14 +55,14 @@ public:
     wind_norm = sqrt(wind_norm);
 
     // Compute Peclet number and evaluate stabilization parameter
-    double PE = 0.5*wind_norm*h/nu[0];
+    double PE = 0.5*wind_norm*h*rho[0]/nu[0];
     values[0] = (PE > 1.0) ? 0.5*h*(1.0 - 1.0/PE)/wind_norm : 0.0;
   }
 };
 """
 
 
-def StabilizationParameterSD(wind, viscosity):
+def StabilizationParameterSD(wind, viscosity, density=None):
     """Returns a subclass of dolfin.Expression representing streamline
     diffusion stabilization parameter.
 
@@ -79,12 +81,17 @@ def StabilizationParameterSD(wind, viscosity):
         wind (:py:class:`GenericFunction`)
             A vector field determining convective velocity.
         viscosity (:py:class:`GenericFunction`)
-            A scalar field determining kinematic viscosity.
+            A scalar field determining dynamic viscosity.
+        density (:py:class:`GenericFunction`)
+            A scalar field determining density (optional).
     """
+    if density is None:
+        density = Constant(1.0)
     mesh = wind.function_space().mesh()
     element = FiniteElement("DG", mesh.ufl_cell(), 0)
     delta_sd = Expression(_streamline_diffusion_cpp,
                           element=element, domain=mesh)
     delta_sd.wind = wind
     delta_sd.viscosity = viscosity
+    delta_sd.density = density
     return delta_sd

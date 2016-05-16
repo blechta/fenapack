@@ -271,11 +271,21 @@ class PCDPC_BMR(BasePCDPC):
     Rehor (201?)."""
     def apply(self, pc, x, y):
         """This method implements the action of the inverse of the approximate
-        Schur complement $\hat{S} = -A_p F_p^{-1} M_p$, that is
+        Schur complement $\hat{S}, that is
 
-            $y = \hat{S}^{-1} x = -M_p^{-1} F_p A_p^{-1} x$.
+            $y = -(M_p^{-1} K_p A_p^{-1} x_bc + M_p^{-1} x)$
+
+        where $K_p$ is used to denote pressure convection matrix plus possibly
+        pressure mass matrix coming from discrete time derivative. Note that
+        Laplace solve with A_p in the first term on the right hand side is
+        carried out with application of subfield boundary conditions on x
+        (denoted by x_bc). Good strategy is to use M_p and K_p both scaled by
+        $nu^{-1}$.
         """
         timer = dolfin.Timer("FENaPack: PCDPC_BMR apply")
+
+        # Store a copy of the original x
+        x0 = x.copy() # FIXME: Is there a better way?
 
         # Apply subfield boundary conditions to rhs
         for bc in self._subfield_bcs:
@@ -286,15 +296,15 @@ class PCDPC_BMR(BasePCDPC):
 
         # Apply PCD
         self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
-        self._Kp.mult(-y, z)
-        z.axpy(-self._nu, x)    # z = -K_p y - nu*x
-        self._ksp_Mp.solve(z, y) # y = M_p^{-1} z
+        self._Kp.mult(-y, z)     # z = -K_p y
+        z.axpy(-1.0, x0)         # z = z - x0
+        self._ksp_Mp.solve(z, y) # y = (M_p/nu)^{-1} z
 
         timer.stop()
 
 
     def set_operators(self, is0, is1, A, P,
-                      Mp=None, Ap=None, Kp=None, nu=None, bcs=None):
+                      Mp=None, Ap=None, Kp=None, bcs=None):
         """Set operators for the approximate Schur complement matrix
 
         *Arguments*
@@ -311,19 +321,12 @@ class PCDPC_BMR(BasePCDPC):
             Ap (:py:class:`GenericMatrix`)
                 The matrix containing pressure laplacian as its 11-block.
             Kp (:py:class:`GenericMatrix`)
-                The matrix containing pressure convection as its 11-block.
-            nu (float)
-                Kinematic viscosity.
+                The matrix containing pressure convection plus possibly mass
+                matrix comming from the time derivative as its 11-block.
             bcs (:py:class:`DirichletBC`)
                 List of boundary conditions that will be applied on Ap.
         """
         timer = dolfin.Timer("FENaPack: PCDPC_BMR set_operators")
-
-        # Update nu
-        if nu is not None:
-            self._nu = nu
-        elif not hasattr(self, "_nu"):
-            self._raise_attribute_error("nu")
 
         # Prepare bcs for adjusting field split vector in PC apply
         if bcs is not None:

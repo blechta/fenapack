@@ -184,7 +184,6 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
             val = kwargs.get(key)
             if val:
                 setattr(self, "_"+key, val)
-        self._nu = kwargs.get("nu")
         self._bcs_pcd = kwargs.get("bcs_pcd", [])
         # Matrices used to assemble parts of the preconditioner
         # NOTE: Some of them may be unused.
@@ -226,8 +225,6 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
                 pass
         if it == 0: # following setup is done only once
             schur_approx["bcs"] = self._bcs_pcd
-            if schur_approx.has_key("Kp"): # hack for fenapack.PCDPC_BMR
-                schur_approx["nu"] = self._nu
             for key in ["Ap", "Mp", "Mu"]:
                 try:
                     mat_object = getattr(self, "_mat"+key)
