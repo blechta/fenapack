@@ -22,7 +22,7 @@ linear solves are performed by LU solver."""
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import *
-from fenapack import FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem
+from fenapack import FieldSplitSolver, NewtonSolver, PCDProblem
 
 # Adjust DOLFIN's global parameters
 parameters["form_compiler"]["representation"] = "uflacs"
@@ -216,9 +216,9 @@ OptDB_11["PCD_Mp_ksp_type"] = "preonly"
 OptDB_11["PCD_Mp_pc_type"] = "lu"
 OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
 # Nonlinear problem and solver
-problem_BE = NonlinearDiscreteProblem(
+problem_BE = PCDProblem(
     F_BE, bcs, J_BE, mu=mu, fp=fp_BE, mp=mp, bcs_pcd=bcs_pcd)
-solver_BE = NonlinearSolver(inner_solver_BE)
+solver_BE = NewtonSolver(inner_solver_BE)
 #solver_BE.parameters["absolute_tolerance"] = 1e-10
 solver_BE.parameters["relative_tolerance"] = 1e-5
 solver_BE.parameters["maximum_iterations"] = 25

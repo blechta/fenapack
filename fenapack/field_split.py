@@ -22,33 +22,20 @@ from fenapack._field_split_utils import dofmap_dofs_is
 
 __all__ = ['FieldSplitSolver']
 
-# TODO:
-#   Provide class 'FieldSplitProblem' that will handle assembly of operators
-#   including those needed to approximate the Schur complement.
-#
-#   It means that this class will construct index sets from dofmaps (currently
-#   done by 'FieldSplitSolver') and it will collect all UFL forms defining
-#   particular operators (including system matrix and preconditioner) together
-#   with all boundary conditions. According to chosen strategy it will prepare
-#   operators ready to be used by 'PCDPC' objects.
-#
-#   Such approach should enable consistent implementation of 'PCDPC' objects,
-#   since the responsibility for extracting operators from "huge" matrices,
-#   applying boundary conditions, etc. will be moved out from 'set_operators'
-#   methods.
 
 class FieldSplitSolver(dolfin.PETScKrylovSolver):
-    """This class derives from 'dolfin.PETScKrylovSolver' and implements
-    field split preconditioner for saddle point problems like incompressible
-    [Navier-]Stokes flow."""
+    """This class derives from :py:class:`dolfin.PETScKrylovSolver` and
+    implements field split preconditioner for saddle point problems like
+    incompressible (Navier-)Stokes flow."""
     def __init__(self, space, method, options_prefix=""):
         """Create field split solver on a given space for a particular method.
 
         *Arguments*
-            space (:py:class:`FunctionSpace <dolfin.functions.functionspace>`)
+            space (:py:class:`dolfin.FunctionSpace`)
                 Mixed function space determining the field split.
-            method
-                Type of a PETSc KSP object, see help(PETSc.KSP.Type).
+            method (:py:class:`string`)
+                Type of a PETSc KSP object, see
+                help(:py:class:`petsc4py.PETSc.KSP.Type`).
         """
         # Create KSP
         ksp = self._ksp = PETSc.KSP()
@@ -74,10 +61,11 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         self.parameters = self.default_parameters()
 
 
-    def default_parameters(self):
+    @staticmethod
+    def default_parameters():
         """Extend default parameter set of parent class."""
         # Get default parameters for parent class
-        prm = dolfin.PETScKrylovSolver().default_parameters()
+        prm = dolfin.PETScKrylovSolver.default_parameters()
 
         # Hack for development version of DOLFIN
         if not prm.has_parameter_set("gmres"):
@@ -105,7 +93,8 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
 
 
     def get_subopts(self):
-        """Return option databases enabling to set up subsolvers."""
+        """Return :py:class:`petsc4py.PETSc.Options` databases of 00 and 11
+        subKSP."""
         return self._OptDB_00, self._OptDB_11
 
 
@@ -116,14 +105,15 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
 
 
     def set_operators(self, A, P, **schur_approx):
-        """A and P represents a system matrix operator and a preconditioner in the
-        usual sense.
+        """``A`` and ``P`` represents a system matrix operator and
+        a preconditioner in the usual sense.
 
         **Overloaded versions**
 
-          Optional keyword arguments in 'schur_approx' can be used to build an
-          approximate Schur complement matrix. These optional arguments  differ
-          depending on the strategy used for preconditioning.
+            Optional keyword arguments in ``schur_approx`` can be used to build
+            an approximate Schur complement matrix. These optional arguments
+            differ depending on the strategy used for preconditioning. See
+            classes in :py:class:`fenapack.preconditioners` module.
         """
         dolfin.PETScKrylovSolver.set_operators(self, A, P)
         #assert self._ksp.getOperators() == \

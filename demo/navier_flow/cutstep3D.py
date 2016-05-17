@@ -20,9 +20,7 @@ method. Field split inner solver is based on PCD preconditioning."""
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import *
-from fenapack import \
-     FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem, \
-     StabilizationParameterSD
+from fenapack import FieldSplitSolver, NewtonSolver, PCDProblem, StabilizationParameterSD
 
 # Adjust DOLFIN's global parameters
 parameters["form_compiler"]["representation"] = "uflacs"
@@ -185,10 +183,10 @@ problem_args = [F, bcs, J]
 problem_args += [J_pc] if args.insolver == "it" else []
 if args.pcd_strategy == "SEW":
     fp -= (inner(u_, n)*p*q)*ds(1) # Correction of fp due to Robin BC
-    problem = NonlinearDiscreteProblem(
+    problem = PCDProblem(
         *problem_args, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
 else:
-    problem = NonlinearDiscreteProblem(
+    problem = PCDProblem(
         *problem_args, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd)
 
 # Set up field split inner_solver
@@ -255,7 +253,7 @@ def plot_delta(*args, **kwargs):
 
 # Set up nonlinear solver
 hook = plot_delta if args.insolver == "it" else None
-solver = NonlinearSolver(inner_solver, debug_hook=hook)
+solver = NewtonSolver(inner_solver, debug_hook=hook)
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25

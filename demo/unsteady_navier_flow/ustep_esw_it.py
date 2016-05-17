@@ -22,9 +22,7 @@ solves are performed by LU inner solver."""
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 from dolfin import *
-from fenapack import \
-     FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem, \
-     StabilizationParameterSD
+from fenapack import FieldSplitSolver, NewtonSolver, PCDProblem, StabilizationParameterSD
 
 # Adjust DOLFIN's global parameters
 parameters["form_compiler"]["representation"] = "uflacs"
@@ -245,9 +243,9 @@ def debug_hook(*args, **kwargs):
         plot(delta, mesh=mesh, title="stabilization parameter delta")
 
 # Nonlinear problem and solver
-problem_BE = NonlinearDiscreteProblem(
+problem_BE = PCDProblem(
     F_BE, bcs, J_BE, J_BE_pc, mu=mu, fp=fp_BE, mp=mp, bcs_pcd=bcs_pcd)
-solver_BE = NonlinearSolver(inner_solver_BE, debug_hook)
+solver_BE = NewtonSolver(inner_solver_BE, debug_hook)
 #solver_BE.parameters["absolute_tolerance"] = 1e-10
 solver_BE.parameters["relative_tolerance"] = 1e-5
 solver_BE.parameters["maximum_iterations"] = 25

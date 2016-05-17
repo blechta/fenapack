@@ -63,26 +63,26 @@ public:
 
 
 def StabilizationParameterSD(wind, viscosity, density=None):
-    """Returns a subclass of dolfin.Expression representing streamline
-    diffusion stabilization parameter.
+    """Returns a subclass of :py:class:`dolfin.Expression` representing
+    streamline diffusion stabilization parameter.
 
     This kind of stabilization is convenient when a multigrid method is used
     for the convection term in the Navier-Stokes equation. The idea of the
-    stabilization involves adding an additional term of the form
+    stabilization involves adding an additional term of the form::
 
       delta_sd*inner(dot(grad(u), w), dot(grad(v), w))*dx
 
-    into the Navier-Stokes equation. Here u is a trial function, v is a test
-    function and w defines so-called "wind" which is a known vector function.
-    Regularization parameter delta_sd is determined by the local mesh Peclet
-    number (PE), see the implementation below.
+    into the Navier-Stokes equation. Here ``u`` is a trial function, ``v`` is a
+    test function and ``w`` defines so-called "wind" which is a known vector
+    function.  Regularization parameter ``delta_sd`` is determined by the local
+    mesh Peclet number (PE), see the implementation below.
 
     *Arguments*
-        wind (:py:class:`GenericFunction`)
+        wind (:py:class:`dolfin.GenericFunction`)
             A vector field determining convective velocity.
-        viscosity (:py:class:`GenericFunction`)
+        viscosity (:py:class:`dolfin.GenericFunction`)
             A scalar field determining dynamic viscosity.
-        density (:py:class:`GenericFunction`)
+        density (:py:class:`dolfin.GenericFunction`)
             A scalar field determining density (optional).
     """
     if density is None:

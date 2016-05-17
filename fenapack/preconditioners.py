@@ -27,12 +27,12 @@ class BasePCDPC(object):
     """Base python context for pressure convection diffusion (PCD)
     preconditioners."""
     def __init__(self):
-        self._ksp_Ap = self._prepare_Ap_fact()
-        self._ksp_Mp = self._prepare_Mp_fact()
+        self._ksp_Ap = self._prepare_default_ksp()
+        self._ksp_Mp = self._prepare_default_ksp()
 
 
     def apply(self, pc, x, y):
-        raise NotImplementedError
+        raise NotImplementedError("This is abstract class")
 
 
     def setFromOptions(self, pc):
@@ -61,7 +61,7 @@ class BasePCDPC(object):
           components differ depending on the strategy used for PCD
           preconditioning.
         """
-        pass
+        raise NotImplementedError("This is abstract class")
 
 
     def _raise_attribute_error(self, attr):
@@ -70,27 +70,12 @@ class BasePCDPC(object):
             % (attr, type(self).__name__))
 
 
-    def _prepare_Ap_fact(self):
-        # Prepare Ap factorization
+    @staticmethod
+    def _prepare_default_ksp():
         ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
-
-        # Default settings
         ksp.setType(PETSc.KSP.Type.PREONLY)
         pc = ksp.getPC()
         pc.setType(PETSc.PC.Type.LU)
-
-        return ksp
-
-
-    def _prepare_Mp_fact(self):
-        # Prepare Mp factorization
-        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
-
-        # Default settings
-        ksp.setType(PETSc.KSP.Type.PREONLY)
-        pc = ksp.getPC()
-        pc.setType(PETSc.PC.Type.LU)
-
         return ksp
 
 
@@ -137,7 +122,7 @@ class PCDPC_SEW(BasePCDPC):
         """Set operators for the approximate Schur complement matrix
 
         *Arguments*
-            is0, is1 (`petsc4py.PETSc.IS`)
+            is0, is1 (:py:class:`petsc4py.PETSc.IS`)
                 The index sets defining blocks in the field-splitted matrix.
             A (:py:class:`GenericMatrix`)
                 Dummy system matrix. Not used by this implementation.
@@ -200,7 +185,7 @@ class PCDPC_SEW(BasePCDPC):
 
 class UnsteadyPCDPC_SEW(PCDPC_SEW):
     r"""This class implements variant of PCD described in [1]_ appropriate for
-    unsteady problems. It derives from ``PCDPC_SEW`` but pressure Laplacian
+    unsteady problems. It derives from :py:class:`PCDPC_SEW` but pressure Laplacian
     :math:`A_p` is approximated by :math:`B (\operatorname{diag} M_u)^{-1}
     B^\top`, where :math:`M_u` is the velocity mass matrix, :math:`B`
     corresponds to 10-block of the system matrix (:math:`\operatorname{div}`
@@ -218,7 +203,7 @@ class UnsteadyPCDPC_SEW(PCDPC_SEW):
         """Set operators for the approximate Schur complement matrix
 
         *Arguments*
-            is0, is1 (`petsc4py.PETSc.IS`)
+            is0, is1 (:py:class:`petsc4py.PETSc.IS`)
                 The index sets defining blocks in the field splitted matrix.
             A (:py:class:`GenericMatrix`)
                 The system matrix.
@@ -333,7 +318,7 @@ class PCDPC_BRM(BasePCDPC):
         """Set operators for the approximate Schur complement matrix
 
         *Arguments*
-            is0, is1 (`petsc4py.PETSc.IS`)
+            is0, is1 (:py:class:`petsc4py.PETSc.IS`)
                 The index sets defining blocks in the field splitted matrix.
             A (:py:class:`GenericMatrix`)
                 Dummy system matrix. Not used by this implementation.

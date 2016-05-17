@@ -16,32 +16,38 @@
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 import dolfin
+import re
 
-__all__ = ['NonlinearSolver', 'NonlinearDiscreteProblem']
+__all__ = ['NewtonSolver', 'PCDProblem']
 
-class NonlinearSolver(dolfin.NewtonSolver):
-    """This class derives from `dolfin.NewtonSolver` and takes linear solver as
-    the first input argument plus one optional keyword argument `debug_hook`
-    which may specify a function executed on every convergence test during
-    successive nonlinear iterations as defined by::
 
-      dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem,
-                                    size_t iteration)'.
+class NewtonSolver(dolfin.NewtonSolver):
+    """This class is a modification of :py:class:`dolfin.NewtonSolver`
+    suitable to deal appropriately with
+    :py:class:`fenapack.field_split.FieldSplitSolver` and PCD
+    preconditioners from :py:class:`fenapack.preconditioners` module.
+    In particular, it takes properly of linear solver and preconditioner
+    setup in between succesive Newton iterations.
     """
     def __init__(self, solver, debug_hook=None):
-        """Create nonlinear variational solver for given problem.
+        """Create Newton solver for solver for given problem. Optional
+        debug hook executed on every iteration can be provided.
 
         *Arguments*
             solver (:py:class:`GenericLinearSolver`)
                 A nonlinear variational problem.
+            debug_hook (function)
+                A function of the signature::
+
+                    dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem, int iteration)'.
+
+                Provided ``r`` is a current residual vector, ``problem`` is
+                argument supplied to ``solve`` and ``iteration`` is number of
+                current iteration.
         """
         self._hook = debug_hook
         factory = dolfin.PETScFactory.instance()
         dolfin.NewtonSolver.__init__(self, solver.mpi_comm(), solver, factory)
-        # This is temporary hack due to the following bug in DOLFIN:
-        #   dolfin::PETScKrylovSolver::parameters_type returns "default"
-        #   instead of "krylov_solver".
-        self.parameters.add(dolfin.Parameters("default"))
         # Homebrewed implementation
         self._solver = solver
         self._matA = dolfin.Matrix()
@@ -50,11 +56,12 @@ class NonlinearSolver(dolfin.NewtonSolver):
         self._residual = 0.0
         self._residual0 = 0.0
 
+
     def converged(self, r, problem, newton_iteration):
         # A Python rewrite of 'dolfin::NewtonSolver::converged' with
         # possibility to call debugging hook.
         if self._hook:
-            dolfin.debug('Calling debugging hook of NonlinearSolver::converged'
+            dolfin.debug('Calling debugging hook of NewtonSolver::converged'
                          ' at iteration %d' % newton_iteration)
             self._hook(r, problem, newton_iteration)
         rtol = self.parameters["relative_tolerance"]
@@ -73,6 +80,7 @@ class NonlinearSolver(dolfin.NewtonSolver):
                            self._residual, atol,
                          relative_residual, rtol))
         return relative_residual < rtol or self._residual < atol
+
 
     # Homebrewed implementation
     def solve(self, problem, x):
@@ -165,26 +173,61 @@ class NonlinearSolver(dolfin.NewtonSolver):
 
         return self._newton_iteration, newton_converged
 
-class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
-    """Class for interfacing with nonlinear solver."""
 
-    def __init__(self, F, bcs, J, J_pc=None, **kwargs):
+    solve.__doc__ = re.sub(":py:class:`", ":py:class:`dolfin.", dolfin.NewtonSolver.solve.__doc__)
+
+
+
+class PCDProblem(dolfin.NonlinearProblem):
+    """Class for interfacing with :py:class:`NewtonSolver`."""
+    def __init__(self, F, bcs, J, J_pc=None,
+                 mp=None, mu=None, ap=None, fp=None, kp=None, bcs_pcd=[]):
+        """Return subclass of :py:class:`dolfin.NonlinearProblem` suitable
+        for :py:class:`NewtonSolver` based on
+        :py:class:`fenapack.field_split.FieldSplitSolver` and PCD
+        preconditioners from :py:class:`fenapack.field_split`.
+
+        *Arguments*
+            F (:py:class:`dolfin.Form` or :py:class:`ufl.Form`)
+                Linear form representing the equation.
+            bcs (:py:class:`list` of :py:class:`dolfin.DirichletBC`)
+                Boundary conditions applied to ``F``, ``J``, and ``J_pc``.
+            J (:py:class:`dolfin.Form` or :py:class:`ufl.Form`)
+                Bilinear form representing system Jacobian.
+            J_pc (:py:class:`dolfin.Form` or :py:class:`ufl.Form`)
+                Bilinear form representing Jacobian optionally passed to
+                preconditioner instead of ``J``. In case of PCD, stabilized
+                00-block can be passed to 00-KSP solver.
+            mp, mu, ap, fp, kp (:py:class:`dolfin.Form` or :py:class:`ufl.Form`)
+                Bilinear forms which (some of them) might be used by a
+                particular PCD preconditioner. Typically they represent "mass
+                matrix" on pressure, "mass matrix" on velocity, minus Laplacian
+                operator on pressure, pressure convection-diffusion operator,
+                and pressure convection operator respectively.
+
+                ``mp``, ``mu``, and ``ap`` are assumed to be constant during
+                subsequent non-linear iterations and are assembled only once.
+                On the other hand, ``fp`` and ``kp`` are updated in every
+                iteration.
+            bcs_pcd (:py:class:`list` of :py:class:`dolfin.DirichletBC`)
+                Artificial boundary conditions used by PCD preconditioner.
+
+        All the arguments should be given on the common mixed function space.
+        """
+
         dolfin.NonlinearProblem.__init__(self)
+
         self._F = F
         self._bcs = bcs
         self._J = J
-        # Process optional keyword arguments
-        # TODO:
-        #   Instead of optional kwargs provide an instance of a class
-        #   'FieldSplitProblem' which will handle assembly of operators
-        #   used for preconditioning.
-        if J_pc:
-            self._J_pc = J_pc
-        for key in ["mp", "mu", "ap", "fp", "kp"]:
-            val = kwargs.get(key)
-            if val:
-                setattr(self, "_"+key, val)
-        self._bcs_pcd = kwargs.get("bcs_pcd", [])
+        self._J_pc = J_pc
+        self._mp = mp
+        self._mu = mu
+        self._ap = ap
+        self._fp = fp
+        self._kp = kp
+        self._bcs_pcd = bcs_pcd
+
         # Matrices used to assemble parts of the preconditioner
         # NOTE: Some of them may be unused.
         self._matP  = dolfin.Matrix()
@@ -194,11 +237,13 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
         self._matFp = dolfin.Matrix()
         self._matKp = dolfin.Matrix()
 
+
     def F(self, b, x):
         # b ... residual vector
         dolfin.assemble(self._F, tensor=b)
         for bc in self._bcs:
             bc.apply(b, x)
+
 
     def J(self, A, x):
         # A ... system matrix
@@ -206,87 +251,85 @@ class NonlinearDiscreteProblem(dolfin.NonlinearProblem):
         for bc in self._bcs:
             bc.apply(A)
 
-    def linear_solver_setup(self, solver, A, it):
-        try:
-            # Check that preconditioner has been provided
-            self.J_pc(self._matP)
-            P = self._matP
-        except self.MissingAttribute:
-            # Use A in place of preconditioner
-            P = A
-        # Collect operators for approximate Schur complement
-        schur_approx = dict()
-        for key in ["Fp", "Kp"]:
-            try:
-                mat_object = getattr(self, "_mat"+key)
-                getattr(self, key.lower())(mat_object)
-                schur_approx[key] = mat_object
-            except self.MissingAttribute:
-                pass
-        if it == 0: # following setup is done only once
-            schur_approx["bcs"] = self._bcs_pcd
-            for key in ["Ap", "Mp", "Mu"]:
-                try:
-                    mat_object = getattr(self, "_mat"+key)
-                    getattr(self, key.lower())(mat_object)
-                    schur_approx[key] = mat_object
-                except self.MissingAttribute:
-                    pass
-        # Finally call 'set_operators' method
-        solver.set_operators(A, P, **schur_approx)
-
-    # TODO: Move the following methods into a class 'FieldSplitProblem' as
-    # suggested above.
-
-    class MissingAttribute(Exception):
-        def __init__(self, kwarg):
-            self.kwarg = kwarg
-            #print "MissingAttribute exception has been thrown by '%s'" % kwarg
-        def __str__(self):
-            error_message = \
-                "Keyword argument '%s' of 'NonlinearDiscreteProblem' object" \
-                " has not been set." % self.kwarg
-            return error_message
 
     def J_pc(self, P):
         # P ... preconditioning matrix
-        if hasattr(self, "_J_pc"):
-            dolfin.assemble(self._J_pc, tensor=P)
-            for bc in self._bcs:
-                bc.apply(P)
-        else:
-            raise self.MissingAttribute("J_pc")
+        self._check_attr("J_pc")
+        dolfin.assemble(self._J_pc, tensor=P)
+        for bc in self._bcs:
+            bc.apply(P)
+
 
     def mp(self, Mp):
         # Mp ... pressure mass matrix
-        if hasattr(self, "_mp"):
-            dolfin.assemble(self._mp, tensor=Mp)
-        else:
-            raise self.MissingAttribute("mp")
+        self._check_attr("mp")
+        dolfin.assemble(self._mp, tensor=Mp)
+
 
     def mu(self, Mu):
         # Mu ... velocity mass matrix
-        if hasattr(self, "_mu"):
-            dolfin.assemble(self._mu, tensor=Mu)
-        else:
-            raise self.MissingAttribute("mu")
+        self._check_attr("mu")
+        dolfin.assemble(self._mu, tensor=Mu)
+
+
     def ap(self, Ap):
         # Ap ... pressure Laplacian matrix
-        if hasattr(self, "_ap"):
-            dolfin.assemble(self._ap, tensor=Ap)
-        else:
-            raise self.MissingAttribute("ap")
+        self._check_attr("ap")
+        dolfin.assemble(self._ap, tensor=Ap)
+
 
     def fp(self, Fp):
         # Fp ... pressure convection-diffusion matrix
-        if hasattr(self, "_fp"):
-            dolfin.assemble(self._fp, tensor=Fp)
-        else:
-            raise self.MissingAttribute("fp")
+        self._check_attr("fp")
+        dolfin.assemble(self._fp, tensor=Fp)
+
 
     def kp(self, Kp):
         # Kp ... pressure convection matrix
-        if hasattr(self, "_kp"):
-            dolfin.assemble(self._kp, tensor=Kp)
+        self._check_attr("kp")
+        dolfin.assemble(self._kp, tensor=Kp)
+
+
+    #Hook called by :py:class:`NewtonSolver` on every iteration.
+    def linear_solver_setup(self, solver, A, it):
+        # Assemble preconditioner Jacobian or use system Jacobian
+        try:
+            self.J_pc(self._matP)
+            P = self._matP
+        except AttributeError:
+            P = A
         else:
-            raise self.MissingAttribute("kp")
+            P = self._matP
+
+        schur_approx = {}
+
+        # Prepare matrices guaranteed to be constant during iterations once
+        if it == 0:
+            schur_approx["bcs"] = self._bcs_pcd
+            for key in ["Ap", "Mp", "Mu"]:
+                mat_object = getattr(self, "_mat"+key)
+                try:
+                    getattr(self, key.lower())(mat_object) # assemble
+                except AttributeError:
+                    pass
+                else:
+                    schur_approx[key] = mat_object
+
+        # Assemble non-constant matrices everytime
+        for key in ["Fp", "Kp"]:
+            mat_object = getattr(self, "_mat"+key)
+            try:
+                getattr(self, key.lower())(mat_object) # assemble
+            except AttributeError:
+                pass
+            else:
+                schur_approx[key] = mat_object
+
+        # Pass assembled operators and bc to linear solver
+        solver.set_operators(A, P, **schur_approx)
+
+
+    def _check_attr(self, attr):
+        if getattr(self, "_"+attr) is None:
+            raise AttributeError("Keyword argument '%s' of 'PCDProblem' object"
+                                 " has not been set." % attr)

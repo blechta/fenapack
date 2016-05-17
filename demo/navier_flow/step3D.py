@@ -22,9 +22,7 @@ field split PCD preconditioning."""
 # Begin demo
 
 from dolfin import *
-from fenapack import \
-     FieldSplitSolver, NonlinearSolver, NonlinearDiscreteProblem, \
-     StabilizationParameterSD
+from fenapack import FieldSplitSolver, NewtonSolver, PCDProblem, StabilizationParameterSD
 
 # -----------------------------------------------------------------------------
 # General setup
@@ -222,10 +220,10 @@ if args.pcd_strategy == "SEW":
 # Collect forms to define nonlinear problem
 problem_args = [F, bcs, J, J_pc]
 if args.pcd_strategy == "SEW":
-    problem = NonlinearDiscreteProblem(
+    problem = PCDProblem(
         *problem_args, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
 else:
-    problem = NonlinearDiscreteProblem(
+    problem = PCDProblem(
         *problem_args, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd)
 
 # Set up linear field split solver
@@ -298,7 +296,7 @@ def plot_delta(*args, **kwargs):
 
 # Set up nonlinear solver
 hook = plot_delta if args.insolver == "it" else None
-solver = NonlinearSolver(fs_solver, debug_hook=hook)
+solver = NewtonSolver(fs_solver, debug_hook=hook)
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25
