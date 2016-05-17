@@ -18,7 +18,7 @@
 import dolfin
 from petsc4py import PETSc
 
-from fenapack.field_split_utils import SubfieldBC
+from fenapack._field_split_utils import SubfieldBC
 
 __all__ = ['PCDPC_ESW', 'UnsteadyPCDPC_ESW', 'PCDPC_BMR']
 

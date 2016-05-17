@@ -18,7 +18,7 @@
 import dolfin
 from petsc4py import PETSc
 
-from fenapack.field_split_utils import dofmap_dofs_is
+from fenapack._field_split_utils import dofmap_dofs_is
 
 __all__ = ['FieldSplitSolver']
 
