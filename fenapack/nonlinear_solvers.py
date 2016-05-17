@@ -20,14 +20,14 @@ import dolfin
 __all__ = ['NonlinearSolver', 'NonlinearDiscreteProblem']
 
 class NonlinearSolver(dolfin.NewtonSolver):
-    """This class derives from 'dolfin.NewtonSolver' and takes linear solver as
-    the first input argument plus one optional keyword argument 'debug_hook'
+    """This class derives from `dolfin.NewtonSolver` and takes linear solver as
+    the first input argument plus one optional keyword argument `debug_hook`
     which may specify a function executed on every convergence test during
-    successive nonlinear iterations as defined by
-      'dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem,
-                                     size_t iteration)'.
-    Provided function takes the same arguments."""
+    successive nonlinear iterations as defined by::
 
+      dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem,
+                                    size_t iteration)'.
+    """
     def __init__(self, solver, debug_hook=None):
         """Create nonlinear variational solver for given problem.
 
