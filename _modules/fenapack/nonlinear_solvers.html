@@ -8,7 +8,7 @@
     
     <title>fenapack.nonlinear_solvers &mdash; FEnaPack 1.7.0dev documentation</title>
     
-    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="FEnaPack 1.7.0dev documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
-  <body>
-    <div class="related">
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -37,15 +37,15 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
-          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
   <h1>Source code for fenapack.nonlinear_solvers</h1><div class="highlight"><pre>
 <span class="c"># Copyright (C) 2015-2016 Jan Blechta and Martin Rehor</span>
@@ -70,14 +70,14 @@
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;NonlinearSolver&#39;</span><span class="p">,</span> <span class="s">&#39;NonlinearDiscreteProblem&#39;</span><span class="p">]</span>
 
 <div class="viewcode-block" id="NonlinearSolver"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearSolver">[docs]</a><span class="k">class</span> <span class="nc">NonlinearSolver</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">NewtonSolver</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;This class derives from &#39;dolfin.NewtonSolver&#39; and takes linear solver as</span>
-<span class="sd">    the first input argument plus one optional keyword argument &#39;debug_hook&#39;</span>
+    <span class="sd">&quot;&quot;&quot;This class derives from `dolfin.NewtonSolver` and takes linear solver as</span>
+<span class="sd">    the first input argument plus one optional keyword argument `debug_hook`</span>
 <span class="sd">    which may specify a function executed on every convergence test during</span>
-<span class="sd">    successive nonlinear iterations as defined by</span>
-<span class="sd">      &#39;dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem,</span>
-<span class="sd">                                     size_t iteration)&#39;.</span>
-<span class="sd">    Provided function takes the same arguments.&quot;&quot;&quot;</span>
+<span class="sd">    successive nonlinear iterations as defined by::</span>
 
+<span class="sd">      dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem,</span>
+<span class="sd">                                    size_t iteration)&#39;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">debug_hook</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create nonlinear variational solver for given problem.</span>
 
@@ -122,9 +122,9 @@
                         <span class="o">%</span> <span class="p">(</span><span class="n">newton_iteration</span><span class="p">,</span>
                            <span class="bp">self</span><span class="o">.</span><span class="n">_residual</span><span class="p">,</span> <span class="n">atol</span><span class="p">,</span>
                          <span class="n">relative_residual</span><span class="p">,</span> <span class="n">rtol</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">relative_residual</span> <span class="o">&lt;</span> <span class="n">rtol</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_residual</span> <span class="o">&lt;</span> <span class="n">atol</span>
+        <span class="k">return</span> <span class="n">relative_residual</span> <span class="o">&lt;</span> <span class="n">rtol</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_residual</span> <span class="o">&lt;</span> <span class="n">atol</span></div>
 
-    <span class="c"># Homebrewed implementation</span></div>
+    <span class="c"># Homebrewed implementation</span>
 <div class="viewcode-block" id="NonlinearSolver.solve"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearSolver.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
         <span class="c"># A Python rewrite of &#39;dolfin::NewtonSolver::solve&#39;</span>
         <span class="c"># with modification in linear solver setup.</span>
@@ -213,8 +213,8 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">dolfin</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Newton solver did not converge.&quot;</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span><span class="p">,</span> <span class="n">newton_converged</span>
-</div></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span><span class="p">,</span> <span class="n">newton_converged</span></div></div>
+
 <div class="viewcode-block" id="NonlinearDiscreteProblem"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearDiscreteProblem">[docs]</a><span class="k">class</span> <span class="nc">NonlinearDiscreteProblem</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">NonlinearProblem</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Class for interfacing with nonlinear solver.&quot;&quot;&quot;</span>
 
@@ -234,7 +234,6 @@
             <span class="n">val</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">val</span><span class="p">:</span>
                 <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;_&quot;</span><span class="o">+</span><span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_nu</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;nu&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_bcs_pcd</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;bcs_pcd&quot;</span><span class="p">,</span> <span class="p">[])</span>
         <span class="c"># Matrices used to assemble parts of the preconditioner</span>
         <span class="c"># NOTE: Some of them may be unused.</span>
@@ -249,14 +248,14 @@
         <span class="c"># b ... residual vector</span>
         <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_F</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">b</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span><span class="p">:</span>
-            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
-</div>
+            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="NonlinearDiscreteProblem.J"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.J">[docs]</a>    <span class="k">def</span> <span class="nf">J</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
         <span class="c"># A ... system matrix</span>
         <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_J</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">A</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span><span class="p">:</span>
-            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
-</div>
+            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">A</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="NonlinearDiscreteProblem.linear_solver_setup"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.linear_solver_setup">[docs]</a>    <span class="k">def</span> <span class="nf">linear_solver_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">it</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="c"># Check that preconditioner has been provided</span>
@@ -276,8 +275,6 @@
                 <span class="k">pass</span>
         <span class="k">if</span> <span class="n">it</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="c"># following setup is done only once</span>
             <span class="n">schur_approx</span><span class="p">[</span><span class="s">&quot;bcs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs_pcd</span>
-            <span class="k">if</span> <span class="n">schur_approx</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s">&quot;Kp&quot;</span><span class="p">):</span> <span class="c"># hack for fenapack.PCDPC_BMR</span>
-                <span class="n">schur_approx</span><span class="p">[</span><span class="s">&quot;nu&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nu</span>
             <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&quot;Ap&quot;</span><span class="p">,</span> <span class="s">&quot;Mp&quot;</span><span class="p">,</span> <span class="s">&quot;Mu&quot;</span><span class="p">]:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">mat_object</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;_mat&quot;</span><span class="o">+</span><span class="n">key</span><span class="p">)</span>
@@ -286,11 +283,11 @@
                 <span class="k">except</span> <span class="bp">self</span><span class="o">.</span><span class="n">MissingAttribute</span><span class="p">:</span>
                     <span class="k">pass</span>
         <span class="c"># Finally call &#39;set_operators&#39; method</span>
-        <span class="n">solver</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="o">**</span><span class="n">schur_approx</span><span class="p">)</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="o">**</span><span class="n">schur_approx</span><span class="p">)</span></div>
 
     <span class="c"># TODO: Move the following methods into a class &#39;FieldSplitProblem&#39; as</span>
     <span class="c"># suggested above.</span>
-</div>
+
 <div class="viewcode-block" id="NonlinearDiscreteProblem.MissingAttribute"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.MissingAttribute">[docs]</a>    <span class="k">class</span> <span class="nc">MissingAttribute</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
         <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwarg</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">kwarg</span> <span class="o">=</span> <span class="n">kwarg</span>
@@ -299,8 +296,8 @@
             <span class="n">error_message</span> <span class="o">=</span> \
                 <span class="s">&quot;Keyword argument &#39;</span><span class="si">%s</span><span class="s">&#39; of &#39;NonlinearDiscreteProblem&#39; object&quot;</span> \
                 <span class="s">&quot; has not been set.&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwarg</span>
-            <span class="k">return</span> <span class="n">error_message</span>
-</div>
+            <span class="k">return</span> <span class="n">error_message</span></div>
+
 <div class="viewcode-block" id="NonlinearDiscreteProblem.J_pc"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.J_pc">[docs]</a>    <span class="k">def</span> <span class="nf">J_pc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">P</span><span class="p">):</span>
         <span class="c"># P ... preconditioning matrix</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;_J_pc&quot;</span><span class="p">):</span>
@@ -308,15 +305,15 @@
             <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span><span class="p">:</span>
                 <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">P</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">MissingAttribute</span><span class="p">(</span><span class="s">&quot;J_pc&quot;</span><span class="p">)</span>
-</div>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">MissingAttribute</span><span class="p">(</span><span class="s">&quot;J_pc&quot;</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="NonlinearDiscreteProblem.mp"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.mp">[docs]</a>    <span class="k">def</span> <span class="nf">mp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Mp</span><span class="p">):</span>
         <span class="c"># Mp ... pressure mass matrix</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;_mp&quot;</span><span class="p">):</span>
             <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mp</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Mp</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">MissingAttribute</span><span class="p">(</span><span class="s">&quot;mp&quot;</span><span class="p">)</span>
-</div>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">MissingAttribute</span><span class="p">(</span><span class="s">&quot;mp&quot;</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="NonlinearDiscreteProblem.mu"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.mu">[docs]</a>    <span class="k">def</span> <span class="nf">mu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Mu</span><span class="p">):</span>
         <span class="c"># Mu ... velocity mass matrix</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;_mu&quot;</span><span class="p">):</span>
@@ -328,15 +325,15 @@
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;_ap&quot;</span><span class="p">):</span>
             <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ap</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Ap</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">MissingAttribute</span><span class="p">(</span><span class="s">&quot;ap&quot;</span><span class="p">)</span>
-</div>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">MissingAttribute</span><span class="p">(</span><span class="s">&quot;ap&quot;</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="NonlinearDiscreteProblem.fp"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.fp">[docs]</a>    <span class="k">def</span> <span class="nf">fp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Fp</span><span class="p">):</span>
         <span class="c"># Fp ... pressure convection-diffusion matrix</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;_fp&quot;</span><span class="p">):</span>
             <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fp</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Fp</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">MissingAttribute</span><span class="p">(</span><span class="s">&quot;fp&quot;</span><span class="p">)</span>
-</div>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">MissingAttribute</span><span class="p">(</span><span class="s">&quot;fp&quot;</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="NonlinearDiscreteProblem.kp"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.kp">[docs]</a>    <span class="k">def</span> <span class="nf">kp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Kp</span><span class="p">):</span>
         <span class="c"># Kp ... pressure convection matrix</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;_kp&quot;</span><span class="p">):</span>
@@ -348,9 +345,9 @@
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-<div id="searchbox" style="display: none">
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
       <input type="text" name="q" />
@@ -358,16 +355,13 @@
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -376,13 +370,13 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
-          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
-    <div class="footer">
+    <div class="footer" role="contentinfo">
         &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
     </div>
   </body>
 </html>

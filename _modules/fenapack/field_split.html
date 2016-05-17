@@ -8,7 +8,7 @@
     
     <title>fenapack.field_split &mdash; FEnaPack 1.7.0dev documentation</title>
     
-    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="FEnaPack 1.7.0dev documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
-  <body>
-    <div class="related">
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -37,15 +37,15 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
-          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
   <h1>Source code for fenapack.field_split</h1><div class="highlight"><pre>
 <span class="c"># Copyright (C) 2014-2016 Jan Blechta and Martin Rehor</span>
@@ -151,20 +151,20 @@
         <span class="c"># Add new parameters to &#39;petsc_krylov_solver&#39; parameters</span>
         <span class="n">prm</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">prm_fs</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">prm</span>
+        <span class="k">return</span> <span class="n">prm</span></div>
 
-</div>
+
 <div class="viewcode-block" id="FieldSplitSolver.get_subopts"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.get_subopts">[docs]</a>    <span class="k">def</span> <span class="nf">get_subopts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return option databases enabling to set up subsolvers.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_00</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_11</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_00</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_11</span></div>
 
-</div>
+
 <div class="viewcode-block" id="FieldSplitSolver.set_operator"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.set_operator">[docs]</a>    <span class="k">def</span> <span class="nf">set_operator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
             <span class="s">&quot;This has been discarded for &#39;FieldSplitSolver&#39;.&quot;</span>
-            <span class="s">&quot; Use &#39;set_operators&#39; method instead.&quot;</span><span class="p">)</span>
+            <span class="s">&quot; Use &#39;set_operators&#39; method instead.&quot;</span><span class="p">)</span></div>
 
-</div>
+
 <div class="viewcode-block" id="FieldSplitSolver.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="o">**</span><span class="n">schur_approx</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;A and P represents a system matrix operator and a preconditioner in the</span>
 <span class="sd">        usual sense.</span>
@@ -204,9 +204,9 @@
         <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: set up subPC object pc1&quot;</span><span class="p">)</span>
         <span class="n">dolfin</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">PROGRESS</span><span class="p">,</span> <span class="s">&quot;Preparing for the use of pc1 (calling PCSetUp).&quot;</span><span class="p">)</span>
         <span class="n">pc1</span><span class="o">.</span><span class="n">setUp</span><span class="p">()</span>
-        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
 
-</div>
+
     <span class="k">def</span> <span class="nf">_set_from_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set up extra parameters added to parent class.&quot;&quot;&quot;</span>
         <span class="c"># Get access to global option database</span>
@@ -232,9 +232,9 @@
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-<div id="searchbox" style="display: none">
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
       <input type="text" name="q" />
@@ -242,16 +242,13 @@
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -260,13 +257,13 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
-          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
-    <div class="footer">
+    <div class="footer" role="contentinfo">
         &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
     </div>
   </body>
 </html>

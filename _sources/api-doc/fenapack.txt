@@ -1,6 +1,11 @@
 fenapack package
 ================
 
+.. automodule:: fenapack
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -45,10 +50,3 @@ fenapack.stabilization module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: fenapack
-    :members:
-    :undoc-members:
-    :show-inheritance:

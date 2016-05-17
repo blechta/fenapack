@@ -8,7 +8,7 @@
     
     <title>fenapack.preconditioners &mdash; FEnaPack 1.7.0dev documentation</title>
     
-    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="FEnaPack 1.7.0dev documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
-  <body>
-    <div class="related">
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -37,15 +37,15 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
-          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
   <h1>Source code for fenapack.preconditioners</h1><div class="highlight"><pre>
 <span class="c"># Copyright (C) 2014-2016 Jan Blechta and Martin Rehor</span>
@@ -173,9 +173,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_Fp</span><span class="o">.</span><span class="n">mult</span><span class="p">(</span><span class="o">-</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>     <span class="c"># z = -F_p y</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c"># y = A_p^{-1} z</span>
 
-        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
 
-</div>
+
 <div class="viewcode-block" id="PCDPC_ESW.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_ESW.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
                       <span class="n">Mp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Ap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Fp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set operators for the approximate Schur complement matrix</span>
@@ -237,10 +237,10 @@
         <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;_Mp&quot;</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s">&quot;Mp&quot;</span><span class="p">)</span>
 
-        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div></div>
 
 
-</div></div>
+
 <div class="viewcode-block" id="UnsteadyPCDPC_ESW"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.UnsteadyPCDPC_ESW">[docs]</a><span class="k">class</span> <span class="nc">UnsteadyPCDPC_ESW</span><span class="p">(</span><span class="n">PCDPC_ESW</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;This class implements PCD preconditioning proposed by Elman, Silvester</span>
 <span class="sd">    and Wathen (2014) appropriate for unsteady problems. It derives from</span>
@@ -312,20 +312,30 @@
         <span class="c"># Update remaining operators in the same way as in the parent class</span>
         <span class="n">PCDPC_ESW</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">Mp</span><span class="o">=</span><span class="n">Mp</span><span class="p">,</span> <span class="n">Fp</span><span class="o">=</span><span class="n">Fp</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="n">bcs</span><span class="p">)</span>
 
-        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div></div>
 
 
-</div></div>
+
 <div class="viewcode-block" id="PCDPC_BMR"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BMR">[docs]</a><span class="k">class</span> <span class="nc">PCDPC_BMR</span><span class="p">(</span><span class="n">BasePCDPC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;This class implements PCD preconditioning proposed by Blechta, Malek,</span>
 <span class="sd">    Rehor (201?).&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="PCDPC_BMR.apply"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BMR.apply">[docs]</a>    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;This method implements the action of the inverse of the approximate</span>
-<span class="sd">        Schur complement $\hat{S} = -A_p F_p^{-1} M_p$, that is</span>
+<span class="sd">        Schur complement $\hat{S}, that is</span>
 
-<span class="sd">            $y = \hat{S}^{-1} x = -M_p^{-1} F_p A_p^{-1} x$.</span>
+<span class="sd">            $y = -(M_p^{-1} K_p A_p^{-1} x_bc + M_p^{-1} x)$</span>
+
+<span class="sd">        where $K_p$ is used to denote pressure convection matrix plus possibly</span>
+<span class="sd">        pressure mass matrix coming from discrete time derivative. Note that</span>
+<span class="sd">        Laplace solve with A_p in the first term on the right hand side is</span>
+<span class="sd">        carried out with application of subfield boundary conditions on x</span>
+<span class="sd">        (denoted by x_bc). Good strategy is to use M_p and K_p both scaled by</span>
+<span class="sd">        $nu^{-1}$.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: PCDPC_BMR apply&quot;</span><span class="p">)</span>
+
+        <span class="c"># Store a copy of the original x</span>
+        <span class="n">x0</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="c"># FIXME: Is there a better way?</span>
 
         <span class="c"># Apply subfield boundary conditions to rhs</span>
         <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfield_bcs</span><span class="p">:</span>
@@ -336,15 +346,15 @@
 
         <span class="c"># Apply PCD</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c"># y = A_p^{-1} x</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_Kp</span><span class="o">.</span><span class="n">mult</span><span class="p">(</span><span class="o">-</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
-        <span class="n">z</span><span class="o">.</span><span class="n">axpy</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_nu</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>    <span class="c"># z = -K_p y - nu*x</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c"># y = M_p^{-1} z</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_Kp</span><span class="o">.</span><span class="n">mult</span><span class="p">(</span><span class="o">-</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>     <span class="c"># z = -K_p y</span>
+        <span class="n">z</span><span class="o">.</span><span class="n">axpy</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">x0</span><span class="p">)</span>         <span class="c"># z = z - x0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c"># y = (M_p/nu)^{-1} z</span>
 
-        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
 
-</div>
+
 <div class="viewcode-block" id="PCDPC_BMR.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BMR.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
-                      <span class="n">Mp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Ap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Kp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">nu</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+                      <span class="n">Mp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Ap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Kp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set operators for the approximate Schur complement matrix</span>
 
 <span class="sd">        *Arguments*</span>
@@ -361,19 +371,12 @@
 <span class="sd">            Ap (:py:class:`GenericMatrix`)</span>
 <span class="sd">                The matrix containing pressure laplacian as its 11-block.</span>
 <span class="sd">            Kp (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The matrix containing pressure convection as its 11-block.</span>
-<span class="sd">            nu (float)</span>
-<span class="sd">                Kinematic viscosity.</span>
+<span class="sd">                The matrix containing pressure convection plus possibly mass</span>
+<span class="sd">                matrix comming from the time derivative as its 11-block.</span>
 <span class="sd">            bcs (:py:class:`DirichletBC`)</span>
 <span class="sd">                List of boundary conditions that will be applied on Ap.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: PCDPC_BMR set_operators&quot;</span><span class="p">)</span>
-
-        <span class="c"># Update nu</span>
-        <span class="k">if</span> <span class="n">nu</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_nu</span> <span class="o">=</span> <span class="n">nu</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;_nu&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s">&quot;nu&quot;</span><span class="p">)</span>
 
         <span class="c"># Prepare bcs for adjusting field split vector in PC apply</span>
         <span class="k">if</span> <span class="n">bcs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
@@ -415,9 +418,9 @@
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-<div id="searchbox" style="display: none">
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
       <input type="text" name="q" />
@@ -425,16 +428,13 @@
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -443,13 +443,13 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
-          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
-    <div class="footer">
+    <div class="footer" role="contentinfo">
         &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
     </div>
   </body>
 </html>

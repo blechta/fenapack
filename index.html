@@ -8,7 +8,7 @@
     
     <title>FEnaPack &mdash; FEnaPack 1.7.0dev documentation</title>
     
-    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="FEnaPack 1.7.0dev documentation" href="#" />
     <link rel="next" title="fenapack package" href="api-doc/fenapack.html" /> 
   </head>
-  <body>
-    <div class="related">
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -40,14 +40,14 @@
         <li class="right" >
           <a href="api-doc/fenapack.html" title="fenapack package"
              accesskey="N">next</a> |</li>
-        <li><a href="#">FEnaPack 1.7.0dev documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">FEnaPack 1.7.0dev documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
   <div class="section" id="fenapack-fenics-navier-stokes-preconditioning-package">
 <h1>FENaPack - FEniCS Navier-Stokes preconditioning package<a class="headerlink" href="#fenapack-fenics-navier-stokes-preconditioning-package" title="Permalink to this headline">¶</a></h1>
@@ -67,11 +67,11 @@ Oxford University Press 2005. 2nd edition 2014.</td></tr>
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
 <p>To use FENaPack matching version of FEniCS (version 1.7.0dev) compiled with
 PETSc and petsc4py is needed. To use FENaPack either install it by standard
-procedures or <tt class="docutils literal"><span class="pre">source</span> <span class="pre">fenapack.conf</span></tt>.</p>
+procedures or <code class="docutils literal"><span class="pre">source</span> <span class="pre">fenapack.conf</span></code>.</p>
 <p>Meshes for running demos can be downloaded from the FEniCS project
-website by executing <tt class="docutils literal"><span class="pre">download-meshes</span></tt> script. Demos can be run
+website by executing <code class="docutils literal"><span class="pre">download-meshes</span></code> script. Demos can be run
 by navigating to a particular demo directory and typing:</p>
-<div class="highlight-python"><div class="highlight"><pre>NP=4
+<div class="highlight-default"><div class="highlight"><pre>NP=4
 mpirun -n $NP python demo_foo-bar.py [-h]
 </pre></div>
 </div>
@@ -128,9 +128,9 @@ along with FENaPack. If not, see &lt;<a class="reference external" href="http://
 </ul>
 </div>
 <ul class="simple">
-<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
-<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
-<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
 </ul>
 </div>
 </div>
@@ -139,7 +139,7 @@ along with FENaPack. If not, see &lt;<a class="reference external" href="http://
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
   <h3><a href="#">Table Of Contents</a></h3>
   <ul>
@@ -162,12 +162,14 @@ along with FENaPack. If not, see &lt;<a class="reference external" href="http://
   <h4>Next topic</h4>
   <p class="topless"><a href="api-doc/fenapack.html"
                         title="next chapter">fenapack package</a></p>
-  <h3>This Page</h3>
-  <ul class="this-page-menu">
-    <li><a href="_sources/index.txt"
-           rel="nofollow">Show Source</a></li>
-  </ul>
-<div id="searchbox" style="display: none">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
       <input type="text" name="q" />
@@ -175,16 +177,13 @@ along with FENaPack. If not, see &lt;<a class="reference external" href="http://
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -196,12 +195,12 @@ along with FENaPack. If not, see &lt;<a class="reference external" href="http://
         <li class="right" >
           <a href="api-doc/fenapack.html" title="fenapack package"
              >next</a> |</li>
-        <li><a href="#">FEnaPack 1.7.0dev documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">FEnaPack 1.7.0dev documentation</a> &raquo;</li> 
       </ul>
     </div>
-    <div class="footer">
+    <div class="footer" role="contentinfo">
         &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
     </div>
   </body>
 </html>
