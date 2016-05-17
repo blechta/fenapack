@@ -284,21 +284,19 @@ class PCDPC_BMR(BasePCDPC):
         """
         timer = dolfin.Timer("FENaPack: PCDPC_BMR apply")
 
-        # Store a copy of the original x
-        x0 = x.copy() # FIXME: Is there a better way?
+        # Fetch cached duplicate of x
+        z = self._z(x)
+        x.copy(result=z)
 
         # Apply subfield boundary conditions to rhs
         for bc in self._subfield_bcs:
-            bc.apply(x)
-
-        # Fetch cached duplicate of x
-        z = self._z(x)
+            bc.apply(z)
 
         # Apply PCD
-        self._ksp_Ap.solve(x, y) # y = A_p^{-1} x
+        self._ksp_Ap.solve(z, y) # y = A_p^{-1} z
         self._Kp.mult(-y, z)     # z = -K_p y
-        z.axpy(-1.0, x0)         # z = z - x0
-        self._ksp_Mp.solve(z, y) # y = (M_p/nu)^{-1} z
+        z.axpy(-1.0, x)          # z = z - x
+        self._ksp_Mp.solve(z, y) # y = M_p^{-1} z
 
         timer.stop()
 
