@@ -134,6 +134,7 @@ u_, p_ = split(w)
 n = FacetNormal(mesh) # outward unit normal
 ds = Measure("ds", subdomain_data=boundary_markers)
 nu = Constant(args.viscosity)
+inu = Constant(1.0/args.viscosity)
 f = Constant((0.0, 0.0))
 F = (
       nu*inner(grad(u_), grad(v))
@@ -154,7 +155,6 @@ else:
     )*dx
 # Preconditioner
 if args.insolver == "it":
-    inu = Constant(1.0/args.viscosity)
     J_pc = (
           nu*inner(grad(u), grad(v))
         + inner(dot(grad(u), u_), v)
@@ -167,8 +167,11 @@ if args.insolver == "it":
 
 # Define variational forms for PCD preconditioner
 mp = p*q*dx
-ap = inner(grad(p), grad(q))*dx
 kp = dot(grad(p), u_)*q*dx
+if args.pcd_strategy == "BMR":
+    mp = inu*mp
+    kp = inu*kp
+ap = inner(grad(p), grad(q))*dx
 fp = nu*ap + kp
 
 # Collect forms to define nonlinear problem
@@ -180,7 +183,7 @@ if args.pcd_strategy == "ESW":
         *problem_args, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
 else:
     problem = NonlinearDiscreteProblem(
-        *problem_args, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd, nu=args.viscosity)
+        *problem_args, ap=ap, kp=kp, mp=mp, bcs_pcd=bcs_pcd)
 
 # Set up field split inner_solver
 inner_solver = FieldSplitSolver(W, "gmres")

@@ -156,6 +156,7 @@ u_, p_ = split(w)
 # Data
 n = FacetNormal(mesh) # outward unit normal
 nu = Constant(args.viscosity)
+inu = Constant(1.0/args.viscosity)
 f = Constant((0.0, 0.0))
 
 # Measures
@@ -184,7 +185,6 @@ else:
 # Block triangular preconditioner
 J_pc = None
 if args.insolver == "it":
-    inu = Constant(1.0/args.viscosity)
     J_pc = (
           nu*inner(grad(u), grad(v))
         + inner(dot(grad(u), u_), v)
@@ -196,10 +196,12 @@ if args.insolver == "it":
     J_pc += delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
 
 # PCD preconditioning
-mp = Constant(1.0/nu)*p*q*dx if args.pcd_strategy == "BMR" else p*q*dx
+mp = p*q*dx
+kp = dot(grad(p), u_)*q*dx
+if args.pcd_strategy == "BMR":
+    mp = inu*mp
+    kp = inu*kp
 ap = inner(grad(p), grad(q))*dx
-kp = Constant(1.0/nu)*dot(grad(p), u_)*q*dx if args.pcd_strategy == "BMR" else \
-     dot(grad(p), u_)*q*dx
 fp = nu*ap + kp
 if args.pcd_strategy == "ESW":
     fp -= (inner(u_, n)*p*q)*ds(1) # correction of fp due to Robin BC
