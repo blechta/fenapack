@@ -206,7 +206,7 @@ OptDB_00["pc_factor_mat_solver_package"] = "mumps"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
-OptDB_11["pc_python_type"] = "fenapack.UnsteadyPCDPC_ESW"
+OptDB_11["pc_python_type"] = "fenapack.UnsteadyPCDPC_SEW"
 # PCD specific options: Ap factorization
 OptDB_11["PCD_Ap_ksp_type"] = "preonly"
 OptDB_11["PCD_Ap_pc_type"] = "lu"
@@ -276,7 +276,7 @@ OptDB_00["pc_factor_mat_solver_package"] = "mumps"
 # Approximation of 11-block inverse
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
-OptDB_11["pc_python_type"] = "fenapack.UnsteadyPCDPC_ESW"
+OptDB_11["pc_python_type"] = "fenapack.UnsteadyPCDPC_SEW"
 # PCD specific options: Ap factorization
 OptDB_11["PCD_Ap_ksp_type"] = "preonly"
 OptDB_11["PCD_Ap_pc_type"] = "lu"

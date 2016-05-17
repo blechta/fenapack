@@ -56,7 +56,7 @@ parser.add_argument("--nls", type=str, dest="nls",
                     choices=["Newton", "Picard"], default="Picard",
                     help="type of nonlinear solver")
 parser.add_argument("--PCD", type=str, dest="pcd_strategy",
-                    choices=["BMR", "ESW"], default="ESW",
+                    choices=["BRM", "SEW"], default="SEW",
                     help="strategy used for PCD preconditioning")
 parser.add_argument("--insolver", type=str, dest="insolver",
                     choices=["lu", "it"], default="lu",
@@ -131,7 +131,7 @@ bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 
 # Artificial boundary condition for PCD preconditioning
 zero = Constant(0.0)
-PCD_BND_MARKER = 2 if args.pcd_strategy == "ESW" else 1
+PCD_BND_MARKER = 2 if args.pcd_strategy == "SEW" else 1
 bc_art = DirichletBC(W.sub(1), zero, boundary_markers, PCD_BND_MARKER)
 
 # Collect boundary conditions
@@ -198,12 +198,12 @@ if args.insolver == "it":
 # PCD preconditioning
 mp = p*q*dx
 kp = dot(grad(p), u_)*q*dx
-if args.pcd_strategy == "BMR":
+if args.pcd_strategy == "BRM":
     mp = inu*mp
     kp = inu*kp
 ap = inner(grad(p), grad(q))*dx
 fp = nu*ap + kp
-if args.pcd_strategy == "ESW":
+if args.pcd_strategy == "SEW":
     fp -= (inner(u_, n)*p*q)*ds(1) # correction of fp due to Robin BC
 
 # -----------------------------------------------------------------------------
@@ -212,7 +212,7 @@ if args.pcd_strategy == "ESW":
 
 # Collect forms to define nonlinear problem
 problem_args = [F, bcs, J, J_pc]
-if args.pcd_strategy == "ESW":
+if args.pcd_strategy == "SEW":
     problem = NonlinearDiscreteProblem(
         *problem_args, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
 else:

@@ -20,7 +20,7 @@ from petsc4py import PETSc
 
 from fenapack._field_split_utils import SubfieldBC
 
-__all__ = ['PCDPC_ESW', 'UnsteadyPCDPC_ESW', 'PCDPC_BMR']
+__all__ = ['PCDPC_SEW', 'UnsteadyPCDPC_SEW', 'PCDPC_BRM']
 
 
 class BasePCDPC(object):
@@ -104,16 +104,22 @@ class BasePCDPC(object):
 
 
 
-class PCDPC_ESW(BasePCDPC):
-    """This class implements PCD preconditioning proposed by Elman, Silvester
-    and Wathen (2014)."""
+class PCDPC_SEW(BasePCDPC):
+    """This class implements steady variant of PCD described in [1]_.
+
+    .. [1] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast
+           Iterative Solvers: With Application in Incompressible Fluid Dynamics*.
+           Oxford University Press 2005. 2nd edition 2014.
+    """
     def apply(self, pc, x, y):
         """This method implements the action of the inverse of the approximate
-        Schur complement $\hat{S} = -M_p F_p^{-1} A_p$, that is
+        Schur complement :math:`\hat{S} = -M_p F_p^{-1} A_p`, that is
 
-            $y = \hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x$.
+        .. math::
+
+            y = \hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x.
         """
-        timer = dolfin.Timer("FENaPack: PCDPC_ESW apply")
+        timer = dolfin.Timer("FENaPack: PCDPC_SEW apply")
 
         # Fetch cached duplicate of x
         z = self._z(x)
@@ -134,9 +140,9 @@ class PCDPC_ESW(BasePCDPC):
             is0, is1 (`petsc4py.PETSc.IS`)
                 The index sets defining blocks in the field-splitted matrix.
             A (:py:class:`GenericMatrix`)
-                The system matrix. [NOT USED]
+                Dummy system matrix. Not used by this implementation.
             P (:py:class:`GenericMatrix`)
-                The preconditioning matrix. [NOT USED]
+                Dummy preconditioning matrix. Not used by this implementation.
 
         *Keyword arguments*
             Mp (:py:class:`GenericMatrix`)
@@ -147,9 +153,10 @@ class PCDPC_ESW(BasePCDPC):
                 The matrix containing pressure convection-diffusion as its
                 11-block.
             bcs (:py:class:`DirichletBC`)
-                List of boundary conditions that will be applied on Ap and Fp.
+                List of boundary conditions that will be "applied" on
+                :math:`A_p` and :math:`F_p`.
         """
-        timer = dolfin.Timer("FENaPack: PCDPC_ESW set_operators")
+        timer = dolfin.Timer("FENaPack: PCDPC_SEW set_operators")
 
         # Prepare bcs for adjusting field split matrix
         if bcs is not None:
@@ -191,18 +198,20 @@ class PCDPC_ESW(BasePCDPC):
 
 
 
-class UnsteadyPCDPC_ESW(PCDPC_ESW):
-    """This class implements PCD preconditioning proposed by Elman, Silvester
-    and Wathen (2014) appropriate for unsteady problems. It derives from
-    PCDPC_ESW but pressure Laplacian Ap is approximated by B*diag(Mu)^{-1}*Bt,
-    where Mu is the velocity mass matrix, B corresponds to 10-block of the
-    system matrix ('-div' operator) and Bt is its transpose, i.e. 01-block of
-    the system matrix ('grad' operator).
+class UnsteadyPCDPC_SEW(PCDPC_SEW):
+    r"""This class implements variant of PCD described in [1]_ appropriate for
+    unsteady problems. It derives from ``PCDPC_SEW`` but pressure Laplacian
+    :math:`A_p` is approximated by :math:`B (\operatorname{diag} M_u)^{-1}
+    B^\top`, where :math:`M_u` is the velocity mass matrix, :math:`B`
+    corresponds to 10-block of the system matrix (:math:`\operatorname{div}`
+    operator) and :math:`B^\top` is its transpose, i.e. 01-block of the system
+    matrix (:math:`\operatorname{grad}` operator).
 
-    Note that Bt contains zero rows corresponding to dofs on the Dirichlet
-    boundary since bcs have been applied on A. Moreover, B*diag(Mu)^{-1}*Bt is
-    nonsingular for inflow-outflow problems, thus we do not need to prescribe
-    any artificial boundary conditions for pressure.
+    Note that :math:`Bt` contains zero rows corresponding to dofs on the
+    Dirichlet boundary since bcs have been applied on :math:`A`. Moreover,
+    :math:`B (\operatorname{diag} M_u)^{-1} B^\top` is nonsingular for
+    inflow-outflow problems, thus we do not need to prescribe any artificial
+    boundary conditions for pressure.
     """
     def set_operators(self, is0, is1, A, P,
                       Mp=None, Mu=None, Fp=None, bcs=None):
@@ -214,7 +223,7 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
             A (:py:class:`GenericMatrix`)
                 The system matrix.
             P (:py:class:`GenericMatrix`)
-                The preconditioning matrix. [NOT USED]
+                Dummy preconditioning matrix. Not used by this implementation.
 
         *Keyword arguments*
             Mp (:py:class:`GenericMatrix`)
@@ -225,9 +234,10 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
                 The matrix containing pressure convection-diffusion as its
                 11-block.
             bcs (:py:class:`DirichletBC`)
-                List of boundary conditions that will be applied on Fp.
+                List of boundary conditions that will be "applied" on
+                :math:`F_p`.
         """
-        timer = dolfin.Timer("FENaPack: UnsteadyPCDPC_ESW set_operators")
+        timer = dolfin.Timer("FENaPack: UnsteadyPCDPC_SEW set_operators")
 
         # Assemble Ap using A and Mu
         if Mu is not None:
@@ -260,29 +270,46 @@ class UnsteadyPCDPC_ESW(PCDPC_ESW):
             self._raise_attribute_error("Ap")
 
         # Update remaining operators in the same way as in the parent class
-        PCDPC_ESW.set_operators(self, is0, is1, A, P, Mp=Mp, Fp=Fp, bcs=bcs)
+        PCDPC_SEW.set_operators(self, is0, is1, A, P, Mp=Mp, Fp=Fp, bcs=bcs)
 
         timer.stop()
 
 
 
-class PCDPC_BMR(BasePCDPC):
-    """This class implements PCD preconditioning proposed by Blechta, Malek,
-    Rehor (201?)."""
+class PCDPC_BRM(BasePCDPC):
+    """This class implements a modification of PCD variant similar to one by
+    [2]_.
+
+    .. [2] Olshanskii M. A., Vassilevski Y. V., *Pressure Schur complement
+           preconditioners for the discrete Oseen problem*.
+           SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.
+    """
     def apply(self, pc, x, y):
-        """This method implements the action of the inverse of the approximate
-        Schur complement $\hat{S}, that is
+        r"""This method implements the action of the inverse of the approximate
+        Schur complement :math:`-\hat{S}^{-1}`, that is
 
-            $y = -(M_p^{-1} K_p A_p^{-1} x_bc + M_p^{-1} x)$
+        .. math::
 
-        where $K_p$ is used to denote pressure convection matrix plus possibly
-        pressure mass matrix coming from discrete time derivative. Note that
-        Laplace solve with A_p in the first term on the right hand side is
-        carried out with application of subfield boundary conditions on x
-        (denoted by x_bc). Good strategy is to use M_p and K_p both scaled by
-        $nu^{-1}$.
+            y = -M_p^{-1} (I + K_p A_p^{-1}) x
+
+        where :math:`K_p` is used to denote pressure convection matrix plus
+        possibly pressure mass matrix coming from discrete time derivative.
+        Note that Laplace solve with :math:`A_p^{-1} x` is performed with usual
+        non-symmetric application of subfield BC on matrix :math:`A_p` and RHS
+        :math:`x` (but only in that term). It is crucial that identity term
+        :math:`I x` is not absorbed into the second, compact term to get
+
+        .. math::
+
+            y = -M_p^{-1} (A_p + K_p) A_p^{-1} x.
+
+        This is crucial to keep a stability with respect to the leading Stokes
+        term.
+
+        Good strategy is to use :math:`M_p` and :math:`K_p` both scaled by
+        :math:`\nu^{-1}`.
         """
-        timer = dolfin.Timer("FENaPack: PCDPC_BMR apply")
+        timer = dolfin.Timer("FENaPack: PCDPC_BRM apply")
 
         # Fetch cached duplicate of x
         z = self._z(x)
@@ -309,9 +336,9 @@ class PCDPC_BMR(BasePCDPC):
             is0, is1 (`petsc4py.PETSc.IS`)
                 The index sets defining blocks in the field splitted matrix.
             A (:py:class:`GenericMatrix`)
-                The system matrix. [NOT USED]
+                Dummy system matrix. Not used by this implementation.
             P (:py:class:`GenericMatrix`)
-                The preconditioning matrix. [NOT USED]
+                Dummy preconditioning matrix. Not used by this implementation.
 
         *Keyword arguments*
             Mp (:py:class:`GenericMatrix`)
@@ -322,9 +349,10 @@ class PCDPC_BMR(BasePCDPC):
                 The matrix containing pressure convection plus possibly mass
                 matrix comming from the time derivative as its 11-block.
             bcs (:py:class:`DirichletBC`)
-                List of boundary conditions that will be applied on Ap.
+                List of boundary conditions that will be applied during
+                :math:`A_p^{-1} x` solve.
         """
-        timer = dolfin.Timer("FENaPack: PCDPC_BMR set_operators")
+        timer = dolfin.Timer("FENaPack: PCDPC_BRM set_operators")
 
         # Prepare bcs for adjusting field split vector in PC apply
         if bcs is not None:

@@ -7,12 +7,17 @@ FENaPack - FEniCS Navier-Stokes preconditioning package
 
 
 FENaPack is a package implementing preconditioners for Navier-Stokes
-problem using FEniCS and PETSc packages. In particular, PCD
-(pressure-convection-diffussion) preconditioner [1]_ is implemented.
+problem using FEniCS and PETSc packages. In particular, variants of PCD
+(pressure-convection-diffussion) preconditioner from [1]_, [2]_ are
+implemented.
 
 .. [1] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast
        Iterative Solvers: With Application in Incompressible Fluid Dynamics*.
        Oxford University Press 2005. 2nd edition 2014.
+
+.. [2] Olshanskii M. A., Vassilevski Y. V., *Pressure Schur complement
+       preconditioners for the discrete Oseen problem*.
+       SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.
 
 
 Usage
