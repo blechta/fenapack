@@ -68,21 +68,21 @@
 <span class="kn">import</span> <span class="nn">dolfin</span>
 <span class="kn">from</span> <span class="nn">petsc4py</span> <span class="kn">import</span> <span class="n">PETSc</span>
 
-<span class="kn">from</span> <span class="nn">fenapack.field_split_utils</span> <span class="kn">import</span> <span class="n">SubfieldBC</span>
+<span class="kn">from</span> <span class="nn">fenapack._field_split_utils</span> <span class="kn">import</span> <span class="n">SubfieldBC</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;PCDPC_ESW&#39;</span><span class="p">,</span> <span class="s">&#39;UnsteadyPCDPC_ESW&#39;</span><span class="p">,</span> <span class="s">&#39;PCDPC_BMR&#39;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;PCDPC_SEW&#39;</span><span class="p">,</span> <span class="s">&#39;UnsteadyPCDPC_SEW&#39;</span><span class="p">,</span> <span class="s">&#39;PCDPC_BRM&#39;</span><span class="p">]</span>
 
 
 <span class="k">class</span> <span class="nc">BasePCDPC</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Base python context for pressure convection diffusion (PCD)</span>
 <span class="sd">    preconditioners.&quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_Ap_fact</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_Mp_fact</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_default_ksp</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_default_ksp</span><span class="p">()</span>
 
 
     <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&quot;This is abstract class&quot;</span><span class="p">)</span>
 
 
     <span class="k">def</span> <span class="nf">setFromOptions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">):</span>
@@ -111,7 +111,7 @@
 <span class="sd">          components differ depending on the strategy used for PCD</span>
 <span class="sd">          preconditioning.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">pass</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&quot;This is abstract class&quot;</span><span class="p">)</span>
 
 
     <span class="k">def</span> <span class="nf">_raise_attribute_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
@@ -120,27 +120,12 @@
             <span class="o">%</span> <span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">))</span>
 
 
-    <span class="k">def</span> <span class="nf">_prepare_Ap_fact</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c"># Prepare Ap factorization</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_prepare_default_ksp</span><span class="p">():</span>
         <span class="n">ksp</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
-
-        <span class="c"># Default settings</span>
         <span class="n">ksp</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">PREONLY</span><span class="p">)</span>
         <span class="n">pc</span> <span class="o">=</span> <span class="n">ksp</span><span class="o">.</span><span class="n">getPC</span><span class="p">()</span>
         <span class="n">pc</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">PC</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">LU</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">ksp</span>
-
-
-    <span class="k">def</span> <span class="nf">_prepare_Mp_fact</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c"># Prepare Mp factorization</span>
-        <span class="n">ksp</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
-
-        <span class="c"># Default settings</span>
-        <span class="n">ksp</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">PREONLY</span><span class="p">)</span>
-        <span class="n">pc</span> <span class="o">=</span> <span class="n">ksp</span><span class="o">.</span><span class="n">getPC</span><span class="p">()</span>
-        <span class="n">pc</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">PC</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">LU</span><span class="p">)</span>
-
         <span class="k">return</span> <span class="n">ksp</span>
 
 
@@ -154,16 +139,22 @@
 
 
 
-<div class="viewcode-block" id="PCDPC_ESW"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_ESW">[docs]</a><span class="k">class</span> <span class="nc">PCDPC_ESW</span><span class="p">(</span><span class="n">BasePCDPC</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;This class implements PCD preconditioning proposed by Elman, Silvester</span>
-<span class="sd">    and Wathen (2014).&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="PCDPC_ESW.apply"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_ESW.apply">[docs]</a>    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;This method implements the action of the inverse of the approximate</span>
-<span class="sd">        Schur complement $\hat{S} = -M_p F_p^{-1} A_p$, that is</span>
+<div class="viewcode-block" id="PCDPC_SEW"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_SEW">[docs]</a><span class="k">class</span> <span class="nc">PCDPC_SEW</span><span class="p">(</span><span class="n">BasePCDPC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This class implements steady variant of PCD described in [1]_.</span>
 
-<span class="sd">            $y = \hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x$.</span>
+<span class="sd">    .. [1] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast</span>
+<span class="sd">           Iterative Solvers: With Application in Incompressible Fluid Dynamics*.</span>
+<span class="sd">           Oxford University Press 2005. 2nd edition 2014.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="PCDPC_SEW.apply"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_SEW.apply">[docs]</a>    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;This method implements the action of the inverse of the approximate</span>
+<span class="sd">        Schur complement :math:`\hat{S} = -M_p F_p^{-1} A_p`, that is</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">            y = \hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: PCDPC_ESW apply&quot;</span><span class="p">)</span>
+        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: PCDPC_SEW apply&quot;</span><span class="p">)</span>
 
         <span class="c"># Fetch cached duplicate of x</span>
         <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_z</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
@@ -176,17 +167,17 @@
         <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="PCDPC_ESW.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_ESW.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
+<div class="viewcode-block" id="PCDPC_SEW.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_SEW.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
                       <span class="n">Mp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Ap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Fp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set operators for the approximate Schur complement matrix</span>
 
 <span class="sd">        *Arguments*</span>
-<span class="sd">            is0, is1 (`petsc4py.PETSc.IS`)</span>
+<span class="sd">            is0, is1 (:py:class:`petsc4py.PETSc.IS`)</span>
 <span class="sd">                The index sets defining blocks in the field-splitted matrix.</span>
 <span class="sd">            A (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The system matrix. [NOT USED]</span>
+<span class="sd">                Dummy system matrix. Not used by this implementation.</span>
 <span class="sd">            P (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The preconditioning matrix. [NOT USED]</span>
+<span class="sd">                Dummy preconditioning matrix. Not used by this implementation.</span>
 
 <span class="sd">        *Keyword arguments*</span>
 <span class="sd">            Mp (:py:class:`GenericMatrix`)</span>
@@ -197,9 +188,10 @@
 <span class="sd">                The matrix containing pressure convection-diffusion as its</span>
 <span class="sd">                11-block.</span>
 <span class="sd">            bcs (:py:class:`DirichletBC`)</span>
-<span class="sd">                List of boundary conditions that will be applied on Ap and Fp.</span>
+<span class="sd">                List of boundary conditions that will be &quot;applied&quot; on</span>
+<span class="sd">                :math:`A_p` and :math:`F_p`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: PCDPC_ESW set_operators&quot;</span><span class="p">)</span>
+        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: PCDPC_SEW set_operators&quot;</span><span class="p">)</span>
 
         <span class="c"># Prepare bcs for adjusting field split matrix</span>
         <span class="k">if</span> <span class="n">bcs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
@@ -241,30 +233,32 @@
 
 
 
-<div class="viewcode-block" id="UnsteadyPCDPC_ESW"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.UnsteadyPCDPC_ESW">[docs]</a><span class="k">class</span> <span class="nc">UnsteadyPCDPC_ESW</span><span class="p">(</span><span class="n">PCDPC_ESW</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;This class implements PCD preconditioning proposed by Elman, Silvester</span>
-<span class="sd">    and Wathen (2014) appropriate for unsteady problems. It derives from</span>
-<span class="sd">    PCDPC_ESW but pressure Laplacian Ap is approximated by B*diag(Mu)^{-1}*Bt,</span>
-<span class="sd">    where Mu is the velocity mass matrix, B corresponds to 10-block of the</span>
-<span class="sd">    system matrix (&#39;-div&#39; operator) and Bt is its transpose, i.e. 01-block of</span>
-<span class="sd">    the system matrix (&#39;grad&#39; operator).</span>
+<div class="viewcode-block" id="UnsteadyPCDPC_SEW"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.UnsteadyPCDPC_SEW">[docs]</a><span class="k">class</span> <span class="nc">UnsteadyPCDPC_SEW</span><span class="p">(</span><span class="n">PCDPC_SEW</span><span class="p">):</span>
+    <span class="sd">r&quot;&quot;&quot;This class implements variant of PCD described in [1]_ appropriate for</span>
+<span class="sd">    unsteady problems. It derives from :py:class:`PCDPC_SEW` but pressure Laplacian</span>
+<span class="sd">    :math:`A_p` is approximated by :math:`B (\operatorname{diag} M_u)^{-1}</span>
+<span class="sd">    B^\top`, where :math:`M_u` is the velocity mass matrix, :math:`B`</span>
+<span class="sd">    corresponds to 10-block of the system matrix (:math:`\operatorname{div}`</span>
+<span class="sd">    operator) and :math:`B^\top` is its transpose, i.e. 01-block of the system</span>
+<span class="sd">    matrix (:math:`\operatorname{grad}` operator).</span>
 
-<span class="sd">    Note that Bt contains zero rows corresponding to dofs on the Dirichlet</span>
-<span class="sd">    boundary since bcs have been applied on A. Moreover, B*diag(Mu)^{-1}*Bt is</span>
-<span class="sd">    nonsingular for inflow-outflow problems, thus we do not need to prescribe</span>
-<span class="sd">    any artificial boundary conditions for pressure.</span>
+<span class="sd">    Note that :math:`Bt` contains zero rows corresponding to dofs on the</span>
+<span class="sd">    Dirichlet boundary since bcs have been applied on :math:`A`. Moreover,</span>
+<span class="sd">    :math:`B (\operatorname{diag} M_u)^{-1} B^\top` is nonsingular for</span>
+<span class="sd">    inflow-outflow problems, thus we do not need to prescribe any artificial</span>
+<span class="sd">    boundary conditions for pressure.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-<div class="viewcode-block" id="UnsteadyPCDPC_ESW.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.UnsteadyPCDPC_ESW.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
+<div class="viewcode-block" id="UnsteadyPCDPC_SEW.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.UnsteadyPCDPC_SEW.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
                       <span class="n">Mp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Mu</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Fp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set operators for the approximate Schur complement matrix</span>
 
 <span class="sd">        *Arguments*</span>
-<span class="sd">            is0, is1 (`petsc4py.PETSc.IS`)</span>
+<span class="sd">            is0, is1 (:py:class:`petsc4py.PETSc.IS`)</span>
 <span class="sd">                The index sets defining blocks in the field splitted matrix.</span>
 <span class="sd">            A (:py:class:`GenericMatrix`)</span>
 <span class="sd">                The system matrix.</span>
 <span class="sd">            P (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The preconditioning matrix. [NOT USED]</span>
+<span class="sd">                Dummy preconditioning matrix. Not used by this implementation.</span>
 
 <span class="sd">        *Keyword arguments*</span>
 <span class="sd">            Mp (:py:class:`GenericMatrix`)</span>
@@ -275,9 +269,10 @@
 <span class="sd">                The matrix containing pressure convection-diffusion as its</span>
 <span class="sd">                11-block.</span>
 <span class="sd">            bcs (:py:class:`DirichletBC`)</span>
-<span class="sd">                List of boundary conditions that will be applied on Fp.</span>
+<span class="sd">                List of boundary conditions that will be &quot;applied&quot; on</span>
+<span class="sd">                :math:`F_p`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: UnsteadyPCDPC_ESW set_operators&quot;</span><span class="p">)</span>
+        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: UnsteadyPCDPC_SEW set_operators&quot;</span><span class="p">)</span>
 
         <span class="c"># Assemble Ap using A and Mu</span>
         <span class="k">if</span> <span class="n">Mu</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
@@ -310,60 +305,75 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s">&quot;Ap&quot;</span><span class="p">)</span>
 
         <span class="c"># Update remaining operators in the same way as in the parent class</span>
-        <span class="n">PCDPC_ESW</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">Mp</span><span class="o">=</span><span class="n">Mp</span><span class="p">,</span> <span class="n">Fp</span><span class="o">=</span><span class="n">Fp</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="n">bcs</span><span class="p">)</span>
+        <span class="n">PCDPC_SEW</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">Mp</span><span class="o">=</span><span class="n">Mp</span><span class="p">,</span> <span class="n">Fp</span><span class="o">=</span><span class="n">Fp</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="n">bcs</span><span class="p">)</span>
 
         <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div></div>
 
 
 
-<div class="viewcode-block" id="PCDPC_BMR"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BMR">[docs]</a><span class="k">class</span> <span class="nc">PCDPC_BMR</span><span class="p">(</span><span class="n">BasePCDPC</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;This class implements PCD preconditioning proposed by Blechta, Malek,</span>
-<span class="sd">    Rehor (201?).&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="PCDPC_BMR.apply"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BMR.apply">[docs]</a>    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;This method implements the action of the inverse of the approximate</span>
-<span class="sd">        Schur complement $\hat{S}, that is</span>
+<div class="viewcode-block" id="PCDPC_BRM"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM">[docs]</a><span class="k">class</span> <span class="nc">PCDPC_BRM</span><span class="p">(</span><span class="n">BasePCDPC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This class implements a modification of PCD variant similar to one by</span>
+<span class="sd">    [2]_.</span>
 
-<span class="sd">            $y = -(M_p^{-1} K_p A_p^{-1} x_bc + M_p^{-1} x)$</span>
+<span class="sd">    .. [2] Olshanskii M. A., Vassilevski Y. V., *Pressure Schur complement</span>
+<span class="sd">           preconditioners for the discrete Oseen problem*.</span>
+<span class="sd">           SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="PCDPC_BRM.apply"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM.apply">[docs]</a>    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;This method implements the action of the inverse of the approximate</span>
+<span class="sd">        Schur complement :math:`-\hat{S}^{-1}`, that is</span>
 
-<span class="sd">        where $K_p$ is used to denote pressure convection matrix plus possibly</span>
-<span class="sd">        pressure mass matrix coming from discrete time derivative. Note that</span>
-<span class="sd">        Laplace solve with A_p in the first term on the right hand side is</span>
-<span class="sd">        carried out with application of subfield boundary conditions on x</span>
-<span class="sd">        (denoted by x_bc). Good strategy is to use M_p and K_p both scaled by</span>
-<span class="sd">        $nu^{-1}$.</span>
+<span class="sd">        .. math::</span>
+
+<span class="sd">            y = -M_p^{-1} (I + K_p A_p^{-1}) x</span>
+
+<span class="sd">        where :math:`K_p` is used to denote pressure convection matrix plus</span>
+<span class="sd">        possibly pressure mass matrix coming from discrete time derivative.</span>
+<span class="sd">        Note that Laplace solve with :math:`A_p^{-1} x` is performed with usual</span>
+<span class="sd">        non-symmetric application of subfield BC on matrix :math:`A_p` and RHS</span>
+<span class="sd">        :math:`x` (but only in that term). It is crucial that identity term</span>
+<span class="sd">        :math:`I x` is not absorbed into the second, compact term to get</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">            y = -M_p^{-1} (A_p + K_p) A_p^{-1} x.</span>
+
+<span class="sd">        This is crucial to keep a stability with respect to the leading Stokes</span>
+<span class="sd">        term.</span>
+
+<span class="sd">        Good strategy is to use :math:`M_p` and :math:`K_p` both scaled by</span>
+<span class="sd">        :math:`\nu^{-1}`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: PCDPC_BMR apply&quot;</span><span class="p">)</span>
-
-        <span class="c"># Store a copy of the original x</span>
-        <span class="n">x0</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="c"># FIXME: Is there a better way?</span>
-
-        <span class="c"># Apply subfield boundary conditions to rhs</span>
-        <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfield_bcs</span><span class="p">:</span>
-            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: PCDPC_BRM apply&quot;</span><span class="p">)</span>
 
         <span class="c"># Fetch cached duplicate of x</span>
         <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_z</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">result</span><span class="o">=</span><span class="n">z</span><span class="p">)</span>
+
+        <span class="c"># Apply subfield boundary conditions to rhs</span>
+        <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfield_bcs</span><span class="p">:</span>
+            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
 
         <span class="c"># Apply PCD</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c"># y = A_p^{-1} x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c"># y = A_p^{-1} z</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_Kp</span><span class="o">.</span><span class="n">mult</span><span class="p">(</span><span class="o">-</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>     <span class="c"># z = -K_p y</span>
-        <span class="n">z</span><span class="o">.</span><span class="n">axpy</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">x0</span><span class="p">)</span>         <span class="c"># z = z - x0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c"># y = (M_p/nu)^{-1} z</span>
+        <span class="n">z</span><span class="o">.</span><span class="n">axpy</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>          <span class="c"># z = z - x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c"># y = M_p^{-1} z</span>
 
         <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="PCDPC_BMR.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BMR.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
+<div class="viewcode-block" id="PCDPC_BRM.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
                       <span class="n">Mp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Ap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Kp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set operators for the approximate Schur complement matrix</span>
 
 <span class="sd">        *Arguments*</span>
-<span class="sd">            is0, is1 (`petsc4py.PETSc.IS`)</span>
+<span class="sd">            is0, is1 (:py:class:`petsc4py.PETSc.IS`)</span>
 <span class="sd">                The index sets defining blocks in the field splitted matrix.</span>
 <span class="sd">            A (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The system matrix. [NOT USED]</span>
+<span class="sd">                Dummy system matrix. Not used by this implementation.</span>
 <span class="sd">            P (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The preconditioning matrix. [NOT USED]</span>
+<span class="sd">                Dummy preconditioning matrix. Not used by this implementation.</span>
 
 <span class="sd">        *Keyword arguments*</span>
 <span class="sd">            Mp (:py:class:`GenericMatrix`)</span>
@@ -374,9 +384,10 @@
 <span class="sd">                The matrix containing pressure convection plus possibly mass</span>
 <span class="sd">                matrix comming from the time derivative as its 11-block.</span>
 <span class="sd">            bcs (:py:class:`DirichletBC`)</span>
-<span class="sd">                List of boundary conditions that will be applied on Ap.</span>
+<span class="sd">                List of boundary conditions that will be applied during</span>
+<span class="sd">                :math:`A_p^{-1} x` solve.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: PCDPC_BMR set_operators&quot;</span><span class="p">)</span>
+        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: PCDPC_BRM set_operators&quot;</span><span class="p">)</span>
 
         <span class="c"># Prepare bcs for adjusting field split vector in PC apply</span>
         <span class="k">if</span> <span class="n">bcs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>

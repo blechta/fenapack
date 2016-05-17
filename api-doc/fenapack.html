@@ -61,76 +61,50 @@
 <dt id="fenapack.field_split.FieldSplitSolver">
 <em class="property">class </em><code class="descclassname">fenapack.field_split.</code><code class="descname">FieldSplitSolver</code><span class="sig-paren">(</span><em>space</em>, <em>method</em>, <em>options_prefix=''</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">dolfin.cpp.la.PETScKrylovSolver</span></code></p>
-<p>This class derives from &#8216;dolfin.PETScKrylovSolver&#8217; and implements
-field split preconditioner for saddle point problems like incompressible
-[Navier-]Stokes flow.</p>
+<p>This class derives from <code class="xref py py-class docutils literal"><span class="pre">dolfin.PETScKrylovSolver</span></code> and
+implements field split preconditioner for saddle point problems like
+incompressible (Navier-)Stokes flow.</p>
 <dl class="method">
+<dt id="fenapack.field_split.FieldSplitSolver.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>space</em>, <em>method</em>, <em>options_prefix=''</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create field split solver on a given space for a particular method.</p>
+<dl class="docutils">
+<dt><em>Arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>space (<code class="xref py py-class docutils literal"><span class="pre">dolfin.FunctionSpace</span></code>)</dt>
+<dd>Mixed function space determining the field split.</dd>
+<dt>method (<code class="xref py py-class docutils literal"><span class="pre">string</span></code>)</dt>
+<dd>Type of a PETSc KSP object, see
+help(<code class="xref py py-class docutils literal"><span class="pre">petsc4py.PETSc.KSP.Type</span></code>).</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="staticmethod">
 <dt id="fenapack.field_split.FieldSplitSolver.default_parameters">
-<code class="descname">default_parameters</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver.default_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver.default_parameters" title="Permalink to this definition">¶</a></dt>
+<em class="property">static </em><code class="descname">default_parameters</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver.default_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver.default_parameters" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extend default parameter set of parent class.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="fenapack.field_split.FieldSplitSolver.get_subopts">
 <code class="descname">get_subopts</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver.get_subopts"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver.get_subopts" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return option databases enabling to set up subsolvers.</p>
+<dd><p>Return <code class="xref py py-class docutils literal"><span class="pre">petsc4py.PETSc.Options</span></code> databases of 00 and 11
+subKSP.</p>
 </dd></dl>
-
-<dl class="method">
-<dt id="fenapack.field_split.FieldSplitSolver.set_operator">
-<code class="descname">set_operator</code><span class="sig-paren">(</span><em>A</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver.set_operator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver.set_operator" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 <dl class="method">
 <dt id="fenapack.field_split.FieldSplitSolver.set_operators">
 <code class="descname">set_operators</code><span class="sig-paren">(</span><em>A</em>, <em>P</em>, <em>**schur_approx</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/field_split.html#FieldSplitSolver.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split.FieldSplitSolver.set_operators" title="Permalink to this definition">¶</a></dt>
-<dd><p>A and P represents a system matrix operator and a preconditioner in the
-usual sense.</p>
+<dd><p><code class="docutils literal"><span class="pre">A</span></code> and <code class="docutils literal"><span class="pre">P</span></code> represents a system matrix operator and
+a preconditioner in the usual sense.</p>
 <p><strong>Overloaded versions</strong></p>
 <blockquote>
-<div>Optional keyword arguments in &#8216;schur_approx&#8217; can be used to build an
-approximate Schur complement matrix. These optional arguments  differ
-depending on the strategy used for preconditioning.</div></blockquote>
-</dd></dl>
-
-</dd></dl>
-
-</div>
-<div class="section" id="fenapack-field-split-utils-module">
-<h2>fenapack.field_split_utils module<a class="headerlink" href="#fenapack-field-split-utils-module" title="Permalink to this headline">¶</a></h2>
-<span class="target" id="module-fenapack.field_split_utils"></span><dl class="function">
-<dt id="fenapack.field_split_utils.dofmap_dofs_is">
-<code class="descclassname">fenapack.field_split_utils.</code><code class="descname">dofmap_dofs_is</code><span class="sig-paren">(</span><em>GenericDofMap dofmap</em><span class="sig-paren">)</span> &rarr; IS<a class="reference internal" href="../_modules/dolfin_compile_code_b4be58b0732055fe3128013bf5ad2292a337c2fd/dolfin_compile_code_b4be58b0732055fe3128013bf5ad2292a337c2fd.html#dofmap_dofs_is"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split_utils.dofmap_dofs_is" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts DofMap::dofs() to IS</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="fenapack.field_split_utils.SubfieldBC">
-<em class="property">class </em><code class="descclassname">fenapack.field_split_utils.</code><code class="descname">SubfieldBC</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dolfin_compile_code_b88bae9d7d3c8786de1578ac4aab7f77828fe881/dolfin_compile_code_b88bae9d7d3c8786de1578ac4aab7f77828fe881.html#SubfieldBC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.field_split_utils.SubfieldBC" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
-<p>Proxy of C++ dolfin::SubfieldBC class</p>
-<dl class="method">
-<dt id="fenapack.field_split_utils.SubfieldBC.apply">
-<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#fenapack.field_split_utils.SubfieldBC.apply" title="Permalink to this definition">¶</a></dt>
-<dd><p>SubfieldBC_apply(SubfieldBC self, Vec x)</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="fenapack.field_split_utils.SubfieldBC.apply_fdm">
-<code class="descname">apply_fdm</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#fenapack.field_split_utils.SubfieldBC.apply_fdm" title="Permalink to this definition">¶</a></dt>
-<dd><p>SubfieldBC_apply_fdm(SubfieldBC self, Mat A)</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="fenapack.field_split_utils.SubfieldBC.get_boundary_values">
-<code class="descname">get_boundary_values</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#fenapack.field_split_utils.SubfieldBC.get_boundary_values" title="Permalink to this definition">¶</a></dt>
-<dd><p>SubfieldBC_get_boundary_values(SubfieldBC self)</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="fenapack.field_split_utils.SubfieldBC.thisown">
-<code class="descname">thisown</code><a class="headerlink" href="#fenapack.field_split_utils.SubfieldBC.thisown" title="Permalink to this definition">¶</a></dt>
-<dd><p>The membership flag</p>
+<div>Optional keyword arguments in <code class="docutils literal"><span class="pre">schur_approx</span></code> can be used to build
+an approximate Schur complement matrix. These optional arguments
+differ depending on the strategy used for preconditioning. See
+classes in <a class="reference internal" href="#module-fenapack.preconditioners" title="fenapack.preconditioners"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners</span></code></a> module.</div></blockquote>
 </dd></dl>
 
 </dd></dl>
@@ -139,84 +113,108 @@ depending on the strategy used for preconditioning.</div></blockquote>
 <div class="section" id="module-fenapack.nonlinear_solvers">
 <span id="fenapack-nonlinear-solvers-module"></span><h2>fenapack.nonlinear_solvers module<a class="headerlink" href="#module-fenapack.nonlinear_solvers" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
-<dt id="fenapack.nonlinear_solvers.NonlinearSolver">
-<em class="property">class </em><code class="descclassname">fenapack.nonlinear_solvers.</code><code class="descname">NonlinearSolver</code><span class="sig-paren">(</span><em>solver</em>, <em>debug_hook=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearSolver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearSolver" title="Permalink to this definition">¶</a></dt>
+<dt id="fenapack.nonlinear_solvers.NewtonSolver">
+<em class="property">class </em><code class="descclassname">fenapack.nonlinear_solvers.</code><code class="descname">NewtonSolver</code><span class="sig-paren">(</span><em>solver</em>, <em>debug_hook=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NewtonSolver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NewtonSolver" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">dolfin.cpp.la.NewtonSolver</span></code></p>
-<p>This class derives from <cite>dolfin.NewtonSolver</cite> and takes linear solver as
-the first input argument plus one optional keyword argument <cite>debug_hook</cite>
-which may specify a function executed on every convergence test during
-successive nonlinear iterations as defined by:</p>
-<div class="highlight-default"><div class="highlight"><pre><span class="n">dolfin</span><span class="o">.</span><span class="n">NewtonSolver</span><span class="o">.</span><span class="n">converged</span><span class="p">(</span><span class="n">GenericVector</span> <span class="n">r</span><span class="p">,</span> <span class="n">NonlinearProblem</span> <span class="n">problem</span><span class="p">,</span>
-                              <span class="n">size_t</span> <span class="n">iteration</span><span class="p">)</span><span class="s">&#39;.</span>
+<p>This class is a modification of <code class="xref py py-class docutils literal"><span class="pre">dolfin.NewtonSolver</span></code>
+suitable to deal appropriately with
+<a class="reference internal" href="#fenapack.field_split.FieldSplitSolver" title="fenapack.field_split.FieldSplitSolver"><code class="xref py py-class docutils literal"><span class="pre">fenapack.field_split.FieldSplitSolver</span></code></a> and PCD
+preconditioners from <a class="reference internal" href="#module-fenapack.preconditioners" title="fenapack.preconditioners"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners</span></code></a> module.
+In particular, it takes properly of linear solver and preconditioner
+setup in between succesive Newton iterations.</p>
+<dl class="method">
+<dt id="fenapack.nonlinear_solvers.NewtonSolver.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>solver</em>, <em>debug_hook=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NewtonSolver.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NewtonSolver.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create Newton solver for solver for given problem. Optional
+debug hook executed on every iteration can be provided.</p>
+<dl class="docutils">
+<dt><em>Arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>solver (<code class="xref py py-class docutils literal"><span class="pre">GenericLinearSolver</span></code>)</dt>
+<dd>A nonlinear variational problem.</dd>
+<dt>debug_hook (function)</dt>
+<dd><p class="first">A function of the signature:</p>
+<div class="highlight-default"><div class="highlight"><pre><span class="n">dolfin</span><span class="o">.</span><span class="n">NewtonSolver</span><span class="o">.</span><span class="n">converged</span><span class="p">(</span><span class="n">GenericVector</span> <span class="n">r</span><span class="p">,</span> <span class="n">NonlinearProblem</span> <span class="n">problem</span><span class="p">,</span> <span class="nb">int</span> <span class="n">iteration</span><span class="p">)</span><span class="s">&#39;.</span>
 </pre></div>
 </div>
-<dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearSolver.converged">
-<code class="descname">converged</code><span class="sig-paren">(</span><em>r</em>, <em>problem</em>, <em>newton_iteration</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearSolver.converged"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearSolver.converged" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<p class="last">Provided <code class="docutils literal"><span class="pre">r</span></code> is a current residual vector, <code class="docutils literal"><span class="pre">problem</span></code> is
+argument supplied to <code class="docutils literal"><span class="pre">solve</span></code> and <code class="docutils literal"><span class="pre">iteration</span></code> is number of
+current iteration.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearSolver.solve">
-<code class="descname">solve</code><span class="sig-paren">(</span><em>problem</em>, <em>x</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearSolver.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearSolver.solve" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="fenapack.nonlinear_solvers.NewtonSolver.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>problem</em>, <em>x</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NewtonSolver.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NewtonSolver.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve abstract nonlinear problem <span class="math">\(F(x) = 0\)</span> for given
+<span class="math">\(F\)</span> and Jacobian <span class="math">\(\dfrac{\partial F}{\partial x}\)</span>.</p>
+<dl class="docutils">
+<dt><em>Arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>nonlinear_function (<code class="xref py py-class docutils literal"><span class="pre">dolfin.NonlinearProblem</span></code>)</dt>
+<dd>The nonlinear problem.</dd>
+<dt>x (<code class="xref py py-class docutils literal"><span class="pre">dolfin.GenericVector</span></code>)</dt>
+<dd>The vector.</dd>
+</dl>
+</dd>
+<dt><em>Returns</em></dt>
+<dd><dl class="first last docutils">
+<dt>(int, bool)</dt>
+<dd>Pair of number of Newton iterations, and whether
+iteration converged)</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
 <dl class="class">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem">
-<em class="property">class </em><code class="descclassname">fenapack.nonlinear_solvers.</code><code class="descname">NonlinearDiscreteProblem</code><span class="sig-paren">(</span><em>F</em>, <em>bcs</em>, <em>J</em>, <em>J_pc=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem" title="Permalink to this definition">¶</a></dt>
+<dt id="fenapack.nonlinear_solvers.PCDProblem">
+<em class="property">class </em><code class="descclassname">fenapack.nonlinear_solvers.</code><code class="descname">PCDProblem</code><span class="sig-paren">(</span><em>F</em>, <em>bcs</em>, <em>J</em>, <em>J_pc=None</em>, <em>mp=None</em>, <em>mu=None</em>, <em>ap=None</em>, <em>fp=None</em>, <em>kp=None</em>, <em>bcs_pcd=[]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#PCDProblem"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.PCDProblem" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">dolfin.cpp.la.NonlinearProblem</span></code></p>
-<p>Class for interfacing with nonlinear solver.</p>
+<p>Class for interfacing with <a class="reference internal" href="#fenapack.nonlinear_solvers.NewtonSolver" title="fenapack.nonlinear_solvers.NewtonSolver"><code class="xref py py-class docutils literal"><span class="pre">NewtonSolver</span></code></a>.</p>
 <dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.F">
-<code class="descname">F</code><span class="sig-paren">(</span><em>b</em>, <em>x</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.F"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.F" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.J">
-<code class="descname">J</code><span class="sig-paren">(</span><em>A</em>, <em>x</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.J"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.J" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.J_pc">
-<code class="descname">J_pc</code><span class="sig-paren">(</span><em>P</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.J_pc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.J_pc" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="exception">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.MissingAttribute">
-<em class="property">exception </em><code class="descname">MissingAttribute</code><span class="sig-paren">(</span><em>kwarg</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.MissingAttribute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.MissingAttribute" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+<dt id="fenapack.nonlinear_solvers.PCDProblem.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>F</em>, <em>bcs</em>, <em>J</em>, <em>J_pc=None</em>, <em>mp=None</em>, <em>mu=None</em>, <em>ap=None</em>, <em>fp=None</em>, <em>kp=None</em>, <em>bcs_pcd=[]</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#PCDProblem.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.PCDProblem.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return subclass of <code class="xref py py-class docutils literal"><span class="pre">dolfin.NonlinearProblem</span></code> suitable
+for <a class="reference internal" href="#fenapack.nonlinear_solvers.NewtonSolver" title="fenapack.nonlinear_solvers.NewtonSolver"><code class="xref py py-class docutils literal"><span class="pre">NewtonSolver</span></code></a> based on
+<a class="reference internal" href="#fenapack.field_split.FieldSplitSolver" title="fenapack.field_split.FieldSplitSolver"><code class="xref py py-class docutils literal"><span class="pre">fenapack.field_split.FieldSplitSolver</span></code></a> and PCD
+preconditioners from <a class="reference internal" href="#module-fenapack.field_split" title="fenapack.field_split"><code class="xref py py-class docutils literal"><span class="pre">fenapack.field_split</span></code></a>.</p>
+<dl class="docutils">
+<dt><em>Arguments</em></dt>
+<dd><dl class="first last docutils">
+<dt>F (<code class="xref py py-class docutils literal"><span class="pre">dolfin.Form</span></code> or <code class="xref py py-class docutils literal"><span class="pre">ufl.Form</span></code>)</dt>
+<dd>Linear form representing the equation.</dd>
+<dt>bcs (<code class="xref py py-class docutils literal"><span class="pre">list</span></code> of <code class="xref py py-class docutils literal"><span class="pre">dolfin.DirichletBC</span></code>)</dt>
+<dd>Boundary conditions applied to <code class="docutils literal"><span class="pre">F</span></code>, <code class="docutils literal"><span class="pre">J</span></code>, and <code class="docutils literal"><span class="pre">J_pc</span></code>.</dd>
+<dt>J (<code class="xref py py-class docutils literal"><span class="pre">dolfin.Form</span></code> or <code class="xref py py-class docutils literal"><span class="pre">ufl.Form</span></code>)</dt>
+<dd>Bilinear form representing system Jacobian.</dd>
+<dt>J_pc (<code class="xref py py-class docutils literal"><span class="pre">dolfin.Form</span></code> or <code class="xref py py-class docutils literal"><span class="pre">ufl.Form</span></code>)</dt>
+<dd>Bilinear form representing Jacobian optionally passed to
+preconditioner instead of <code class="docutils literal"><span class="pre">J</span></code>. In case of PCD, stabilized
+00-block can be passed to 00-KSP solver.</dd>
+<dt>mp, mu, ap, fp, kp (<code class="xref py py-class docutils literal"><span class="pre">dolfin.Form</span></code> or <code class="xref py py-class docutils literal"><span class="pre">ufl.Form</span></code>)</dt>
+<dd><p class="first">Bilinear forms which (some of them) might be used by a
+particular PCD preconditioner. Typically they represent &#8220;mass
+matrix&#8221; on pressure, &#8220;mass matrix&#8221; on velocity, minus Laplacian
+operator on pressure, pressure convection-diffusion operator,
+and pressure convection operator respectively.</p>
+<p class="last"><code class="docutils literal"><span class="pre">mp</span></code>, <code class="docutils literal"><span class="pre">mu</span></code>, and <code class="docutils literal"><span class="pre">ap</span></code> are assumed to be constant during
+subsequent non-linear iterations and are assembled only once.
+On the other hand, <code class="docutils literal"><span class="pre">fp</span></code> and <code class="docutils literal"><span class="pre">kp</span></code> are updated in every
+iteration.</p>
+</dd>
+<dt>bcs_pcd (<code class="xref py py-class docutils literal"><span class="pre">list</span></code> of <code class="xref py py-class docutils literal"><span class="pre">dolfin.DirichletBC</span></code>)</dt>
+<dd>Artificial boundary conditions used by PCD preconditioner.</dd>
+</dl>
+</dd>
+</dl>
+<p>All the arguments should be given on the common mixed function space.</p>
 </dd></dl>
-
-<dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.ap">
-<code class="descclassname">NonlinearDiscreteProblem.</code><code class="descname">ap</code><span class="sig-paren">(</span><em>Ap</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.ap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.ap" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.fp">
-<code class="descclassname">NonlinearDiscreteProblem.</code><code class="descname">fp</code><span class="sig-paren">(</span><em>Fp</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.fp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.fp" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.kp">
-<code class="descclassname">NonlinearDiscreteProblem.</code><code class="descname">kp</code><span class="sig-paren">(</span><em>Kp</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.kp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.kp" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.linear_solver_setup">
-<code class="descclassname">NonlinearDiscreteProblem.</code><code class="descname">linear_solver_setup</code><span class="sig-paren">(</span><em>solver</em>, <em>A</em>, <em>it</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.linear_solver_setup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.linear_solver_setup" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.mp">
-<code class="descclassname">NonlinearDiscreteProblem.</code><code class="descname">mp</code><span class="sig-paren">(</span><em>Mp</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.mp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.mp" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="fenapack.nonlinear_solvers.NonlinearDiscreteProblem.mu">
-<code class="descclassname">NonlinearDiscreteProblem.</code><code class="descname">mu</code><span class="sig-paren">(</span><em>Mu</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/nonlinear_solvers.html#NonlinearDiscreteProblem.mu"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.nonlinear_solvers.NonlinearDiscreteProblem.mu" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 </dd></dl>
 
@@ -224,33 +222,40 @@ successive nonlinear iterations as defined by:</p>
 <div class="section" id="module-fenapack.preconditioners">
 <span id="fenapack-preconditioners-module"></span><h2>fenapack.preconditioners module<a class="headerlink" href="#module-fenapack.preconditioners" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
-<dt id="fenapack.preconditioners.PCDPC_ESW">
-<em class="property">class </em><code class="descclassname">fenapack.preconditioners.</code><code class="descname">PCDPC_ESW</code><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_ESW"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_ESW" title="Permalink to this definition">¶</a></dt>
+<dt id="fenapack.preconditioners.PCDPC_SEW">
+<em class="property">class </em><code class="descclassname">fenapack.preconditioners.</code><code class="descname">PCDPC_SEW</code><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_SEW"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_SEW" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.BasePCDPC</span></code></p>
-<p>This class implements PCD preconditioning proposed by Elman, Silvester
-and Wathen (2014).</p>
+<p>This class implements steady variant of PCD described in <a class="footnote-reference" href="#id2" id="id1">[1]</a>.</p>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label">[1]</td><td><em>(<a class="fn-backref" href="#id1">1</a>, <a class="fn-backref" href="#id3">2</a>)</em> Elman H. C., Silvester D. J., Wathen A. J., <em>Finite Elements and Fast
+Iterative Solvers: With Application in Incompressible Fluid Dynamics</em>.
+Oxford University Press 2005. 2nd edition 2014.</td></tr>
+</tbody>
+</table>
 <dl class="method">
-<dt id="fenapack.preconditioners.PCDPC_ESW.apply">
-<code class="descname">apply</code><span class="sig-paren">(</span><em>pc</em>, <em>x</em>, <em>y</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_ESW.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_ESW.apply" title="Permalink to this definition">¶</a></dt>
+<dt id="fenapack.preconditioners.PCDPC_SEW.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><em>pc</em>, <em>x</em>, <em>y</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_SEW.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_SEW.apply" title="Permalink to this definition">¶</a></dt>
 <dd><p>This method implements the action of the inverse of the approximate
-Schur complement $hat{S} = -M_p F_p^{-1} A_p$, that is</p>
-<blockquote>
-<div>$y = hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x$.</div></blockquote>
+Schur complement <span class="math">\(\hat{S} = -M_p F_p^{-1} A_p\)</span>, that is</p>
+<div class="math">
+\[y = \hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x.\]</div>
 </dd></dl>
 
 <dl class="method">
-<dt id="fenapack.preconditioners.PCDPC_ESW.set_operators">
-<code class="descname">set_operators</code><span class="sig-paren">(</span><em>is0</em>, <em>is1</em>, <em>A</em>, <em>P</em>, <em>Mp=None</em>, <em>Ap=None</em>, <em>Fp=None</em>, <em>bcs=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_ESW.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_ESW.set_operators" title="Permalink to this definition">¶</a></dt>
+<dt id="fenapack.preconditioners.PCDPC_SEW.set_operators">
+<code class="descname">set_operators</code><span class="sig-paren">(</span><em>is0</em>, <em>is1</em>, <em>A</em>, <em>P</em>, <em>Mp=None</em>, <em>Ap=None</em>, <em>Fp=None</em>, <em>bcs=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_SEW.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_SEW.set_operators" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set operators for the approximate Schur complement matrix</p>
 <dl class="docutils">
 <dt><em>Arguments</em></dt>
 <dd><dl class="first last docutils">
-<dt>is0, is1 (<cite>petsc4py.PETSc.IS</cite>)</dt>
+<dt>is0, is1 (<code class="xref py py-class docutils literal"><span class="pre">petsc4py.PETSc.IS</span></code>)</dt>
 <dd>The index sets defining blocks in the field-splitted matrix.</dd>
 <dt>A (<code class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></code>)</dt>
-<dd>The system matrix. [NOT USED]</dd>
+<dd>Dummy system matrix. Not used by this implementation.</dd>
 <dt>P (<code class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></code>)</dt>
-<dd>The preconditioning matrix. [NOT USED]</dd>
+<dd>Dummy preconditioning matrix. Not used by this implementation.</dd>
 </dl>
 </dd>
 <dt><em>Keyword arguments</em></dt>
@@ -263,7 +268,8 @@ Schur complement $hat{S} = -M_p F_p^{-1} A_p$, that is</p>
 <dd>The matrix containing pressure convection-diffusion as its
 11-block.</dd>
 <dt>bcs (<code class="xref py py-class docutils literal"><span class="pre">DirichletBC</span></code>)</dt>
-<dd>List of boundary conditions that will be applied on Ap and Fp.</dd>
+<dd>List of boundary conditions that will be &#8220;applied&#8221; on
+<span class="math">\(A_p\)</span> and <span class="math">\(F_p\)</span>.</dd>
 </dl>
 </dd>
 </dl>
@@ -272,32 +278,34 @@ Schur complement $hat{S} = -M_p F_p^{-1} A_p$, that is</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="fenapack.preconditioners.UnsteadyPCDPC_ESW">
-<em class="property">class </em><code class="descclassname">fenapack.preconditioners.</code><code class="descname">UnsteadyPCDPC_ESW</code><a class="reference internal" href="../_modules/fenapack/preconditioners.html#UnsteadyPCDPC_ESW"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.UnsteadyPCDPC_ESW" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#fenapack.preconditioners.PCDPC_ESW" title="fenapack.preconditioners.PCDPC_ESW"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.PCDPC_ESW</span></code></a></p>
-<p>This class implements PCD preconditioning proposed by Elman, Silvester
-and Wathen (2014) appropriate for unsteady problems. It derives from
-PCDPC_ESW but pressure Laplacian Ap is approximated by B*diag(Mu)^{-1}*Bt,
-where Mu is the velocity mass matrix, B corresponds to 10-block of the
-system matrix (&#8216;-div&#8217; operator) and Bt is its transpose, i.e. 01-block of
-the system matrix (&#8216;grad&#8217; operator).</p>
-<p>Note that Bt contains zero rows corresponding to dofs on the Dirichlet
-boundary since bcs have been applied on A. Moreover, B*diag(Mu)^{-1}*Bt is
-nonsingular for inflow-outflow problems, thus we do not need to prescribe
-any artificial boundary conditions for pressure.</p>
+<dt id="fenapack.preconditioners.UnsteadyPCDPC_SEW">
+<em class="property">class </em><code class="descclassname">fenapack.preconditioners.</code><code class="descname">UnsteadyPCDPC_SEW</code><a class="reference internal" href="../_modules/fenapack/preconditioners.html#UnsteadyPCDPC_SEW"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.UnsteadyPCDPC_SEW" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#fenapack.preconditioners.PCDPC_SEW" title="fenapack.preconditioners.PCDPC_SEW"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.PCDPC_SEW</span></code></a></p>
+<p>This class implements variant of PCD described in <a class="footnote-reference" href="#id2" id="id3">[1]</a> appropriate for
+unsteady problems. It derives from <a class="reference internal" href="#fenapack.preconditioners.PCDPC_SEW" title="fenapack.preconditioners.PCDPC_SEW"><code class="xref py py-class docutils literal"><span class="pre">PCDPC_SEW</span></code></a> but pressure Laplacian
+<span class="math">\(A_p\)</span> is approximated by <span class="math">\(B (\operatorname{diag} M_u)^{-1}
+B^\top\)</span>, where <span class="math">\(M_u\)</span> is the velocity mass matrix, <span class="math">\(B\)</span>
+corresponds to 10-block of the system matrix (<span class="math">\(\operatorname{div}\)</span>
+operator) and <span class="math">\(B^\top\)</span> is its transpose, i.e. 01-block of the system
+matrix (<span class="math">\(\operatorname{grad}\)</span> operator).</p>
+<p>Note that <span class="math">\(Bt\)</span> contains zero rows corresponding to dofs on the
+Dirichlet boundary since bcs have been applied on <span class="math">\(A\)</span>. Moreover,
+<span class="math">\(B (\operatorname{diag} M_u)^{-1} B^\top\)</span> is nonsingular for
+inflow-outflow problems, thus we do not need to prescribe any artificial
+boundary conditions for pressure.</p>
 <dl class="method">
-<dt id="fenapack.preconditioners.UnsteadyPCDPC_ESW.set_operators">
-<code class="descname">set_operators</code><span class="sig-paren">(</span><em>is0</em>, <em>is1</em>, <em>A</em>, <em>P</em>, <em>Mp=None</em>, <em>Mu=None</em>, <em>Fp=None</em>, <em>bcs=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/preconditioners.html#UnsteadyPCDPC_ESW.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.UnsteadyPCDPC_ESW.set_operators" title="Permalink to this definition">¶</a></dt>
+<dt id="fenapack.preconditioners.UnsteadyPCDPC_SEW.set_operators">
+<code class="descname">set_operators</code><span class="sig-paren">(</span><em>is0</em>, <em>is1</em>, <em>A</em>, <em>P</em>, <em>Mp=None</em>, <em>Mu=None</em>, <em>Fp=None</em>, <em>bcs=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/preconditioners.html#UnsteadyPCDPC_SEW.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.UnsteadyPCDPC_SEW.set_operators" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set operators for the approximate Schur complement matrix</p>
 <dl class="docutils">
 <dt><em>Arguments</em></dt>
 <dd><dl class="first last docutils">
-<dt>is0, is1 (<cite>petsc4py.PETSc.IS</cite>)</dt>
+<dt>is0, is1 (<code class="xref py py-class docutils literal"><span class="pre">petsc4py.PETSc.IS</span></code>)</dt>
 <dd>The index sets defining blocks in the field splitted matrix.</dd>
 <dt>A (<code class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></code>)</dt>
 <dd>The system matrix.</dd>
 <dt>P (<code class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></code>)</dt>
-<dd>The preconditioning matrix. [NOT USED]</dd>
+<dd>Dummy preconditioning matrix. Not used by this implementation.</dd>
 </dl>
 </dd>
 <dt><em>Keyword arguments</em></dt>
@@ -310,7 +318,8 @@ any artificial boundary conditions for pressure.</p>
 <dd>The matrix containing pressure convection-diffusion as its
 11-block.</dd>
 <dt>bcs (<code class="xref py py-class docutils literal"><span class="pre">DirichletBC</span></code>)</dt>
-<dd>List of boundary conditions that will be applied on Fp.</dd>
+<dd>List of boundary conditions that will be &#8220;applied&#8221; on
+<span class="math">\(F_p\)</span>.</dd>
 </dl>
 </dd>
 </dl>
@@ -319,39 +328,53 @@ any artificial boundary conditions for pressure.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="fenapack.preconditioners.PCDPC_BMR">
-<em class="property">class </em><code class="descclassname">fenapack.preconditioners.</code><code class="descname">PCDPC_BMR</code><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_BMR"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_BMR" title="Permalink to this definition">¶</a></dt>
+<dt id="fenapack.preconditioners.PCDPC_BRM">
+<em class="property">class </em><code class="descclassname">fenapack.preconditioners.</code><code class="descname">PCDPC_BRM</code><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_BRM"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_BRM" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.BasePCDPC</span></code></p>
-<p>This class implements PCD preconditioning proposed by Blechta, Malek,
-Rehor (201?).</p>
+<p>This class implements a modification of PCD variant similar to one by
+<a class="footnote-reference" href="#id5" id="id4">[2]</a>.</p>
+<table class="docutils footnote" frame="void" id="id5" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id4">[2]</a></td><td>Olshanskii M. A., Vassilevski Y. V., <em>Pressure Schur complement
+preconditioners for the discrete Oseen problem</em>.
+SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.</td></tr>
+</tbody>
+</table>
 <dl class="method">
-<dt id="fenapack.preconditioners.PCDPC_BMR.apply">
-<code class="descname">apply</code><span class="sig-paren">(</span><em>pc</em>, <em>x</em>, <em>y</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_BMR.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_BMR.apply" title="Permalink to this definition">¶</a></dt>
+<dt id="fenapack.preconditioners.PCDPC_BRM.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><em>pc</em>, <em>x</em>, <em>y</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_BRM.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_BRM.apply" title="Permalink to this definition">¶</a></dt>
 <dd><p>This method implements the action of the inverse of the approximate
-Schur complement $hat{S}, that is</p>
-<blockquote>
-<div>$y = -(M_p^{-1} K_p A_p^{-1} x_bc + M_p^{-1} x)$</div></blockquote>
-<p>where $K_p$ is used to denote pressure convection matrix plus possibly
-pressure mass matrix coming from discrete time derivative. Note that
-Laplace solve with A_p in the first term on the right hand side is
-carried out with application of subfield boundary conditions on x
-(denoted by x_bc). Good strategy is to use M_p and K_p both scaled by
-$nu^{-1}$.</p>
+Schur complement <span class="math">\(-\hat{S}^{-1}\)</span>, that is</p>
+<div class="math">
+\[y = -M_p^{-1} (I + K_p A_p^{-1}) x\]</div>
+<p>where <span class="math">\(K_p\)</span> is used to denote pressure convection matrix plus
+possibly pressure mass matrix coming from discrete time derivative.
+Note that Laplace solve with <span class="math">\(A_p^{-1} x\)</span> is performed with usual
+non-symmetric application of subfield BC on matrix <span class="math">\(A_p\)</span> and RHS
+<span class="math">\(x\)</span> (but only in that term). It is crucial that identity term
+<span class="math">\(I x\)</span> is not absorbed into the second, compact term to get</p>
+<div class="math">
+\[y = -M_p^{-1} (A_p + K_p) A_p^{-1} x.\]</div>
+<p>This is crucial to keep a stability with respect to the leading Stokes
+term.</p>
+<p>Good strategy is to use <span class="math">\(M_p\)</span> and <span class="math">\(K_p\)</span> both scaled by
+<span class="math">\(\nu^{-1}\)</span>.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="fenapack.preconditioners.PCDPC_BMR.set_operators">
-<code class="descname">set_operators</code><span class="sig-paren">(</span><em>is0</em>, <em>is1</em>, <em>A</em>, <em>P</em>, <em>Mp=None</em>, <em>Ap=None</em>, <em>Kp=None</em>, <em>bcs=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_BMR.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_BMR.set_operators" title="Permalink to this definition">¶</a></dt>
+<dt id="fenapack.preconditioners.PCDPC_BRM.set_operators">
+<code class="descname">set_operators</code><span class="sig-paren">(</span><em>is0</em>, <em>is1</em>, <em>A</em>, <em>P</em>, <em>Mp=None</em>, <em>Ap=None</em>, <em>Kp=None</em>, <em>bcs=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/preconditioners.html#PCDPC_BRM.set_operators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.preconditioners.PCDPC_BRM.set_operators" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set operators for the approximate Schur complement matrix</p>
 <dl class="docutils">
 <dt><em>Arguments</em></dt>
 <dd><dl class="first last docutils">
-<dt>is0, is1 (<cite>petsc4py.PETSc.IS</cite>)</dt>
+<dt>is0, is1 (<code class="xref py py-class docutils literal"><span class="pre">petsc4py.PETSc.IS</span></code>)</dt>
 <dd>The index sets defining blocks in the field splitted matrix.</dd>
 <dt>A (<code class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></code>)</dt>
-<dd>The system matrix. [NOT USED]</dd>
+<dd>Dummy system matrix. Not used by this implementation.</dd>
 <dt>P (<code class="xref py py-class docutils literal"><span class="pre">GenericMatrix</span></code>)</dt>
-<dd>The preconditioning matrix. [NOT USED]</dd>
+<dd>Dummy preconditioning matrix. Not used by this implementation.</dd>
 </dl>
 </dd>
 <dt><em>Keyword arguments</em></dt>
@@ -364,7 +387,8 @@ $nu^{-1}$.</p>
 <dd>The matrix containing pressure convection plus possibly mass
 matrix comming from the time derivative as its 11-block.</dd>
 <dt>bcs (<code class="xref py py-class docutils literal"><span class="pre">DirichletBC</span></code>)</dt>
-<dd>List of boundary conditions that will be applied on Ap.</dd>
+<dd>List of boundary conditions that will be applied during
+<span class="math">\(A_p^{-1} x\)</span> solve.</dd>
 </dl>
 </dd>
 </dl>
@@ -378,25 +402,26 @@ matrix comming from the time derivative as its 11-block.</dd>
 <dl class="function">
 <dt id="fenapack.stabilization.StabilizationParameterSD">
 <code class="descclassname">fenapack.stabilization.</code><code class="descname">StabilizationParameterSD</code><span class="sig-paren">(</span><em>wind</em>, <em>viscosity</em>, <em>density=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/fenapack/stabilization.html#StabilizationParameterSD"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenapack.stabilization.StabilizationParameterSD" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a subclass of dolfin.Expression representing streamline
-diffusion stabilization parameter.</p>
+<dd><p>Returns a subclass of <code class="xref py py-class docutils literal"><span class="pre">dolfin.Expression</span></code> representing
+streamline diffusion stabilization parameter.</p>
 <p>This kind of stabilization is convenient when a multigrid method is used
 for the convection term in the Navier-Stokes equation. The idea of the
-stabilization involves adding an additional term of the form</p>
-<blockquote>
-<div>delta_sd*inner(dot(grad(u), w), dot(grad(v), w))*dx</div></blockquote>
-<p>into the Navier-Stokes equation. Here u is a trial function, v is a test
-function and w defines so-called &#8220;wind&#8221; which is a known vector function.
-Regularization parameter delta_sd is determined by the local mesh Peclet
-number (PE), see the implementation below.</p>
+stabilization involves adding an additional term of the form:</p>
+<div class="highlight-default"><div class="highlight"><pre><span class="n">delta_sd</span><span class="o">*</span><span class="n">inner</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">w</span><span class="p">),</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="n">w</span><span class="p">))</span><span class="o">*</span><span class="n">dx</span>
+</pre></div>
+</div>
+<p>into the Navier-Stokes equation. Here <code class="docutils literal"><span class="pre">u</span></code> is a trial function, <code class="docutils literal"><span class="pre">v</span></code> is a
+test function and <code class="docutils literal"><span class="pre">w</span></code> defines so-called &#8220;wind&#8221; which is a known vector
+function.  Regularization parameter <code class="docutils literal"><span class="pre">delta_sd</span></code> is determined by the local
+mesh Peclet number (PE), see the implementation below.</p>
 <dl class="docutils">
 <dt><em>Arguments</em></dt>
 <dd><dl class="first last docutils">
-<dt>wind (<code class="xref py py-class docutils literal"><span class="pre">GenericFunction</span></code>)</dt>
+<dt>wind (<code class="xref py py-class docutils literal"><span class="pre">dolfin.GenericFunction</span></code>)</dt>
 <dd>A vector field determining convective velocity.</dd>
-<dt>viscosity (<code class="xref py py-class docutils literal"><span class="pre">GenericFunction</span></code>)</dt>
+<dt>viscosity (<code class="xref py py-class docutils literal"><span class="pre">dolfin.GenericFunction</span></code>)</dt>
 <dd>A scalar field determining dynamic viscosity.</dd>
-<dt>density (<code class="xref py py-class docutils literal"><span class="pre">GenericFunction</span></code>)</dt>
+<dt>density (<code class="xref py py-class docutils literal"><span class="pre">dolfin.GenericFunction</span></code>)</dt>
 <dd>A scalar field determining density (optional).</dd>
 </dl>
 </dd>
@@ -417,7 +442,6 @@ number (PE), see the implementation below.</p>
 <li><a class="reference internal" href="#">fenapack package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
 <li><a class="reference internal" href="#module-fenapack.field_split">fenapack.field_split module</a></li>
-<li><a class="reference internal" href="#fenapack-field-split-utils-module">fenapack.field_split_utils module</a></li>
 <li><a class="reference internal" href="#module-fenapack.nonlinear_solvers">fenapack.nonlinear_solvers module</a></li>
 <li><a class="reference internal" href="#module-fenapack.preconditioners">fenapack.preconditioners module</a></li>
 <li><a class="reference internal" href="#module-fenapack.stabilization">fenapack.stabilization module</a></li>

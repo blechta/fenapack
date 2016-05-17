@@ -1,7 +1,0 @@
-fenapack
-========
-
-.. toctree::
-   :maxdepth: 1
-
-   fenapack

@@ -113,26 +113,26 @@
 
 
 <div class="viewcode-block" id="StabilizationParameterSD"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.stabilization.StabilizationParameterSD">[docs]</a><span class="k">def</span> <span class="nf">StabilizationParameterSD</span><span class="p">(</span><span class="n">wind</span><span class="p">,</span> <span class="n">viscosity</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Returns a subclass of dolfin.Expression representing streamline</span>
-<span class="sd">    diffusion stabilization parameter.</span>
+    <span class="sd">&quot;&quot;&quot;Returns a subclass of :py:class:`dolfin.Expression` representing</span>
+<span class="sd">    streamline diffusion stabilization parameter.</span>
 
 <span class="sd">    This kind of stabilization is convenient when a multigrid method is used</span>
 <span class="sd">    for the convection term in the Navier-Stokes equation. The idea of the</span>
-<span class="sd">    stabilization involves adding an additional term of the form</span>
+<span class="sd">    stabilization involves adding an additional term of the form::</span>
 
 <span class="sd">      delta_sd*inner(dot(grad(u), w), dot(grad(v), w))*dx</span>
 
-<span class="sd">    into the Navier-Stokes equation. Here u is a trial function, v is a test</span>
-<span class="sd">    function and w defines so-called &quot;wind&quot; which is a known vector function.</span>
-<span class="sd">    Regularization parameter delta_sd is determined by the local mesh Peclet</span>
-<span class="sd">    number (PE), see the implementation below.</span>
+<span class="sd">    into the Navier-Stokes equation. Here ``u`` is a trial function, ``v`` is a</span>
+<span class="sd">    test function and ``w`` defines so-called &quot;wind&quot; which is a known vector</span>
+<span class="sd">    function.  Regularization parameter ``delta_sd`` is determined by the local</span>
+<span class="sd">    mesh Peclet number (PE), see the implementation below.</span>
 
 <span class="sd">    *Arguments*</span>
-<span class="sd">        wind (:py:class:`GenericFunction`)</span>
+<span class="sd">        wind (:py:class:`dolfin.GenericFunction`)</span>
 <span class="sd">            A vector field determining convective velocity.</span>
-<span class="sd">        viscosity (:py:class:`GenericFunction`)</span>
+<span class="sd">        viscosity (:py:class:`dolfin.GenericFunction`)</span>
 <span class="sd">            A scalar field determining dynamic viscosity.</span>
-<span class="sd">        density (:py:class:`GenericFunction`)</span>
+<span class="sd">        density (:py:class:`dolfin.GenericFunction`)</span>
 <span class="sd">            A scalar field determining density (optional).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">density</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>

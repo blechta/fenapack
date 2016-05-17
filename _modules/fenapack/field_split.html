@@ -68,37 +68,24 @@
 <span class="kn">import</span> <span class="nn">dolfin</span>
 <span class="kn">from</span> <span class="nn">petsc4py</span> <span class="kn">import</span> <span class="n">PETSc</span>
 
-<span class="kn">from</span> <span class="nn">fenapack.field_split_utils</span> <span class="kn">import</span> <span class="n">dofmap_dofs_is</span>
+<span class="kn">from</span> <span class="nn">fenapack._field_split_utils</span> <span class="kn">import</span> <span class="n">dofmap_dofs_is</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;FieldSplitSolver&#39;</span><span class="p">]</span>
 
-<span class="c"># TODO:</span>
-<span class="c">#   Provide class &#39;FieldSplitProblem&#39; that will handle assembly of operators</span>
-<span class="c">#   including those needed to approximate the Schur complement.</span>
-<span class="c">#</span>
-<span class="c">#   It means that this class will construct index sets from dofmaps (currently</span>
-<span class="c">#   done by &#39;FieldSplitSolver&#39;) and it will collect all UFL forms defining</span>
-<span class="c">#   particular operators (including system matrix and preconditioner) together</span>
-<span class="c">#   with all boundary conditions. According to chosen strategy it will prepare</span>
-<span class="c">#   operators ready to be used by &#39;PCDPC&#39; objects.</span>
-<span class="c">#</span>
-<span class="c">#   Such approach should enable consistent implementation of &#39;PCDPC&#39; objects,</span>
-<span class="c">#   since the responsibility for extracting operators from &quot;huge&quot; matrices,</span>
-<span class="c">#   applying boundary conditions, etc. will be moved out from &#39;set_operators&#39;</span>
-<span class="c">#   methods.</span>
 
 <div class="viewcode-block" id="FieldSplitSolver"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver">[docs]</a><span class="k">class</span> <span class="nc">FieldSplitSolver</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">PETScKrylovSolver</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;This class derives from &#39;dolfin.PETScKrylovSolver&#39; and implements</span>
-<span class="sd">    field split preconditioner for saddle point problems like incompressible</span>
-<span class="sd">    [Navier-]Stokes flow.&quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">options_prefix</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This class derives from :py:class:`dolfin.PETScKrylovSolver` and</span>
+<span class="sd">    implements field split preconditioner for saddle point problems like</span>
+<span class="sd">    incompressible (Navier-)Stokes flow.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="FieldSplitSolver.__init__"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">options_prefix</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create field split solver on a given space for a particular method.</span>
 
 <span class="sd">        *Arguments*</span>
-<span class="sd">            space (:py:class:`FunctionSpace &lt;dolfin.functions.functionspace&gt;`)</span>
+<span class="sd">            space (:py:class:`dolfin.FunctionSpace`)</span>
 <span class="sd">                Mixed function space determining the field split.</span>
-<span class="sd">            method</span>
-<span class="sd">                Type of a PETSc KSP object, see help(PETSc.KSP.Type).</span>
+<span class="sd">            method (:py:class:`string`)</span>
+<span class="sd">                Type of a PETSc KSP object, see</span>
+<span class="sd">                help(:py:class:`petsc4py.PETSc.KSP.Type`).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c"># Create KSP</span>
         <span class="n">ksp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ksp</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="p">()</span>
@@ -121,13 +108,14 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_11</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Options</span><span class="p">(</span><span class="n">options_prefix</span><span class="o">+</span><span class="s">&quot;fieldsplit_p_&quot;</span><span class="p">)</span>
 
         <span class="c"># Set default parameter values</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_parameters</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_parameters</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="FieldSplitSolver.default_parameters"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.default_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">default_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="FieldSplitSolver.default_parameters"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.default_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">default_parameters</span><span class="p">():</span>
         <span class="sd">&quot;&quot;&quot;Extend default parameter set of parent class.&quot;&quot;&quot;</span>
         <span class="c"># Get default parameters for parent class</span>
-        <span class="n">prm</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">PETScKrylovSolver</span><span class="p">()</span><span class="o">.</span><span class="n">default_parameters</span><span class="p">()</span>
+        <span class="n">prm</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">PETScKrylovSolver</span><span class="o">.</span><span class="n">default_parameters</span><span class="p">()</span>
 
         <span class="c"># Hack for development version of DOLFIN</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">prm</span><span class="o">.</span><span class="n">has_parameter_set</span><span class="p">(</span><span class="s">&quot;gmres&quot;</span><span class="p">):</span>
@@ -155,25 +143,27 @@
 
 
 <div class="viewcode-block" id="FieldSplitSolver.get_subopts"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.get_subopts">[docs]</a>    <span class="k">def</span> <span class="nf">get_subopts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return option databases enabling to set up subsolvers.&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Return :py:class:`petsc4py.PETSc.Options` databases of 00 and 11</span>
+<span class="sd">        subKSP.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_00</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_11</span></div>
 
 
-<div class="viewcode-block" id="FieldSplitSolver.set_operator"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.set_operator">[docs]</a>    <span class="k">def</span> <span class="nf">set_operator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">set_operator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
             <span class="s">&quot;This has been discarded for &#39;FieldSplitSolver&#39;.&quot;</span>
-            <span class="s">&quot; Use &#39;set_operators&#39; method instead.&quot;</span><span class="p">)</span></div>
+            <span class="s">&quot; Use &#39;set_operators&#39; method instead.&quot;</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="FieldSplitSolver.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="o">**</span><span class="n">schur_approx</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;A and P represents a system matrix operator and a preconditioner in the</span>
-<span class="sd">        usual sense.</span>
+        <span class="sd">&quot;&quot;&quot;``A`` and ``P`` represents a system matrix operator and</span>
+<span class="sd">        a preconditioner in the usual sense.</span>
 
 <span class="sd">        **Overloaded versions**</span>
 
-<span class="sd">          Optional keyword arguments in &#39;schur_approx&#39; can be used to build an</span>
-<span class="sd">          approximate Schur complement matrix. These optional arguments  differ</span>
-<span class="sd">          depending on the strategy used for preconditioning.</span>
+<span class="sd">            Optional keyword arguments in ``schur_approx`` can be used to build</span>
+<span class="sd">            an approximate Schur complement matrix. These optional arguments</span>
+<span class="sd">            differ depending on the strategy used for preconditioning. See</span>
+<span class="sd">            classes in :py:class:`fenapack.preconditioners` module.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">dolfin</span><span class="o">.</span><span class="n">PETScKrylovSolver</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">)</span>
         <span class="c">#assert self._ksp.getOperators() == \</span>
