@@ -41,7 +41,6 @@ Then comes standard formulation of the nonlinear equation
     u_, p_ = split(w)
     n = FacetNormal(mesh)
     nu = Constant(args.viscosity)
-    ds = Measure("ds", subdomain_data=boundary_markers)
 
     # Nonlinear equation
     F = (
