@@ -82,7 +82,6 @@ solve on inlet. Note that it is defined on pressure subspace of the mixed space
 <span class="n">u_</span><span class="p">,</span> <span class="n">p_</span> <span class="o">=</span> <span class="n">split</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
 <span class="n">n</span> <span class="o">=</span> <span class="n">FacetNormal</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
 <span class="n">nu</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">viscosity</span><span class="p">)</span>
-<span class="n">ds</span> <span class="o">=</span> <span class="n">Measure</span><span class="p">(</span><span class="s">&quot;ds&quot;</span><span class="p">,</span> <span class="n">subdomain_data</span><span class="o">=</span><span class="n">boundary_markers</span><span class="p">)</span>
 
 <span class="c"># Nonlinear equation</span>
 <span class="n">F</span> <span class="o">=</span> <span class="p">(</span>
@@ -260,7 +259,6 @@ Oxford University Press 2005. 2nd edition 2014.</td></tr>
 <span class="n">u_</span><span class="p">,</span> <span class="n">p_</span> <span class="o">=</span> <span class="n">split</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
 <span class="n">n</span> <span class="o">=</span> <span class="n">FacetNormal</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
 <span class="n">nu</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">viscosity</span><span class="p">)</span>
-<span class="n">ds</span> <span class="o">=</span> <span class="n">Measure</span><span class="p">(</span><span class="s">&quot;ds&quot;</span><span class="p">,</span> <span class="n">subdomain_data</span><span class="o">=</span><span class="n">boundary_markers</span><span class="p">)</span>
 
 <span class="c"># Nonlinear equation</span>
 <span class="n">F</span> <span class="o">=</span> <span class="p">(</span>
