@@ -35,15 +35,15 @@ class NewtonSolver(dolfin.NewtonSolver):
 
         *Arguments*
             solver (:py:class:`GenericLinearSolver`)
-                A nonlinear variational problem.
+                A linear solver.
             debug_hook (function)
                 A function of the signature::
 
-                    dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem, int iteration)'.
+                    bool dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem, int iteration)
 
                 Provided ``r`` is a current residual vector, ``problem`` is
                 argument supplied to ``solve`` and ``iteration`` is number of
-                current iteration.
+                current iteration; :py:class:`bool` return value is ignored.
         """
         self._hook = debug_hook
         factory = dolfin.PETScFactory.instance()
@@ -84,6 +84,20 @@ class NewtonSolver(dolfin.NewtonSolver):
 
     # Homebrewed implementation
     def solve(self, problem, x):
+        """Solve abstract nonlinear problem :math:`F(x) = 0` for given
+        :math:`F` and Jacobian :math:`\dfrac{\partial F}{\partial x}`.
+
+        *Arguments*
+            problem (:py:class:`dolfin.NonlinearProblem`)
+                The nonlinear problem.
+            x (:py:class:`dolfin.GenericVector`)
+                The unknown vector.
+
+        *Returns*
+            (int, bool)
+                Pair of number of Newton iterations, and whether
+                iteration converged)
+        """
         # A Python rewrite of 'dolfin::NewtonSolver::solve'
         # with modification in linear solver setup.
         convergence_criterion = self.parameters["convergence_criterion"]
@@ -172,9 +186,6 @@ class NewtonSolver(dolfin.NewtonSolver):
                 dolfin.warning("Newton solver did not converge.")
 
         return self._newton_iteration, newton_converged
-
-
-    solve.__doc__ = re.sub(":py:class:`", ":py:class:`dolfin.", dolfin.NewtonSolver.solve.__doc__)
 
 
 

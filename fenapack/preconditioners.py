@@ -192,7 +192,7 @@ class UnsteadyPCDPC_SEW(PCDPC_SEW):
     operator) and :math:`B^\top` is its transpose, i.e. 01-block of the system
     matrix (:math:`\operatorname{grad}` operator).
 
-    Note that :math:`Bt` contains zero rows corresponding to dofs on the
+    Note that :math:`B^\top` contains zero rows corresponding to dofs on the
     Dirichlet boundary since bcs have been applied on :math:`A`. Moreover,
     :math:`B (\operatorname{diag} M_u)^{-1} B^\top` is nonsingular for
     inflow-outflow problems, thus we do not need to prescribe any artificial
