@@ -24,11 +24,11 @@
 # Modified by Martin Sandve Alnaes, 2014
 
 from __future__ import print_function
-import sys, os, re
-import platform
-import instant
+import sys, os, re, platform
 from time import time
-from instant import get_status_output
+from itertools import chain
+
+from instant import get_status_output, get_default_error_dir
 from dolfin import has_mpi, has_parmetis, has_scotch
 
 
@@ -100,7 +100,7 @@ def run_python_demo(prefix, demo, rootdir, timing, failed):
         print(output)
 
         # Add contents from Instant's compile.log to output
-        instant_compile_log = os.path.join(instant.get_default_error_dir(), "compile.log")
+        instant_compile_log = os.path.join(get_default_error_dir(), "compile.log")
         if os.path.isfile(instant_compile_log):
             instant_error = file(instant_compile_log).read()
             output += "\n\nInstant compile.log for %s:\n\n" % demo
@@ -110,6 +110,7 @@ def run_python_demo(prefix, demo, rootdir, timing, failed):
 def main():
     # Location of all demos
     demodir = os.path.join(os.curdir, "..", "..", "demo")
+    appsdir = os.path.join(os.curdir, "..", "..", "apps")
     rootdir = os.path.abspath(os.curdir)
 
     # List of demos that have demo dir but are not currently implemented
@@ -121,7 +122,7 @@ def main():
     # Demos to run
     cppdemos = []
     pydemos = []
-    for dpath, dnames, fnames in os.walk(demodir):
+    for dpath, dnames, fnames in chain(os.walk(demodir), os.walk(appsdir)):
         if os.path.basename(dpath) == 'cpp':
             if os.path.isfile(os.path.join(dpath, 'Makefile')):
                 cppdemos.append(dpath)
