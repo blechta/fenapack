@@ -111,7 +111,6 @@ J_pc = J + delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
 mp = Constant(1.0/nu)*p*q*dx
 kp = Constant(1.0/nu)*dot(grad(p), u_)*q*dx
 ap = inner(grad(p), grad(q))*dx
-fp = nu*ap + kp
 
 # Collect forms to define nonlinear problem
 problem = PCDProblem(F, [bc0, bc1], J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
