@@ -3,17 +3,20 @@
 .. include:: ../../README.rst
 
 
-Preliminaries
-=============
+Mathematical background
+=======================
 
-Installation
-------------
+TODO
 
-Help and support
-----------------
 
-Development and reporting bugs
-------------------------------
+Documented demos
+================
+
+.. toctree::
+   :titlesonly:
+
+   demos/navier-stokes-pcd
+
 
 Manual and API Reference
 ========================
@@ -21,10 +24,7 @@ Manual and API Reference
 .. toctree::
    :titlesonly:
 
-   .. User Manual <user/user_manual>
    API Reference <api-doc/fenapack>
-   .. Releases <releases>
-
 
 * :ref:`modindex`
 * :ref:`genindex`

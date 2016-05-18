@@ -85,15 +85,15 @@
 
 <span class="sd">        *Arguments*</span>
 <span class="sd">            solver (:py:class:`GenericLinearSolver`)</span>
-<span class="sd">                A nonlinear variational problem.</span>
+<span class="sd">                A linear solver.</span>
 <span class="sd">            debug_hook (function)</span>
 <span class="sd">                A function of the signature::</span>
 
-<span class="sd">                    dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem, int iteration)&#39;.</span>
+<span class="sd">                    bool dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem, int iteration)</span>
 
 <span class="sd">                Provided ``r`` is a current residual vector, ``problem`` is</span>
 <span class="sd">                argument supplied to ``solve`` and ``iteration`` is number of</span>
-<span class="sd">                current iteration.</span>
+<span class="sd">                current iteration; :py:class:`bool` return value is ignored.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_hook</span> <span class="o">=</span> <span class="n">debug_hook</span>
         <span class="n">factory</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">PETScFactory</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
@@ -134,6 +134,20 @@
 
     <span class="c"># Homebrewed implementation</span>
 <div class="viewcode-block" id="NewtonSolver.solve"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NewtonSolver.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Solve abstract nonlinear problem :math:`F(x) = 0` for given</span>
+<span class="sd">        :math:`F` and Jacobian :math:`\dfrac{\partial F}{\partial x}`.</span>
+
+<span class="sd">        *Arguments*</span>
+<span class="sd">            problem (:py:class:`dolfin.NonlinearProblem`)</span>
+<span class="sd">                The nonlinear problem.</span>
+<span class="sd">            x (:py:class:`dolfin.GenericVector`)</span>
+<span class="sd">                The unknown vector.</span>
+
+<span class="sd">        *Returns*</span>
+<span class="sd">            (int, bool)</span>
+<span class="sd">                Pair of number of Newton iterations, and whether</span>
+<span class="sd">                iteration converged)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="c"># A Python rewrite of &#39;dolfin::NewtonSolver::solve&#39;</span>
         <span class="c"># with modification in linear solver setup.</span>
         <span class="n">convergence_criterion</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;convergence_criterion&quot;</span><span class="p">]</span>
@@ -221,10 +235,7 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">dolfin</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Newton solver did not converge.&quot;</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span><span class="p">,</span> <span class="n">newton_converged</span></div>
-
-
-    <span class="n">solve</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&quot;:py:class:`&quot;</span><span class="p">,</span> <span class="s">&quot;:py:class:`dolfin.&quot;</span><span class="p">,</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">NewtonSolver</span><span class="o">.</span><span class="n">solve</span><span class="o">.</span><span class="n">__doc__</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span><span class="p">,</span> <span class="n">newton_converged</span></div></div>
 
 
 

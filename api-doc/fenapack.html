@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="FEnaPack 1.7.0dev documentation" href="../index.html" />
-    <link rel="prev" title="FENaPack - FEniCS Navier-Stokes preconditioning package" href="../index.html" /> 
+    <link rel="prev" title="PCD preconditioner for Navier-Stokes equations" href="../demos/navier-stokes-pcd.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -38,7 +38,7 @@
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../index.html" title="FENaPack - FEniCS Navier-Stokes preconditioning package"
+          <a href="../demos/navier-stokes-pcd.html" title="PCD preconditioner for Navier-Stokes equations"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li> 
       </ul>
@@ -131,15 +131,15 @@ debug hook executed on every iteration can be provided.</p>
 <dt><em>Arguments</em></dt>
 <dd><dl class="first last docutils">
 <dt>solver (<code class="xref py py-class docutils literal"><span class="pre">GenericLinearSolver</span></code>)</dt>
-<dd>A nonlinear variational problem.</dd>
+<dd>A linear solver.</dd>
 <dt>debug_hook (function)</dt>
 <dd><p class="first">A function of the signature:</p>
-<div class="highlight-default"><div class="highlight"><pre><span class="n">dolfin</span><span class="o">.</span><span class="n">NewtonSolver</span><span class="o">.</span><span class="n">converged</span><span class="p">(</span><span class="n">GenericVector</span> <span class="n">r</span><span class="p">,</span> <span class="n">NonlinearProblem</span> <span class="n">problem</span><span class="p">,</span> <span class="nb">int</span> <span class="n">iteration</span><span class="p">)</span><span class="s">&#39;.</span>
+<div class="highlight-default"><div class="highlight"><pre><span class="nb">bool</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">NewtonSolver</span><span class="o">.</span><span class="n">converged</span><span class="p">(</span><span class="n">GenericVector</span> <span class="n">r</span><span class="p">,</span> <span class="n">NonlinearProblem</span> <span class="n">problem</span><span class="p">,</span> <span class="nb">int</span> <span class="n">iteration</span><span class="p">)</span>
 </pre></div>
 </div>
 <p class="last">Provided <code class="docutils literal"><span class="pre">r</span></code> is a current residual vector, <code class="docutils literal"><span class="pre">problem</span></code> is
 argument supplied to <code class="docutils literal"><span class="pre">solve</span></code> and <code class="docutils literal"><span class="pre">iteration</span></code> is number of
-current iteration.</p>
+current iteration; <code class="xref py py-class docutils literal"><span class="pre">bool</span></code> return value is ignored.</p>
 </dd>
 </dl>
 </dd>
@@ -154,10 +154,10 @@ current iteration.</p>
 <dl class="docutils">
 <dt><em>Arguments</em></dt>
 <dd><dl class="first last docutils">
-<dt>nonlinear_function (<code class="xref py py-class docutils literal"><span class="pre">dolfin.NonlinearProblem</span></code>)</dt>
+<dt>problem (<code class="xref py py-class docutils literal"><span class="pre">dolfin.NonlinearProblem</span></code>)</dt>
 <dd>The nonlinear problem.</dd>
 <dt>x (<code class="xref py py-class docutils literal"><span class="pre">dolfin.GenericVector</span></code>)</dt>
-<dd>The vector.</dd>
+<dd>The unknown vector.</dd>
 </dl>
 </dd>
 <dt><em>Returns</em></dt>
@@ -288,7 +288,7 @@ B^\top\)</span>, where <span class="math">\(M_u\)</span> is the velocity mass ma
 corresponds to 10-block of the system matrix (<span class="math">\(\operatorname{div}\)</span>
 operator) and <span class="math">\(B^\top\)</span> is its transpose, i.e. 01-block of the system
 matrix (<span class="math">\(\operatorname{grad}\)</span> operator).</p>
-<p>Note that <span class="math">\(Bt\)</span> contains zero rows corresponding to dofs on the
+<p>Note that <span class="math">\(B^\top\)</span> contains zero rows corresponding to dofs on the
 Dirichlet boundary since bcs have been applied on <span class="math">\(A\)</span>. Moreover,
 <span class="math">\(B (\operatorname{diag} M_u)^{-1} B^\top\)</span> is nonsingular for
 inflow-outflow problems, thus we do not need to prescribe any artificial
@@ -450,8 +450,8 @@ mesh Peclet number (PE), see the implementation below.</p>
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="../index.html"
-                        title="previous chapter">FENaPack - FEniCS Navier-Stokes preconditioning package</a></p>
+  <p class="topless"><a href="../demos/navier-stokes-pcd.html"
+                        title="previous chapter">PCD preconditioner for Navier-Stokes equations</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -483,7 +483,7 @@ mesh Peclet number (PE), see the implementation below.</p>
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../index.html" title="FENaPack - FEniCS Navier-Stokes preconditioning package"
+          <a href="../demos/navier-stokes-pcd.html" title="PCD preconditioner for Navier-Stokes equations"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../index.html">FEnaPack 1.7.0dev documentation</a> &raquo;</li> 
       </ul>
