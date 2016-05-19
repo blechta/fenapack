@@ -59,7 +59,7 @@ implemented.</p>
 <table class="docutils footnote" frame="void" id="id3" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Elman H. C., Silvester D. J., Wathen A. J., <em>Finite Elements and Fast
+<tr><td class="label">[1]</td><td><em>(<a class="fn-backref" href="#id1">1</a>, <a class="fn-backref" href="#id6">2</a>)</em> Elman H. C., Silvester D. J., Wathen A. J., <em>Finite Elements and Fast
 Iterative Solvers: With Application in Incompressible Fluid Dynamics</em>.
 Oxford University Press 2005. 2nd edition 2014.</td></tr>
 </tbody>
@@ -67,7 +67,7 @@ Oxford University Press 2005. 2nd edition 2014.</td></tr>
 <table class="docutils footnote" frame="void" id="id4" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Olshanskii M. A., Vassilevski Y. V., <em>Pressure Schur complement
+<tr><td class="label">[2]</td><td><em>(<a class="fn-backref" href="#id2">1</a>, <a class="fn-backref" href="#id5">2</a>, <a class="fn-backref" href="#id7">3</a>)</em> Olshanskii M. A., Vassilevski Y. V., <em>Pressure Schur complement
 preconditioners for the discrete Oseen problem</em>.
 SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.</td></tr>
 </tbody>
@@ -116,8 +116,94 @@ along with FENaPack. If not, see &lt;<a class="reference external" href="http://
 </ul>
 </div>
 <div class="section" id="mathematical-background">
-<h2>Mathematical background<a class="headerlink" href="#mathematical-background" title="Permalink to this headline">¶</a></h2>
-<p>TODO</p>
+<span id="math-background"></span><h2>Mathematical background<a class="headerlink" href="#mathematical-background" title="Permalink to this headline">¶</a></h2>
+<p>Navier-Stokes equations</p>
+<div class="math">
+\[\begin{split}\left[\begin{array}{cc}
+    -\nu\Delta + \mathbf{v}\cdot\nabla &amp; \nabla \\
+    -\operatorname{div}                &amp; 0
+\end{array}\right]
+\left[\begin{array}{c}
+    \mathbf{u} \\
+    p
+\end{array}\right]
+=
+\left[\begin{array}{c}
+    \mathbf{f} \\
+    0
+\end{array}\right]\end{split}\]</div>
+<p>solved by GMRES preconditioned from right by</p>
+<div class="math">
+\[\begin{split}\mathbb{P} :=
+\left[\begin{array}{cc}
+    -\nu\Delta + \mathbf{v}\cdot\nabla &amp; \nabla \\
+                                       &amp; -\mathbb{S}
+\end{array}\right]\end{split}\]</div>
+<p>with Schur complement <span class="math">\(\mathbb{S} =
+-\operatorname{div}\left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}\nabla\)</span>
+would converge in two iterations. Unfortunately <span class="math">\(\mathbb{S}\)</span> is
+dense. Possible trick is to approximate <span class="math">\(\mathbb{S}\)</span> by swaping the
+order of the operators</p>
+<div class="math">
+\[\mathbb{S} \approx
+\mathbb{X}_\mathrm{BRM}
+-\Delta\left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}\]</div>
+<p>or</p>
+<div class="math">
+\[\mathbb{S} \approx
+\mathbb{X}_\mathrm{SEW}
+:= \left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}(-\Delta).\]</div>
+<p>This gives rise to the action of 11-block of preconditioner
+<span class="math">\(\mathbb{P}^{-1}\)</span> given by</p>
+<div class="math">
+\[\mathbb{X}_\mathrm{BRM}^{-1}
+:= \left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)(-\Delta)^{-1}.\]</div>
+<p>or</p>
+<div class="math">
+\[\mathbb{X}_\mathrm{SEW}^{-1}
+:= (-\Delta)^{-1}\left(-\nu\Delta+\mathbf{v}\cdot\nabla\right).\]</div>
+<p>Obviously additional artificial boundary condition for Laplacian solve
+<span class="math">\(-\Delta^{-1}\)</span> is needed in the action of preconditioner. Modifying
+the approach from <a class="footnote-reference" href="#id4" id="id5">[2]</a> we implement <span class="math">\(\mathbb{X}_\mathrm{BRM}^{-1}\)</span> as</p>
+<div class="math">
+\[\mathbb{X}_\mathrm{BRM}^{-1}
+:= \mathbb{M}_p^{-1} (\mathbb{I} + \mathbb{K}_p\mathbb{A}_p^{-1})\]</div>
+<p>where <span class="math">\(\mathbb{M}_p\)</span> is <span class="math">\(\nu^{-1}\)</span>-multiple of mass matrix on
+pressure, <span class="math">\(\mathbb{K}_p \approx \nu^{-1}\mathbf{v}\cdot\nabla\)</span> is
+a pressure convection matrix, and <span class="math">\(\mathbb{A}_p^{-1} \approx
+(-\Delta)^{-1}\)</span> is a pressure Laplacian solve with <em>zero boundary condition
+on inlet</em>. This is implemented by <a class="reference internal" href="api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM" title="fenapack.preconditioners.PCDPC_BRM"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.PCDPC_BRM</span></code></a>
+and <a class="reference internal" href="demos/navier-stokes-pcd.html"><span class="doc">PCD preconditioner for Navier-Stokes equations</span></a>.</p>
+<p>On the other hand SEW approach</p>
+<div class="math">
+\[\mathbb{X}_\mathrm{SEW}^{-1}
+:= \mathbb{A}^{-1} \mathbb{F}_p \mathbb{M}_p^{-1}\]</div>
+<p>with pressure convection-diffusion (PCD) matrix <span class="math">\(\mathbb{F}_p \approx
+-\Delta + \mathbf{v}\cdot\nabla\)</span> which also needs at least boundary condition
+for Laplacian solve is advocated in <a class="footnote-reference" href="#id3" id="id6">[1]</a> with use of &#8220;boundary conditions&#8221;
+for zero Dirichlet on <em>outlet</em> and natural conditions for both
+<span class="math">\(\mathbb{A}_p\)</span> and <span class="math">\(\mathbb{F}_p\)</span>. Moreover approach, if written
+in this form, requires a nasty ghost layer trick around Dirichlet boundary to
+compensate for poor approximation of</p>
+<div class="math">
+\[\mathbb{I} \approx \mathbb{A}_p^{-1} \mathbb{A}_p\]</div>
+<p>around Dirichlet boundary as can be found in <a class="footnote-reference" href="#id4" id="id7">[2]</a> and <a class="footnote-reference" href="#id9" id="id8">[3]</a>. It shows crucial
+to approximate well leading (Stokes) part of the operator. This is the reason
+why there is <span class="math">\(\mathbb{I}\)</span> instead of <span class="math">\(\mathbb{A}_p
+\mathbb{A}_p^{-1} \approx \mathbb{I}\)</span> in <span class="math">\(\mathbb{X}_\mathrm{BRM}^{-1}\)</span>.
+SEW variant (with approximate finite difference-like ghost layer trick around
+Dirichlet boundary) is implemented in classes
+<a class="reference internal" href="api-doc/fenapack.html#fenapack.preconditioners.PCDPC_SEW" title="fenapack.preconditioners.PCDPC_SEW"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.PCDPC_SEW</span></code></a> and
+<a class="reference internal" href="api-doc/fenapack.html#fenapack.preconditioners.UnsteadyPCDPC_SEW" title="fenapack.preconditioners.UnsteadyPCDPC_SEW"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.UnsteadyPCDPC_SEW</span></code></a>. Its usage is
+demonstrated in some scripts in <code class="docutils literal"><span class="pre">apps</span></code> directory.</p>
+<table class="docutils footnote" frame="void" id="id9" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id8">[3]</a></td><td>Silvester D., Elman H., Ramage A.,
+<em>IFISS. Incompressible Flow &amp; Iterative Solver Software.</em>
+<a class="reference external" href="http://www.maths.manchester.ac.uk/~djs/ifiss/">http://www.maths.manchester.ac.uk/~djs/ifiss/</a></td></tr>
+</tbody>
+</table>
 </div>
 <div class="section" id="documented-demos">
 <h2>Documented demos<a class="headerlink" href="#documented-demos" title="Permalink to this headline">¶</a></h2>
