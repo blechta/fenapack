@@ -10,7 +10,7 @@ which contains both the variational forms and the solver.
 Underlying mathematics
 ----------------------
 
-TODO
+See BRM variant in :ref:`math_background`.
 
 
 Implementation
