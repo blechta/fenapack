@@ -1,4 +1,4 @@
-First you need to be able to import FEnaPack.
+First you need to be able to import FENaPack.
 
 To generate API doc, build HTML and commit it to gh-pages branch::
 

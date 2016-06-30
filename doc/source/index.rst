@@ -1,4 +1,4 @@
-.. title:: FEnaPack
+.. title:: FENaPack
 
 .. include:: ../../README.rst
 

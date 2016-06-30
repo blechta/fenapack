@@ -19,7 +19,7 @@
 # This script calls sphinx-apidoc to generate files ready for autodoc
 
 echo ""
-echo "--- Generating FEnaPack autodoc RST files"
+echo "--- Generating FENaPack autodoc RST files"
 echo ""
 
 # Get location of Sphinx files
