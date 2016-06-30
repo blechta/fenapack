@@ -20,7 +20,7 @@
 """This is FENaPack, FEniCS Navier-Stokes preconditioning package."""
 
 __author__ = "Jan Blechta, Martin Řehoř"
-__version__ = "1.7.0dev"
+__version__ = "2016.1.0"
 __license__ = "GNU LGPL v3"
 
 from fenapack.field_split import *
