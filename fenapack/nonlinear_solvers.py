@@ -306,7 +306,6 @@ class PCDProblem(dolfin.NonlinearProblem):
         # Assemble preconditioner Jacobian or use system Jacobian
         try:
             self.J_pc(self._matP)
-            P = self._matP
         except AttributeError:
             P = A
         else:
