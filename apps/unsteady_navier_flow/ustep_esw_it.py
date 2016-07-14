@@ -197,7 +197,7 @@ fp_BE = (
 )*dx
 n = FacetNormal(mesh) # outward unit normal
 ds = Measure("ds", subdomain_data=boundary_markers)
-fp_BE -= (inner(u_, n)*p*q)*ds(1) # correction of fp due to Robin BC
+fp_BE -= (inner(u_, n)*p*q)*ds # correction of fp due to Robin BC
 
 # Set up inner solver
 inner_solver_BE = FieldSplitSolver(W, "gmres", "solver_BE_")
@@ -285,7 +285,7 @@ fp_SA = (
     + ctheta1*dot(grad(p), u_star)*q
     + ctheta1*nu*inner(grad(p), grad(q))
 )*dx
-fp_SA -= ctheta1*(inner(u_star, n)*p*q)*ds(1) # correction of fp due to Robin BC
+fp_SA -= ctheta1*(inner(u_star, n)*p*q)*ds # correction of fp due to Robin BC
 
 # Set up linear solver
 solver_SA = FieldSplitSolver(W, "gmres", "solver_SA_")

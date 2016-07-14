@@ -211,7 +211,7 @@ if args.pcd_strategy == "BRM":
 ap = inner(grad(p), grad(q))*dx
 fp = nu*ap + kp
 if args.pcd_strategy == "SEW":
-    fp -= (inner(u_, n)*p*q)*ds(1) # correction of fp due to Robin BC
+    fp -= (inner(u_, n)*p*q)*ds # correction of fp due to Robin BC
 
 # -----------------------------------------------------------------------------
 # Problem and solvers
@@ -321,8 +321,8 @@ p.rename("p", "pressure")
 # Save solution in XDMF format
 if args.save_results:
     filename = sys.argv[0][:-3]
-    File("results/%s_velocity.xdmf" % filename) << u
-    File("results/%s_pressure.xdmf" % filename) << p
+    XDMFFile(comm, "results/%s_velocity.xdmf" % filename).write(u)
+    XDMFFile(comm, "results/%s_pressure.xdmf" % filename).write(p)
 
 # Print summary of timings
 info("")

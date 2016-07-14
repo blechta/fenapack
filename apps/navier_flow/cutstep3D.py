@@ -182,7 +182,7 @@ fp = nu*ap + kp
 problem_args = [F, bcs, J]
 problem_args += [J_pc] if args.insolver == "it" else []
 if args.pcd_strategy == "SEW":
-    fp -= (inner(u_, n)*p*q)*ds(1) # Correction of fp due to Robin BC
+    fp -= (inner(u_, n)*p*q)*ds # Correction of fp due to Robin BC
     problem = PCDProblem(
         *problem_args, ap=ap, fp=fp, mp=mp, bcs_pcd=bcs_pcd)
 else:

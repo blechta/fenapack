@@ -112,7 +112,7 @@ fp = (nu*inner(grad(p), grad(q)) + dot(grad(p), u0)*q)*dx
 # Correction of fp due to Robin BC
 n = FacetNormal(mesh) # outward unit normal
 ds = Measure("ds", subdomain_data=sub_domains)
-fp -= (inner(u0, n)*p*q)*ds(1)
+fp -= (inner(u0, n)*p*q)*ds
 # Assemble PCD operators
 Mp = assemble(mp)
 Ap = assemble(ap)
