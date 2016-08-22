@@ -142,12 +142,12 @@ along with FENaPack. If not, see &lt;<a class="reference external" href="http://
 <p>with Schur complement <span class="math">\(\mathbb{S} =
 -\operatorname{div}\left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}\nabla\)</span>
 would converge in two iterations. Unfortunately <span class="math">\(\mathbb{S}\)</span> is
-dense. Possible trick is to approximate <span class="math">\(\mathbb{S}\)</span> by swaping the
+dense. Possible trick is to approximate <span class="math">\(\mathbb{S}\)</span> by swapping the
 order of the operators</p>
 <div class="math">
 \[\mathbb{S} \approx
 \mathbb{X}_\mathrm{BRM}
--\Delta\left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}\]</div>
+:= (-\Delta) \left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}\]</div>
 <p>or</p>
 <div class="math">
 \[\mathbb{S} \approx
@@ -181,7 +181,7 @@ and <a class="reference internal" href="demos/navier-stokes-pcd.html"><span clas
 <p>with pressure convection-diffusion (PCD) matrix <span class="math">\(\mathbb{F}_p \approx
 -\Delta + \mathbf{v}\cdot\nabla\)</span> which also needs at least boundary condition
 for Laplacian solve is advocated in <a class="footnote-reference" href="#id3" id="id6">[1]</a> with use of &#8220;boundary conditions&#8221;
-for zero Dirichlet on <em>outlet</em> and natural conditions for both
+for zero Dirichlet on <em>outlet</em> and natural conditions elsewhere for both
 <span class="math">\(\mathbb{A}_p\)</span> and <span class="math">\(\mathbb{F}_p\)</span>. Moreover approach, if written
 in this form, requires a nasty ghost layer trick around Dirichlet boundary to
 compensate for poor approximation of</p>

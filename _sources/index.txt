@@ -39,14 +39,14 @@ solved by GMRES preconditioned from right by
 with Schur complement :math:`\mathbb{S} =
 -\operatorname{div}\left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}\nabla`
 would converge in two iterations. Unfortunately :math:`\mathbb{S}` is
-dense. Possible trick is to approximate :math:`\mathbb{S}` by swaping the
+dense. Possible trick is to approximate :math:`\mathbb{S}` by swapping the
 order of the operators
 
 .. math::
 
     \mathbb{S} \approx
     \mathbb{X}_\mathrm{BRM}
-    -\Delta\left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}
+    := (-\Delta) \left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}
 
 or
 
@@ -97,7 +97,7 @@ On the other hand SEW approach
 with pressure convection-diffusion (PCD) matrix :math:`\mathbb{F}_p \approx
 -\Delta + \mathbf{v}\cdot\nabla` which also needs at least boundary condition
 for Laplacian solve is advocated in [1]_ with use of "boundary conditions"
-for zero Dirichlet on *outlet* and natural conditions for both
+for zero Dirichlet on *outlet* and natural conditions elsewhere for both
 :math:`\mathbb{A}_p` and :math:`\mathbb{F}_p`. Moreover approach, if written
 in this form, requires a nasty ghost layer trick around Dirichlet boundary to
 compensate for poor approximation of
