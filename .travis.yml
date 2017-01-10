@@ -1,19 +1,22 @@
-language: python
-
-python:
-    - "2.7"
-
+language: generic
+os: osx
+osx_image: xcode7.3
 sudo: false
+env:
+    matrix:
+        - CONDA_PY=27
 
 install:
-    - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
-    - bash miniconda.sh -b -p $HOME/miniconda
-    - export PATH="$HOME/miniconda/bin:$PATH"
-    - unset PYTHONPATH
+    - MINICONDA_URL="https://repo.continuum.io/miniconda"
+    - MINICONDA_FILE="Miniconda-latest-MacOSX-x86_64.sh"
+    - curl -L -O "${MINICONDA_URL}/${MINICONDA_FILE}"
+    - bash ${MINICONDA_FILE} -b -p $HOME/miniconda2
+    - export PATH="$HOME/miniconda2/bin:$PATH"
     - conda config --set always_yes yes
-    - conda config --add channels mikaem/label/travis
-    - conda config --add channels mikaem
-    - conda install fenics=2016.2.dev pytest
+    - conda config --add channels conda-forge
+    - conda config --add channels mikaem/label/OSX-10.11-clang
+    - conda update -q conda
+    - conda install --yes fenics=2017.1.dev
     - python setup.py install
 
 after_failure:
