@@ -286,5 +286,5 @@ list_timings(TimingClear_keep, [TimingType_wall])
 # Plot solution
 if plotting_enabled:
     plot(u, title="velocity")
-    plot(p, title="pressure", scale=2.0)
+    plot(p, title="pressure")
     interactive()
