@@ -5,3 +5,6 @@
 *.h5
 
 /build/
+/FENaPack.egg-info/
+
+test/regression/demo.log
