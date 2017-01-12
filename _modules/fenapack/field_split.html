@@ -48,36 +48,36 @@
           <div class="body" role="main">
             
   <h1>Source code for fenapack.field_split</h1><div class="highlight"><pre>
-<span class="c"># Copyright (C) 2014-2016 Jan Blechta and Martin Rehor</span>
-<span class="c">#</span>
-<span class="c"># This file is part of FENaPack.</span>
-<span class="c">#</span>
-<span class="c"># FENaPack is free software: you can redistribute it and/or modify</span>
-<span class="c"># it under the terms of the GNU Lesser General Public License as published by</span>
-<span class="c"># the Free Software Foundation, either version 3 of the License, or</span>
-<span class="c"># (at your option) any later version.</span>
-<span class="c">#</span>
-<span class="c"># FENaPack is distributed in the hope that it will be useful,</span>
-<span class="c"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
-<span class="c"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
-<span class="c"># GNU Lesser General Public License for more details.</span>
-<span class="c">#</span>
-<span class="c"># You should have received a copy of the GNU Lesser General Public License</span>
-<span class="c"># along with FENaPack.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1"># Copyright (C) 2014-2016 Jan Blechta and Martin Rehor</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of FENaPack.</span>
+<span class="c1">#</span>
+<span class="c1"># FENaPack is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU Lesser General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># FENaPack is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU Lesser General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU Lesser General Public License</span>
+<span class="c1"># along with FENaPack.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
 
 <span class="kn">import</span> <span class="nn">dolfin</span>
 <span class="kn">from</span> <span class="nn">petsc4py</span> <span class="kn">import</span> <span class="n">PETSc</span>
 
 <span class="kn">from</span> <span class="nn">fenapack._field_split_utils</span> <span class="kn">import</span> <span class="n">dofmap_dofs_is</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;FieldSplitSolver&#39;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;FieldSplitSolver&#39;</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="FieldSplitSolver"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver">[docs]</a><span class="k">class</span> <span class="nc">FieldSplitSolver</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">PETScKrylovSolver</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;This class derives from :py:class:`dolfin.PETScKrylovSolver` and</span>
 <span class="sd">    implements field split preconditioner for saddle point problems like</span>
 <span class="sd">    incompressible (Navier-)Stokes flow.&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="FieldSplitSolver.__init__"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">options_prefix</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">):</span>
+<div class="viewcode-block" id="FieldSplitSolver.__init__"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">options_prefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create field split solver on a given space for a particular method.</span>
 
 <span class="sd">        *Arguments*</span>
@@ -87,57 +87,57 @@
 <span class="sd">                Type of a PETSc KSP object, see</span>
 <span class="sd">                help(:py:class:`petsc4py.PETSc.KSP.Type`).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c"># Create KSP</span>
+        <span class="c1"># Create KSP</span>
         <span class="n">ksp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ksp</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="p">()</span>
         <span class="n">ksp</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
         <span class="n">ksp</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">method</span><span class="p">)</span>
         <span class="n">ksp</span><span class="o">.</span><span class="n">setOptionsPrefix</span><span class="p">(</span><span class="n">options_prefix</span><span class="p">)</span>
 
-        <span class="c"># Init parent class</span>
+        <span class="c1"># Init parent class</span>
         <span class="n">dolfin</span><span class="o">.</span><span class="n">PETScKrylovSolver</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">)</span>
 
-        <span class="c"># Set up FIELDSPLIT preconditioning</span>
+        <span class="c1"># Set up FIELDSPLIT preconditioning</span>
         <span class="n">pc</span> <span class="o">=</span> <span class="n">ksp</span><span class="o">.</span><span class="n">getPC</span><span class="p">()</span>
         <span class="n">pc</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">PC</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">FIELDSPLIT</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_is0</span> <span class="o">=</span> <span class="n">dofmap_dofs_is</span><span class="p">(</span><span class="n">space</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">dofmap</span><span class="p">())</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_is1</span> <span class="o">=</span> <span class="n">dofmap_dofs_is</span><span class="p">(</span><span class="n">space</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">dofmap</span><span class="p">())</span>
-        <span class="n">pc</span><span class="o">.</span><span class="n">setFieldSplitIS</span><span class="p">([</span><span class="s">&quot;u&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is0</span><span class="p">],</span> <span class="p">[</span><span class="s">&quot;p&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is1</span><span class="p">])</span>
+        <span class="n">pc</span><span class="o">.</span><span class="n">setFieldSplitIS</span><span class="p">([</span><span class="s2">&quot;u&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is0</span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;p&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is1</span><span class="p">])</span>
 
-        <span class="c"># Initiate option databases for subsolvers</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_00</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Options</span><span class="p">(</span><span class="n">options_prefix</span><span class="o">+</span><span class="s">&quot;fieldsplit_u_&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_11</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Options</span><span class="p">(</span><span class="n">options_prefix</span><span class="o">+</span><span class="s">&quot;fieldsplit_p_&quot;</span><span class="p">)</span>
+        <span class="c1"># Initiate option databases for subsolvers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_00</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Options</span><span class="p">(</span><span class="n">options_prefix</span><span class="o">+</span><span class="s2">&quot;fieldsplit_u_&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_11</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Options</span><span class="p">(</span><span class="n">options_prefix</span><span class="o">+</span><span class="s2">&quot;fieldsplit_p_&quot;</span><span class="p">)</span>
 
-        <span class="c"># Set default parameter values</span>
+        <span class="c1"># Set default parameter values</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_parameters</span><span class="p">()</span></div>
 
 
     <span class="nd">@staticmethod</span>
 <div class="viewcode-block" id="FieldSplitSolver.default_parameters"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.default_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">default_parameters</span><span class="p">():</span>
         <span class="sd">&quot;&quot;&quot;Extend default parameter set of parent class.&quot;&quot;&quot;</span>
-        <span class="c"># Get default parameters for parent class</span>
+        <span class="c1"># Get default parameters for parent class</span>
         <span class="n">prm</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">PETScKrylovSolver</span><span class="o">.</span><span class="n">default_parameters</span><span class="p">()</span>
 
-        <span class="c"># Hack for development version of DOLFIN</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">prm</span><span class="o">.</span><span class="n">has_parameter_set</span><span class="p">(</span><span class="s">&quot;gmres&quot;</span><span class="p">):</span>
-            <span class="n">prm</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">Parameters</span><span class="p">(</span><span class="s">&quot;gmres&quot;</span><span class="p">))</span>
-            <span class="n">prm</span><span class="p">[</span><span class="s">&quot;gmres&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;restart&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="c1"># Hack for development version of DOLFIN</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">prm</span><span class="o">.</span><span class="n">has_parameter_set</span><span class="p">(</span><span class="s2">&quot;gmres&quot;</span><span class="p">):</span>
+            <span class="n">prm</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">Parameters</span><span class="p">(</span><span class="s2">&quot;gmres&quot;</span><span class="p">))</span>
+            <span class="n">prm</span><span class="p">[</span><span class="s2">&quot;gmres&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;restart&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
 
-        <span class="c"># Add new parameters</span>
-        <span class="n">prm</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">Parameters</span><span class="p">(</span><span class="s">&quot;preconditioner&quot;</span><span class="p">))</span>
-        <span class="n">prm</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;side&quot;</span><span class="p">,</span> <span class="s">&quot;right&quot;</span><span class="p">,</span>
-                                  <span class="p">[</span><span class="s">&quot;left&quot;</span><span class="p">,</span> <span class="s">&quot;right&quot;</span><span class="p">,</span> <span class="s">&quot;symmetric&quot;</span><span class="p">])</span>
-        <span class="n">prm_fs</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Parameters</span><span class="p">(</span><span class="s">&quot;fieldsplit&quot;</span><span class="p">)</span>
-        <span class="n">prm_fs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;type&quot;</span><span class="p">,</span> <span class="s">&quot;schur&quot;</span><span class="p">,</span>
-                   <span class="p">[</span><span class="s">&quot;additive&quot;</span><span class="p">,</span> <span class="s">&quot;multiplicative&quot;</span><span class="p">,</span> <span class="s">&quot;symmetric_multiplicative&quot;</span><span class="p">,</span>
-                    <span class="s">&quot;special&quot;</span><span class="p">,</span> <span class="s">&quot;schur&quot;</span><span class="p">])</span>
-        <span class="n">prm_fs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">Parameters</span><span class="p">(</span><span class="s">&quot;schur&quot;</span><span class="p">))</span>
-        <span class="n">prm_fs</span><span class="p">[</span><span class="s">&quot;schur&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;fact_type&quot;</span><span class="p">,</span> <span class="s">&quot;upper&quot;</span><span class="p">,</span>
-                            <span class="p">[</span><span class="s">&quot;diag&quot;</span><span class="p">,</span> <span class="s">&quot;lower&quot;</span><span class="p">,</span> <span class="s">&quot;upper&quot;</span><span class="p">,</span> <span class="s">&quot;full&quot;</span><span class="p">])</span>
-        <span class="n">prm_fs</span><span class="p">[</span><span class="s">&quot;schur&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;precondition&quot;</span><span class="p">,</span> <span class="s">&quot;user&quot;</span><span class="p">,</span>
-                            <span class="p">[</span><span class="s">&quot;self&quot;</span><span class="p">,</span> <span class="s">&quot;selfp&quot;</span><span class="p">,</span> <span class="s">&quot;a11&quot;</span><span class="p">,</span> <span class="s">&quot;user&quot;</span><span class="p">,</span> <span class="s">&quot;full&quot;</span><span class="p">])</span>
+        <span class="c1"># Add new parameters</span>
+        <span class="n">prm</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">Parameters</span><span class="p">(</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">))</span>
+        <span class="n">prm</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;side&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">,</span>
+                                  <span class="p">[</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">,</span> <span class="s2">&quot;symmetric&quot;</span><span class="p">])</span>
+        <span class="n">prm_fs</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Parameters</span><span class="p">(</span><span class="s2">&quot;fieldsplit&quot;</span><span class="p">)</span>
+        <span class="n">prm_fs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="s2">&quot;schur&quot;</span><span class="p">,</span>
+                   <span class="p">[</span><span class="s2">&quot;additive&quot;</span><span class="p">,</span> <span class="s2">&quot;multiplicative&quot;</span><span class="p">,</span> <span class="s2">&quot;symmetric_multiplicative&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;special&quot;</span><span class="p">,</span> <span class="s2">&quot;schur&quot;</span><span class="p">])</span>
+        <span class="n">prm_fs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">Parameters</span><span class="p">(</span><span class="s2">&quot;schur&quot;</span><span class="p">))</span>
+        <span class="n">prm_fs</span><span class="p">[</span><span class="s2">&quot;schur&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;fact_type&quot;</span><span class="p">,</span> <span class="s2">&quot;upper&quot;</span><span class="p">,</span>
+                            <span class="p">[</span><span class="s2">&quot;diag&quot;</span><span class="p">,</span> <span class="s2">&quot;lower&quot;</span><span class="p">,</span> <span class="s2">&quot;upper&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">])</span>
+        <span class="n">prm_fs</span><span class="p">[</span><span class="s2">&quot;schur&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;precondition&quot;</span><span class="p">,</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span>
+                            <span class="p">[</span><span class="s2">&quot;self&quot;</span><span class="p">,</span> <span class="s2">&quot;selfp&quot;</span><span class="p">,</span> <span class="s2">&quot;a11&quot;</span><span class="p">,</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">])</span>
 
-        <span class="c"># Add new parameters to &#39;petsc_krylov_solver&#39; parameters</span>
-        <span class="n">prm</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">prm_fs</span><span class="p">)</span>
+        <span class="c1"># Add new parameters to &#39;petsc_krylov_solver&#39; parameters</span>
+        <span class="n">prm</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">prm_fs</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">prm</span></div>
 
@@ -150,8 +150,8 @@
 
     <span class="k">def</span> <span class="nf">set_operator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-            <span class="s">&quot;This has been discarded for &#39;FieldSplitSolver&#39;.&quot;</span>
-            <span class="s">&quot; Use &#39;set_operators&#39; method instead.&quot;</span><span class="p">)</span>
+            <span class="s2">&quot;This has been discarded for &#39;FieldSplitSolver&#39;.&quot;</span>
+            <span class="s2">&quot; Use &#39;set_operators&#39; method instead.&quot;</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="FieldSplitSolver.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split.FieldSplitSolver.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="o">**</span><span class="n">schur_approx</span><span class="p">):</span>
@@ -166,57 +166,57 @@
 <span class="sd">            classes in :py:class:`fenapack.preconditioners` module.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">dolfin</span><span class="o">.</span><span class="n">PETScKrylovSolver</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">)</span>
-        <span class="c">#assert self._ksp.getOperators() == \</span>
-        <span class="c">#  (dolfin.as_backend_type(A).mat(), dolfin.as_backend_type(P).mat())</span>
+        <span class="c1">#assert self._ksp.getOperators() == \</span>
+        <span class="c1">#  (dolfin.as_backend_type(A).mat(), dolfin.as_backend_type(P).mat())</span>
 
-        <span class="c"># Set up KSP</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_parameters</span><span class="p">()</span> <span class="c"># update global option database</span>
+        <span class="c1"># Set up KSP</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_parameters</span><span class="p">()</span> <span class="c1"># update global option database</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ksp</span><span class="o">.</span><span class="n">setFromOptions</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp</span><span class="o">.</span><span class="n">setUp</span><span class="p">()</span> <span class="c"># NOTE: this includes operations within &#39;PCSetUp&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp</span><span class="o">.</span><span class="n">setUp</span><span class="p">()</span> <span class="c1"># NOTE: this includes operations within &#39;PCSetUp&#39;</span>
 
-        <span class="c"># Get subKSP and subPC objects</span>
+        <span class="c1"># Get subKSP and subPC objects</span>
         <span class="n">ksp0</span><span class="p">,</span> <span class="n">ksp1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ksp</span><span class="o">.</span><span class="n">getPC</span><span class="p">()</span><span class="o">.</span><span class="n">getFieldSplitSubKSP</span><span class="p">()</span>
         <span class="n">pc0</span><span class="p">,</span> <span class="n">pc1</span> <span class="o">=</span> <span class="n">ksp0</span><span class="o">.</span><span class="n">getPC</span><span class="p">(),</span> <span class="n">ksp1</span><span class="o">.</span><span class="n">getPC</span><span class="p">()</span>
 
-        <span class="c"># Check if python context has been set up to define approximation of</span>
-        <span class="c"># 11-block inverse. If so, use **schur_approx to set up this context.</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_11</span><span class="o">.</span><span class="n">hasName</span><span class="p">(</span><span class="s">&quot;pc_python_type&quot;</span><span class="p">):</span>
+        <span class="c1"># Check if python context has been set up to define approximation of</span>
+        <span class="c1"># 11-block inverse. If so, use **schur_approx to set up this context.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_OptDB_11</span><span class="o">.</span><span class="n">hasName</span><span class="p">(</span><span class="s2">&quot;pc_python_type&quot;</span><span class="p">):</span>
             <span class="n">ctx</span> <span class="o">=</span> <span class="n">pc1</span><span class="o">.</span><span class="n">getPythonContext</span><span class="p">()</span>
             <span class="n">ctx</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_is0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="o">**</span><span class="n">schur_approx</span><span class="p">)</span>
 
-        <span class="c"># Set up each subPC explicitly before calling &#39;self.solve&#39;. In such</span>
-        <span class="c"># a case, the time needed for setup is not included in timings under</span>
-        <span class="c"># &quot;PETSc Krylov Solver&quot;.</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: set up subPC object pc0&quot;</span><span class="p">)</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">PROGRESS</span><span class="p">,</span> <span class="s">&quot;Preparing for the use of pc0 (calling PCSetUp).&quot;</span><span class="p">)</span>
+        <span class="c1"># Set up each subPC explicitly before calling &#39;self.solve&#39;. In such</span>
+        <span class="c1"># a case, the time needed for setup is not included in timings under</span>
+        <span class="c1"># &quot;PETSc Krylov Solver&quot;.</span>
+        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s2">&quot;FENaPack: set up subPC object pc0&quot;</span><span class="p">)</span>
+        <span class="n">dolfin</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">PROGRESS</span><span class="p">,</span> <span class="s2">&quot;Preparing for the use of pc0 (calling PCSetUp).&quot;</span><span class="p">)</span>
         <span class="n">pc0</span><span class="o">.</span><span class="n">setUp</span><span class="p">()</span>
         <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s">&quot;FENaPack: set up subPC object pc1&quot;</span><span class="p">)</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">PROGRESS</span><span class="p">,</span> <span class="s">&quot;Preparing for the use of pc1 (calling PCSetUp).&quot;</span><span class="p">)</span>
+        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s2">&quot;FENaPack: set up subPC object pc1&quot;</span><span class="p">)</span>
+        <span class="n">dolfin</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">PROGRESS</span><span class="p">,</span> <span class="s2">&quot;Preparing for the use of pc1 (calling PCSetUp).&quot;</span><span class="p">)</span>
         <span class="n">pc1</span><span class="o">.</span><span class="n">setUp</span><span class="p">()</span>
         <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
 
 
     <span class="k">def</span> <span class="nf">_set_from_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set up extra parameters added to parent class.&quot;&quot;&quot;</span>
-        <span class="c"># Get access to global option database</span>
+        <span class="c1"># Get access to global option database</span>
         <span class="n">OptDB</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Options</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ksp</span><span class="o">.</span><span class="n">getOptionsPrefix</span><span class="p">())</span>
-        <span class="c">#OptDB[&quot;help&quot;] = True</span>
+        <span class="c1">#OptDB[&quot;help&quot;] = True</span>
 
-        <span class="c"># Add extra solver parameters to the global option database</span>
-        <span class="n">prm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">]</span>
-        <span class="n">OptDB</span><span class="p">[</span><span class="s">&quot;ksp_pc_side&quot;</span><span class="p">]</span> <span class="o">=</span> \
-          <span class="n">prm</span><span class="p">[</span><span class="s">&quot;side&quot;</span><span class="p">]</span>
-        <span class="n">OptDB</span><span class="p">[</span><span class="s">&quot;pc_fieldsplit_type&quot;</span><span class="p">]</span> <span class="o">=</span> \
-          <span class="n">prm</span><span class="p">[</span><span class="s">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s">&quot;type&quot;</span><span class="p">]</span>
-        <span class="n">OptDB</span><span class="p">[</span><span class="s">&quot;pc_fieldsplit_schur_fact_type&quot;</span><span class="p">]</span> <span class="o">=</span> \
-          <span class="n">prm</span><span class="p">[</span><span class="s">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s">&quot;schur&quot;</span><span class="p">][</span><span class="s">&quot;fact_type&quot;</span><span class="p">]</span>
-        <span class="n">OptDB</span><span class="p">[</span><span class="s">&quot;pc_fieldsplit_schur_precondition&quot;</span><span class="p">]</span> <span class="o">=</span> \
-          <span class="n">prm</span><span class="p">[</span><span class="s">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s">&quot;schur&quot;</span><span class="p">][</span><span class="s">&quot;precondition&quot;</span><span class="p">]</span>
+        <span class="c1"># Add extra solver parameters to the global option database</span>
+        <span class="n">prm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">]</span>
+        <span class="n">OptDB</span><span class="p">[</span><span class="s2">&quot;ksp_pc_side&quot;</span><span class="p">]</span> <span class="o">=</span> \
+          <span class="n">prm</span><span class="p">[</span><span class="s2">&quot;side&quot;</span><span class="p">]</span>
+        <span class="n">OptDB</span><span class="p">[</span><span class="s2">&quot;pc_fieldsplit_type&quot;</span><span class="p">]</span> <span class="o">=</span> \
+          <span class="n">prm</span><span class="p">[</span><span class="s2">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s2">&quot;type&quot;</span><span class="p">]</span>
+        <span class="n">OptDB</span><span class="p">[</span><span class="s2">&quot;pc_fieldsplit_schur_fact_type&quot;</span><span class="p">]</span> <span class="o">=</span> \
+          <span class="n">prm</span><span class="p">[</span><span class="s2">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s2">&quot;schur&quot;</span><span class="p">][</span><span class="s2">&quot;fact_type&quot;</span><span class="p">]</span>
+        <span class="n">OptDB</span><span class="p">[</span><span class="s2">&quot;pc_fieldsplit_schur_precondition&quot;</span><span class="p">]</span> <span class="o">=</span> \
+          <span class="n">prm</span><span class="p">[</span><span class="s2">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s2">&quot;schur&quot;</span><span class="p">][</span><span class="s2">&quot;precondition&quot;</span><span class="p">]</span>
 
-        <span class="c"># Hack for development version of DOLFIN</span>
-        <span class="n">OptDB</span><span class="p">[</span><span class="s">&quot;ksp_gmres_restart&quot;</span><span class="p">]</span> <span class="o">=</span> \
-          <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;gmres&quot;</span><span class="p">][</span><span class="s">&quot;restart&quot;</span><span class="p">]</span></div>
+        <span class="c1"># Hack for development version of DOLFIN</span>
+        <span class="n">OptDB</span><span class="p">[</span><span class="s2">&quot;ksp_gmres_restart&quot;</span><span class="p">]</span> <span class="o">=</span> \
+          <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;gmres&quot;</span><span class="p">][</span><span class="s2">&quot;restart&quot;</span><span class="p">]</span></div>
 </pre></div>
 
           </div>

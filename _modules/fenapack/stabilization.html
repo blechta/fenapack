@@ -48,68 +48,68 @@
           <div class="body" role="main">
             
   <h1>Source code for fenapack.stabilization</h1><div class="highlight"><pre>
-<span class="c"># Copyright (C) 2015-2016 Martin Rehor</span>
-<span class="c">#</span>
-<span class="c"># This file is part of FENaPack.</span>
-<span class="c">#</span>
-<span class="c"># FENaPack is free software: you can redistribute it and/or modify</span>
-<span class="c"># it under the terms of the GNU Lesser General Public License as published by</span>
-<span class="c"># the Free Software Foundation, either version 3 of the License, or</span>
-<span class="c"># (at your option) any later version.</span>
-<span class="c">#</span>
-<span class="c"># FENaPack is distributed in the hope that it will be useful,</span>
-<span class="c"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
-<span class="c"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
-<span class="c"># GNU Lesser General Public License for more details.</span>
-<span class="c">#</span>
-<span class="c"># You should have received a copy of the GNU Lesser General Public License</span>
-<span class="c"># along with FENaPack.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1"># Copyright (C) 2015-2016 Martin Rehor</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of FENaPack.</span>
+<span class="c1">#</span>
+<span class="c1"># FENaPack is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU Lesser General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># FENaPack is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU Lesser General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU Lesser General Public License</span>
+<span class="c1"># along with FENaPack.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
 
 <span class="kn">from</span> <span class="nn">dolfin</span> <span class="kn">import</span> <span class="n">Constant</span><span class="p">,</span> <span class="n">Expression</span><span class="p">,</span> <span class="n">FiniteElement</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;StabilizationParameterSD&#39;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;StabilizationParameterSD&#39;</span><span class="p">]</span>
 
 
-<span class="n">_streamline_diffusion_cpp</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
-<span class="s">class StabilizationParameterSD : public Expression</span>
-<span class="s">{</span>
-<span class="s">public:</span>
-<span class="s">  std::shared_ptr&lt;GenericFunction&gt; viscosity, density;</span>
-<span class="s">  std::shared_ptr&lt;GenericFunction&gt; wind;</span>
+<span class="n">_streamline_diffusion_cpp</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">class StabilizationParameterSD : public Expression</span>
+<span class="s2">{</span>
+<span class="s2">public:</span>
+<span class="s2">  std::shared_ptr&lt;GenericFunction&gt; viscosity, density;</span>
+<span class="s2">  std::shared_ptr&lt;GenericFunction&gt; wind;</span>
 
-<span class="s">  StabilizationParameterSD() : Expression() { }</span>
+<span class="s2">  StabilizationParameterSD() : Expression() { }</span>
 
-<span class="s">  void eval(Array&lt;double&gt;&amp; values, const Array&lt;double&gt;&amp; x,</span>
-<span class="s">            const ufc::cell&amp; c) const</span>
-<span class="s">  {</span>
-<span class="s">    // Get dolfin cell and its diameter</span>
-<span class="s">    // FIXME: Avoid dynamical allocation</span>
-<span class="s">    const std::shared_ptr&lt;const Mesh&gt; mesh = wind-&gt;function_space()-&gt;mesh();</span>
-<span class="s">    const Cell cell(*mesh, c.index);</span>
-<span class="s">    double h = cell.h();</span>
+<span class="s2">  void eval(Array&lt;double&gt;&amp; values, const Array&lt;double&gt;&amp; x,</span>
+<span class="s2">            const ufc::cell&amp; c) const</span>
+<span class="s2">  {</span>
+<span class="s2">    // Get dolfin cell and its diameter</span>
+<span class="s2">    // FIXME: Avoid dynamical allocation</span>
+<span class="s2">    const std::shared_ptr&lt;const Mesh&gt; mesh = wind-&gt;function_space()-&gt;mesh();</span>
+<span class="s2">    const Cell cell(*mesh, c.index);</span>
+<span class="s2">    double h = cell.h();</span>
 
-<span class="s">    // Evaluate viscosity at given coordinates</span>
-<span class="s">    // FIXME: Avoid dynamical allocation</span>
-<span class="s">    Array&lt;double&gt; nu(viscosity-&gt;value_size());</span>
-<span class="s">    Array&lt;double&gt; rho(density-&gt;value_size());</span>
-<span class="s">    viscosity-&gt;eval(nu, x, c);</span>
-<span class="s">    density-&gt;eval(rho, x, c);</span>
+<span class="s2">    // Evaluate viscosity at given coordinates</span>
+<span class="s2">    // FIXME: Avoid dynamical allocation</span>
+<span class="s2">    Array&lt;double&gt; nu(viscosity-&gt;value_size());</span>
+<span class="s2">    Array&lt;double&gt; rho(density-&gt;value_size());</span>
+<span class="s2">    viscosity-&gt;eval(nu, x, c);</span>
+<span class="s2">    density-&gt;eval(rho, x, c);</span>
 
-<span class="s">    // Compute l2 norm of wind</span>
-<span class="s">    double wind_norm = 0.0;</span>
-<span class="s">    // FIXME: Avoid dynamical allocation</span>
-<span class="s">    Array&lt;double&gt; w(wind-&gt;value_size());</span>
-<span class="s">    wind-&gt;eval(w, x, c);</span>
-<span class="s">    for (uint i = 0; i &lt; w.size(); ++i)</span>
-<span class="s">      wind_norm += w[i]*w[i];</span>
-<span class="s">    wind_norm = sqrt(wind_norm);</span>
+<span class="s2">    // Compute l2 norm of wind</span>
+<span class="s2">    double wind_norm = 0.0;</span>
+<span class="s2">    // FIXME: Avoid dynamical allocation</span>
+<span class="s2">    Array&lt;double&gt; w(wind-&gt;value_size());</span>
+<span class="s2">    wind-&gt;eval(w, x, c);</span>
+<span class="s2">    for (uint i = 0; i &lt; w.size(); ++i)</span>
+<span class="s2">      wind_norm += w[i]*w[i];</span>
+<span class="s2">    wind_norm = sqrt(wind_norm);</span>
 
-<span class="s">    // Compute Peclet number and evaluate stabilization parameter</span>
-<span class="s">    double PE = 0.5*wind_norm*h*rho[0]/nu[0];</span>
-<span class="s">    values[0] = (PE &gt; 1.0) ? 0.5*h*(1.0 - 1.0/PE)/wind_norm : 0.0;</span>
-<span class="s">  }</span>
-<span class="s">};</span>
-<span class="s">&quot;&quot;&quot;</span>
+<span class="s2">    // Compute Peclet number and evaluate stabilization parameter</span>
+<span class="s2">    double PE = 0.5*wind_norm*h*rho[0]/nu[0];</span>
+<span class="s2">    values[0] = (PE &gt; 1.0) ? 0.5*h*(1.0 - 1.0/PE)/wind_norm : 0.0;</span>
+<span class="s2">  }</span>
+<span class="s2">};</span>
+<span class="s2">&quot;&quot;&quot;</span>
 
 
 <div class="viewcode-block" id="StabilizationParameterSD"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.stabilization.StabilizationParameterSD">[docs]</a><span class="k">def</span> <span class="nf">StabilizationParameterSD</span><span class="p">(</span><span class="n">wind</span><span class="p">,</span> <span class="n">viscosity</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
@@ -138,7 +138,7 @@
     <span class="k">if</span> <span class="n">density</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
         <span class="n">density</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
     <span class="n">mesh</span> <span class="o">=</span> <span class="n">wind</span><span class="o">.</span><span class="n">function_space</span><span class="p">()</span><span class="o">.</span><span class="n">mesh</span><span class="p">()</span>
-    <span class="n">element</span> <span class="o">=</span> <span class="n">FiniteElement</span><span class="p">(</span><span class="s">&quot;DG&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">ufl_cell</span><span class="p">(),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">element</span> <span class="o">=</span> <span class="n">FiniteElement</span><span class="p">(</span><span class="s2">&quot;DG&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">ufl_cell</span><span class="p">(),</span> <span class="mi">0</span><span class="p">)</span>
     <span class="n">delta_sd</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="n">_streamline_diffusion_cpp</span><span class="p">,</span>
                           <span class="n">element</span><span class="o">=</span><span class="n">element</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">mesh</span><span class="p">)</span>
     <span class="n">delta_sd</span><span class="o">.</span><span class="n">wind</span> <span class="o">=</span> <span class="n">wind</span>

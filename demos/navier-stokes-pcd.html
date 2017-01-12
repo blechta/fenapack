@@ -70,12 +70,12 @@ in this document.</strong></p>
 is the version used for <a class="reference internal" href="../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM" title="fenapack.preconditioners.PCDPC_BRM"><code class="xref any py py-class docutils literal"><span class="pre">BRM</span> <span class="pre">variant</span> <span class="pre">of</span> <span class="pre">PCD</span></code></a>, i.e. zero Dirichlet value for Laplacian
 solve on inlet. Note that it is defined on pressure subspace of the mixed space
 <code class="docutils literal"><span class="pre">W</span></code>.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="c"># Artificial BC for PCD preconditioner</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="c1"># Artificial BC for PCD preconditioner</span>
 <span class="n">bc_pcd</span> <span class="o">=</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">W</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Then comes standard formulation of the nonlinear equation</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="c"># Arguments and coefficients of the form</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="c1"># Arguments and coefficients of the form</span>
 <span class="n">u</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">TrialFunctions</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
 <span class="n">v</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">TestFunctions</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
 <span class="n">w</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
@@ -83,7 +83,7 @@ solve on inlet. Note that it is defined on pressure subspace of the mixed space
 <span class="n">n</span> <span class="o">=</span> <span class="n">FacetNormal</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
 <span class="n">nu</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">viscosity</span><span class="p">)</span>
 
-<span class="c"># Nonlinear equation</span>
+<span class="c1"># Nonlinear equation</span>
 <span class="n">F</span> <span class="o">=</span> <span class="p">(</span>
       <span class="n">nu</span><span class="o">*</span><span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u_</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
     <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u_</span><span class="p">),</span> <span class="n">u_</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span>
@@ -94,7 +94,7 @@ solve on inlet. Note that it is defined on pressure subspace of the mixed space
 </div>
 <p>We will also mock Newton solver into Picard iteration by passing
 Oseen linearization as Jacobian <code class="docutils literal"><span class="pre">J</span></code></p>
-<div class="highlight-python"><div class="highlight"><pre><span class="c"># Picard linearization (one could use full Newton)</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="c1"># Picard linearization (one could use full Newton)</span>
 <span class="n">J</span> <span class="o">=</span> <span class="p">(</span>
       <span class="n">nu</span><span class="o">*</span><span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
     <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">u_</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span>
@@ -105,7 +105,7 @@ Oseen linearization as Jacobian <code class="docutils literal"><span class="pre"
 </div>
 <p>&#8220;Preconditioner&#8221; Jacobian <code class="docutils literal"><span class="pre">J_pc</span></code> features added streamline diffusion
 to stabilize algebraic multigrid applied to 00-block</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="c"># Add stabilization for AMG 00-block</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="c1"># Add stabilization for AMG 00-block</span>
 <span class="n">delta</span> <span class="o">=</span> <span class="n">StabilizationParameterSD</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">nu</span><span class="p">)</span>
 <span class="n">J_pc</span> <span class="o">=</span> <span class="n">J</span> <span class="o">+</span> <span class="n">delta</span><span class="o">*</span><span class="n">inner</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">u_</span><span class="p">),</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="n">u_</span><span class="p">))</span><span class="o">*</span><span class="n">dx</span>
 </pre></div>
@@ -115,71 +115,71 @@ and Laplacian <code class="docutils literal"><span class="pre">ap</span></code> 
 <code class="docutils literal"><span class="pre">p</span></code>, <code class="docutils literal"><span class="pre">q</span></code> on the mixed space <code class="docutils literal"><span class="pre">W</span></code>. They are passed to the class
 <a class="reference internal" href="../api-doc/fenapack.html#fenapack.nonlinear_solvers.PCDProblem" title="fenapack.nonlinear_solvers.PCDProblem"><code class="xref py py-class docutils literal"><span class="pre">fenapack.nonlinear_solvers.PCDProblem</span></code></a> which takes care of
 assembling the operators on demand.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="c"># PCD operators</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="c1"># PCD operators</span>
 <span class="n">mp</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="n">nu</span><span class="p">)</span><span class="o">*</span><span class="n">p</span><span class="o">*</span><span class="n">q</span><span class="o">*</span><span class="n">dx</span>
 <span class="n">kp</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="n">nu</span><span class="p">)</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="n">u_</span><span class="p">)</span><span class="o">*</span><span class="n">q</span><span class="o">*</span><span class="n">dx</span>
 <span class="n">ap</span> <span class="o">=</span> <span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">q</span><span class="p">))</span><span class="o">*</span><span class="n">dx</span>
 
-<span class="c"># Collect forms to define nonlinear problem</span>
+<span class="c1"># Collect forms to define nonlinear problem</span>
 <span class="n">problem</span> <span class="o">=</span> <span class="n">PCDProblem</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="p">[</span><span class="n">bc0</span><span class="p">,</span> <span class="n">bc1</span><span class="p">],</span> <span class="n">J</span><span class="p">,</span> <span class="n">J_pc</span><span class="p">,</span> <span class="n">ap</span><span class="o">=</span><span class="n">ap</span><span class="p">,</span> <span class="n">kp</span><span class="o">=</span><span class="n">kp</span><span class="p">,</span> <span class="n">mp</span><span class="o">=</span><span class="n">mp</span><span class="p">,</span> <span class="n">bcs_pcd</span><span class="o">=</span><span class="n">bc_pcd</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Now we setup GMRES solver with right-preconditioned Schur complement method
 with upper factorization and user preconditioner.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="c"># Set up linear field split solver</span>
-<span class="n">linear_solver</span> <span class="o">=</span> <span class="n">FieldSplitSolver</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="s">&quot;gmres&quot;</span><span class="p">)</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;monitor_convergence&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;relative_tolerance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-6</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;nonzero_initial_guess&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s">&quot;side&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;right&quot;</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;schur&quot;</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s">&quot;schur&quot;</span><span class="p">][</span><span class="s">&quot;fact_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;upper&quot;</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s">&quot;schur&quot;</span><span class="p">][</span><span class="s">&quot;precondition&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;user&quot;</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="c1"># Set up linear field split solver</span>
+<span class="n">linear_solver</span> <span class="o">=</span> <span class="n">FieldSplitSolver</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="s2">&quot;gmres&quot;</span><span class="p">)</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;monitor_convergence&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;relative_tolerance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-6</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;nonzero_initial_guess&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s2">&quot;side&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;right&quot;</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s2">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;schur&quot;</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s2">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s2">&quot;schur&quot;</span><span class="p">][</span><span class="s2">&quot;fact_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;upper&quot;</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s2">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s2">&quot;schur&quot;</span><span class="p">][</span><span class="s2">&quot;precondition&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;user&quot;</span>
 </pre></div>
 </div>
 <p>We fetch <code class="xref py py-class docutils literal"><span class="pre">petsc4py.PETSc.Options</span></code> databases for setting 00- and
 11-block subsolvers</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="c"># Set up subsolvers</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="c1"># Set up subsolvers</span>
 <span class="n">OptDB_00</span><span class="p">,</span> <span class="n">OptDB_11</span> <span class="o">=</span> <span class="n">linear_solver</span><span class="o">.</span><span class="n">get_subopts</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>00-block is solver using algebraic multigrid</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">OptDB_00</span><span class="p">[</span><span class="s">&quot;ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;richardson&quot;</span>
-<span class="n">OptDB_00</span><span class="p">[</span><span class="s">&quot;ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">OptDB_00</span><span class="p">[</span><span class="s">&quot;pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;hypre&quot;</span>
-<span class="n">OptDB_00</span><span class="p">[</span><span class="s">&quot;pc_hypre_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;boomeramg&quot;</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">OptDB_00</span><span class="p">[</span><span class="s2">&quot;ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;richardson&quot;</span>
+<span class="n">OptDB_00</span><span class="p">[</span><span class="s2">&quot;ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">OptDB_00</span><span class="p">[</span><span class="s2">&quot;pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hypre&quot;</span>
+<span class="n">OptDB_00</span><span class="p">[</span><span class="s2">&quot;pc_hypre_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;boomeramg&quot;</span>
 </pre></div>
 </div>
 <p>PETSc is told to use <a class="reference internal" href="../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM" title="fenapack.preconditioners.PCDPC_BRM"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.PCDPC_BRM</span></code></a> class
 implementing <code class="xref py py-class docutils literal"><span class="pre">petsc4py.PETSc.PC</span></code> interface as a Schur complement
 preconditioner</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;preonly&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;python&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;pc_python_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;fenapack.PCDPC_BRM&quot;</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;preonly&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;python&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;pc_python_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;fenapack.PCDPC_BRM&quot;</span>
 </pre></div>
 </div>
 <p>Laplacian solve of PCD is performed using algebraic multigrid</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Ap_ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;richardson&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Ap_ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Ap_pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;hypre&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Ap_pc_hypre_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;boomeramg&quot;</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Ap_ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;richardson&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Ap_ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Ap_pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hypre&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Ap_pc_hypre_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;boomeramg&quot;</span>
 </pre></div>
 </div>
 <p>Mass-matrix solve is done using fixed number of Chebyshev iterations with
 Jacobi preconditioner. For eigenvalue estimates used for Chebyshev see <a class="footnote-reference" href="#id2" id="id1">[1]</a>,
 Lemma 4.3.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Mp_ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;chebyshev&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Mp_ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Mp_ksp_chebyshev_eigenvalues&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;0.5, 2.0&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Mp_pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;jacobi&quot;</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Mp_ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chebyshev&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Mp_ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Mp_ksp_chebyshev_eigenvalues&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0.5, 2.0&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Mp_pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;jacobi&quot;</span>
 </pre></div>
 </div>
 <p>Finally we invoke Newton solver (although doing Picard iteration)</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="c"># Set up nonlinear solver</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="c1"># Set up nonlinear solver</span>
 <span class="n">solver</span> <span class="o">=</span> <span class="n">NewtonSolver</span><span class="p">(</span><span class="n">linear_solver</span><span class="p">)</span>
-<span class="n">solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;relative_tolerance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-5</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;relative_tolerance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-5</span>
 
-<span class="c"># Solve problem</span>
+<span class="c1"># Solve problem</span>
 <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">w</span><span class="o">.</span><span class="n">vector</span><span class="p">())</span>
 </pre></div>
 </div>
@@ -199,25 +199,25 @@ Oxford University Press 2005. 2nd edition 2014.</td></tr>
 <span class="kn">from</span> <span class="nn">fenapack</span> <span class="k">import</span> <span class="n">FieldSplitSolver</span><span class="p">,</span> <span class="n">NewtonSolver</span><span class="p">,</span> <span class="n">PCDProblem</span><span class="p">,</span> <span class="n">StabilizationParameterSD</span>
 
 
-<span class="n">parameters</span><span class="p">[</span><span class="s">&quot;form_compiler&quot;</span><span class="p">][</span><span class="s">&quot;representation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;uflacs&quot;</span>
-<span class="n">parameters</span><span class="p">[</span><span class="s">&quot;form_compiler&quot;</span><span class="p">][</span><span class="s">&quot;optimize&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="k">True</span>
+<span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;form_compiler&quot;</span><span class="p">][</span><span class="s2">&quot;representation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;uflacs&quot;</span>
+<span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;form_compiler&quot;</span><span class="p">][</span><span class="s2">&quot;optimize&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
 
-<span class="c"># Parse input arguments</span>
+<span class="c1"># Parse input arguments</span>
 <span class="kn">import</span> <span class="nn">argparse</span><span class="o">,</span> <span class="nn">sys</span>
 <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="n">__doc__</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span>
                                  <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">)</span>
-<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;-l&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&quot;level&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
-                    <span class="n">help</span><span class="o">=</span><span class="s">&quot;level of mesh refinement&quot;</span><span class="p">)</span>
-<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&quot;--nu&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&quot;viscosity&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
-                    <span class="n">help</span><span class="o">=</span><span class="s">&quot;kinematic viscosity&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;-l&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;level&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;level of mesh refinement&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--nu&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;viscosity&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;kinematic viscosity&quot;</span><span class="p">)</span>
 <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
 
-<span class="c"># Load mesh from file and refine uniformly</span>
-<span class="n">mesh</span> <span class="o">=</span> <span class="n">Mesh</span><span class="p">(</span><span class="s">&quot;../../data/step_domain.xml.gz&quot;</span><span class="p">)</span>
+<span class="c1"># Load mesh from file and refine uniformly</span>
+<span class="n">mesh</span> <span class="o">=</span> <span class="n">Mesh</span><span class="p">(</span><span class="s2">&quot;../../data/step_domain.xml.gz&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">level</span><span class="p">):</span>
     <span class="n">mesh</span> <span class="o">=</span> <span class="n">refine</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
 
-<span class="c"># Define and mark boundaries</span>
+<span class="c1"># Define and mark boundaries</span>
 <span class="k">class</span> <span class="nc">Gamma0</span><span class="p">(</span><span class="n">SubDomain</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">inside</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">on_boundary</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">on_boundary</span>
@@ -227,32 +227,32 @@ Oxford University Press 2005. 2nd edition 2014.</td></tr>
 <span class="k">class</span> <span class="nc">Gamma2</span><span class="p">(</span><span class="n">SubDomain</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">inside</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">on_boundary</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">on_boundary</span> <span class="ow">and</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mf">5.0</span><span class="p">)</span>
-<span class="n">boundary_markers</span> <span class="o">=</span> <span class="n">FacetFunction</span><span class="p">(</span><span class="s">&quot;size_t&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="p">)</span>
-<span class="n">boundary_markers</span><span class="o">.</span><span class="n">set_all</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>        <span class="c"># interior facets</span>
-<span class="n">Gamma0</span><span class="p">()</span><span class="o">.</span><span class="n">mark</span><span class="p">(</span><span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c"># no-slip facets</span>
-<span class="n">Gamma1</span><span class="p">()</span><span class="o">.</span><span class="n">mark</span><span class="p">(</span><span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="c"># inlet facets</span>
-<span class="n">Gamma2</span><span class="p">()</span><span class="o">.</span><span class="n">mark</span><span class="p">(</span><span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="c"># outlet facets</span>
+<span class="n">boundary_markers</span> <span class="o">=</span> <span class="n">FacetFunction</span><span class="p">(</span><span class="s2">&quot;size_t&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="p">)</span>
+<span class="n">boundary_markers</span><span class="o">.</span><span class="n">set_all</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>        <span class="c1"># interior facets</span>
+<span class="n">Gamma0</span><span class="p">()</span><span class="o">.</span><span class="n">mark</span><span class="p">(</span><span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c1"># no-slip facets</span>
+<span class="n">Gamma1</span><span class="p">()</span><span class="o">.</span><span class="n">mark</span><span class="p">(</span><span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="c1"># inlet facets</span>
+<span class="n">Gamma2</span><span class="p">()</span><span class="o">.</span><span class="n">mark</span><span class="p">(</span><span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="c1"># outlet facets</span>
 
-<span class="c"># Build Taylor-Hood function space</span>
-<span class="n">P2</span> <span class="o">=</span> <span class="n">VectorElement</span><span class="p">(</span><span class="s">&quot;Lagrange&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">ufl_cell</span><span class="p">(),</span> <span class="mi">2</span><span class="p">)</span>
-<span class="n">P1</span> <span class="o">=</span> <span class="n">FiniteElement</span><span class="p">(</span><span class="s">&quot;Lagrange&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">ufl_cell</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
+<span class="c1"># Build Taylor-Hood function space</span>
+<span class="n">P2</span> <span class="o">=</span> <span class="n">VectorElement</span><span class="p">(</span><span class="s2">&quot;Lagrange&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">ufl_cell</span><span class="p">(),</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">P1</span> <span class="o">=</span> <span class="n">FiniteElement</span><span class="p">(</span><span class="s2">&quot;Lagrange&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">ufl_cell</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
 <span class="n">W</span> <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">P2</span><span class="o">*</span><span class="n">P1</span><span class="p">)</span>
 
-<span class="c"># No-slip BC</span>
+<span class="c1"># No-slip BC</span>
 <span class="n">bc0</span> <span class="o">=</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">W</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 
-<span class="c"># Parabolic inflow BC</span>
-<span class="n">inflow</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">((</span><span class="s">&quot;4.0*x[1]*(1.0 - x[1])&quot;</span><span class="p">,</span> <span class="s">&quot;0.0&quot;</span><span class="p">),</span> <span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="c1"># Parabolic inflow BC</span>
+<span class="n">inflow</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">((</span><span class="s2">&quot;4.0*x[1]*(1.0 - x[1])&quot;</span><span class="p">,</span> <span class="s2">&quot;0.0&quot;</span><span class="p">),</span> <span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">bc1</span> <span class="o">=</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">W</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">inflow</span><span class="p">,</span> <span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
-<span class="c"># Artificial BC for PCD preconditioner</span>
+<span class="c1"># Artificial BC for PCD preconditioner</span>
 <span class="n">bc_pcd</span> <span class="o">=</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">W</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
-<span class="c"># Provide some info about the current problem</span>
-<span class="n">info</span><span class="p">(</span><span class="s">&quot;Reynolds number: Re = %g&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="mf">2.0</span><span class="o">/</span><span class="n">args</span><span class="o">.</span><span class="n">viscosity</span><span class="p">))</span>
-<span class="n">info</span><span class="p">(</span><span class="s">&quot;Dimension of the function space: %g&quot;</span> <span class="o">%</span> <span class="n">W</span><span class="o">.</span><span class="n">dim</span><span class="p">())</span>
+<span class="c1"># Provide some info about the current problem</span>
+<span class="n">info</span><span class="p">(</span><span class="s2">&quot;Reynolds number: Re = </span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="mf">2.0</span><span class="o">/</span><span class="n">args</span><span class="o">.</span><span class="n">viscosity</span><span class="p">))</span>
+<span class="n">info</span><span class="p">(</span><span class="s2">&quot;Dimension of the function space: </span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">W</span><span class="o">.</span><span class="n">dim</span><span class="p">())</span>
 
-<span class="c"># Arguments and coefficients of the form</span>
+<span class="c1"># Arguments and coefficients of the form</span>
 <span class="n">u</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">TrialFunctions</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
 <span class="n">v</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">TestFunctions</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
 <span class="n">w</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
@@ -260,7 +260,7 @@ Oxford University Press 2005. 2nd edition 2014.</td></tr>
 <span class="n">n</span> <span class="o">=</span> <span class="n">FacetNormal</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
 <span class="n">nu</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">viscosity</span><span class="p">)</span>
 
-<span class="c"># Nonlinear equation</span>
+<span class="c1"># Nonlinear equation</span>
 <span class="n">F</span> <span class="o">=</span> <span class="p">(</span>
       <span class="n">nu</span><span class="o">*</span><span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u_</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
     <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u_</span><span class="p">),</span> <span class="n">u_</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span>
@@ -268,7 +268,7 @@ Oxford University Press 2005. 2nd edition 2014.</td></tr>
     <span class="o">-</span> <span class="n">q</span><span class="o">*</span><span class="n">div</span><span class="p">(</span><span class="n">u_</span><span class="p">)</span>
 <span class="p">)</span><span class="o">*</span><span class="n">dx</span>
 
-<span class="c"># Picard linearization (one could use full Newton)</span>
+<span class="c1"># Picard linearization (one could use full Newton)</span>
 <span class="n">J</span> <span class="o">=</span> <span class="p">(</span>
       <span class="n">nu</span><span class="o">*</span><span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
     <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">u_</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span>
@@ -276,57 +276,57 @@ Oxford University Press 2005. 2nd edition 2014.</td></tr>
     <span class="o">-</span> <span class="n">q</span><span class="o">*</span><span class="n">div</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
 <span class="p">)</span><span class="o">*</span><span class="n">dx</span>
 
-<span class="c"># Add stabilization for AMG 00-block</span>
+<span class="c1"># Add stabilization for AMG 00-block</span>
 <span class="n">delta</span> <span class="o">=</span> <span class="n">StabilizationParameterSD</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">nu</span><span class="p">)</span>
 <span class="n">J_pc</span> <span class="o">=</span> <span class="n">J</span> <span class="o">+</span> <span class="n">delta</span><span class="o">*</span><span class="n">inner</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">u_</span><span class="p">),</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="n">u_</span><span class="p">))</span><span class="o">*</span><span class="n">dx</span>
 
-<span class="c"># PCD operators</span>
+<span class="c1"># PCD operators</span>
 <span class="n">mp</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="n">nu</span><span class="p">)</span><span class="o">*</span><span class="n">p</span><span class="o">*</span><span class="n">q</span><span class="o">*</span><span class="n">dx</span>
 <span class="n">kp</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="n">nu</span><span class="p">)</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="n">u_</span><span class="p">)</span><span class="o">*</span><span class="n">q</span><span class="o">*</span><span class="n">dx</span>
 <span class="n">ap</span> <span class="o">=</span> <span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">q</span><span class="p">))</span><span class="o">*</span><span class="n">dx</span>
 
-<span class="c"># Collect forms to define nonlinear problem</span>
+<span class="c1"># Collect forms to define nonlinear problem</span>
 <span class="n">problem</span> <span class="o">=</span> <span class="n">PCDProblem</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="p">[</span><span class="n">bc0</span><span class="p">,</span> <span class="n">bc1</span><span class="p">],</span> <span class="n">J</span><span class="p">,</span> <span class="n">J_pc</span><span class="p">,</span> <span class="n">ap</span><span class="o">=</span><span class="n">ap</span><span class="p">,</span> <span class="n">kp</span><span class="o">=</span><span class="n">kp</span><span class="p">,</span> <span class="n">mp</span><span class="o">=</span><span class="n">mp</span><span class="p">,</span> <span class="n">bcs_pcd</span><span class="o">=</span><span class="n">bc_pcd</span><span class="p">)</span>
 
-<span class="c"># Set up linear field split solver</span>
-<span class="n">linear_solver</span> <span class="o">=</span> <span class="n">FieldSplitSolver</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="s">&quot;gmres&quot;</span><span class="p">)</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;monitor_convergence&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="k">True</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;relative_tolerance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">6</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;nonzero_initial_guess&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="k">False</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s">&quot;side&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;right&quot;</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;schur&quot;</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s">&quot;schur&quot;</span><span class="p">][</span><span class="s">&quot;fact_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;upper&quot;</span>
-<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s">&quot;schur&quot;</span><span class="p">][</span><span class="s">&quot;precondition&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;user&quot;</span>
+<span class="c1"># Set up linear field split solver</span>
+<span class="n">linear_solver</span> <span class="o">=</span> <span class="n">FieldSplitSolver</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="s2">&quot;gmres&quot;</span><span class="p">)</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;monitor_convergence&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;relative_tolerance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">6</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;nonzero_initial_guess&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s2">&quot;side&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;right&quot;</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s2">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;schur&quot;</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s2">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s2">&quot;schur&quot;</span><span class="p">][</span><span class="s2">&quot;fact_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;upper&quot;</span>
+<span class="n">linear_solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;preconditioner&quot;</span><span class="p">][</span><span class="s2">&quot;fieldsplit&quot;</span><span class="p">][</span><span class="s2">&quot;schur&quot;</span><span class="p">][</span><span class="s2">&quot;precondition&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;user&quot;</span>
 
-<span class="c"># Set up subsolvers</span>
+<span class="c1"># Set up subsolvers</span>
 <span class="n">OptDB_00</span><span class="p">,</span> <span class="n">OptDB_11</span> <span class="o">=</span> <span class="n">linear_solver</span><span class="o">.</span><span class="n">get_subopts</span><span class="p">()</span>
-<span class="n">OptDB_00</span><span class="p">[</span><span class="s">&quot;ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;richardson&quot;</span>
-<span class="n">OptDB_00</span><span class="p">[</span><span class="s">&quot;ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">OptDB_00</span><span class="p">[</span><span class="s">&quot;pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;hypre&quot;</span>
-<span class="n">OptDB_00</span><span class="p">[</span><span class="s">&quot;pc_hypre_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;boomeramg&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;preonly&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;python&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;pc_python_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;fenapack.PCDPC_BRM&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Ap_ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;richardson&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Ap_ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Ap_pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;hypre&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Ap_pc_hypre_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;boomeramg&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Mp_ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;chebyshev&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Mp_ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Mp_ksp_chebyshev_eigenvalues&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;0.5, 2.0&quot;</span>
-<span class="n">OptDB_11</span><span class="p">[</span><span class="s">&quot;PCD_Mp_pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;jacobi&quot;</span>
+<span class="n">OptDB_00</span><span class="p">[</span><span class="s2">&quot;ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;richardson&quot;</span>
+<span class="n">OptDB_00</span><span class="p">[</span><span class="s2">&quot;ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">OptDB_00</span><span class="p">[</span><span class="s2">&quot;pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hypre&quot;</span>
+<span class="n">OptDB_00</span><span class="p">[</span><span class="s2">&quot;pc_hypre_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;boomeramg&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;preonly&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;python&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;pc_python_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;fenapack.PCDPC_BRM&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Ap_ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;richardson&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Ap_ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Ap_pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hypre&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Ap_pc_hypre_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;boomeramg&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Mp_ksp_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chebyshev&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Mp_ksp_max_it&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Mp_ksp_chebyshev_eigenvalues&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0.5, 2.0&quot;</span>
+<span class="n">OptDB_11</span><span class="p">[</span><span class="s2">&quot;PCD_Mp_pc_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;jacobi&quot;</span>
 
-<span class="c"># Set up nonlinear solver</span>
+<span class="c1"># Set up nonlinear solver</span>
 <span class="n">solver</span> <span class="o">=</span> <span class="n">NewtonSolver</span><span class="p">(</span><span class="n">linear_solver</span><span class="p">)</span>
-<span class="n">solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s">&quot;relative_tolerance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">5</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;relative_tolerance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">5</span>
 
-<span class="c"># Solve problem</span>
+<span class="c1"># Solve problem</span>
 <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">w</span><span class="o">.</span><span class="n">vector</span><span class="p">())</span>
 
-<span class="c"># Plot solution</span>
+<span class="c1"># Plot solution</span>
 <span class="n">u</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-<span class="n">plot</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s">&quot;velocity&quot;</span><span class="p">)</span>
-<span class="n">plot</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s">&quot;pressure&quot;</span><span class="p">)</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;velocity&quot;</span><span class="p">)</span>
+<span class="n">plot</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;pressure&quot;</span><span class="p">)</span>
 <span class="n">interactive</span><span class="p">()</span>
 </pre></div>
 </div>
