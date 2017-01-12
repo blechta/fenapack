@@ -61,6 +61,14 @@ You should have received a copy of the GNU Lesser General Public License
 along with FENaPack. If not, see <http://www.gnu.org/licenses/>.
 
 
+Acknowledgement
+===============
+
+This work was supported by The Ministry of Education, Youth and Sports from the
+Large Infrastructures for Research, Experimental Development and Innovations
+project „IT4Innovations National Supercomputing Center – LM2015070“.
+
+
 Links
 =====
 
