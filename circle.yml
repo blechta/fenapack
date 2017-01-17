@@ -1,0 +1,18 @@
+machine:
+  services:
+    - docker
+
+dependencies:
+  override:
+    - ./download-meshes
+
+compile:
+
+test:
+  override:
+    - |
+        docker run \
+          -v $(pwd):/home/fenics/fenapack \
+          -w /home/fenics/fenapack \
+          quay.io/fenicsproject/stable \
+          "export PYTHONPATH=\$PWD:\$PYTHONPATH; cd test/regression; python test.py"
