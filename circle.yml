@@ -3,14 +3,10 @@ machine:
     - docker
 
 dependencies:
-  post:
+  override:
     - ./download-meshes
 
 test:
   override:
-    - |
-        docker run \
-          -v $(pwd):/home/fenics/fenapack \
-          -w /home/fenics/fenapack \
-          quay.io/fenicsproject/stable \
-          "export PYTHONPATH=\$PWD:\$PYTHONPATH; cd test/regression; python test.py"
+    - (docker run -v $(pwd):/home/fenics/fenapack -w /home/fenics/fenapack quay.io/fenicsproject/stable "export PYTHONPATH=\$PWD:\$PYTHONPATH; cd test/regression; python test.py"):
+        timeout: 1500
