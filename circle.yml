@@ -3,10 +3,8 @@ machine:
     - docker
 
 dependencies:
-  override:
+  post:
     - ./download-meshes
-
-compile:
 
 test:
   override:
