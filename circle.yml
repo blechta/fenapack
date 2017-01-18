@@ -12,5 +12,5 @@ test:
         docker run
         -v $(pwd):/home/fenics/fenapack
         -w /home/fenics/fenapack
-        quay.io/fenicsproject/stable
+        quay.io/fenicsproject/dev
         "export PYTHONPATH=\$PWD:\$PYTHONPATH; cd test/regression; NP=2 python -u test.py"
