@@ -8,5 +8,5 @@ dependencies:
 
 test:
   override:
-    - (docker run -v $(pwd):/home/fenics/fenapack -w /home/fenics/fenapack quay.io/fenicsproject/stable "export PYTHONPATH=\$PWD:\$PYTHONPATH; cd test/regression; python test.py"):
+    - (docker run -v $(pwd):/home/fenics/fenapack -w /home/fenics/fenapack quay.io/fenicsproject/stable "export PYTHONPATH=\$PWD:\$PYTHONPATH; cd test/regression; NP=2 python test.py"):
         timeout: 1500

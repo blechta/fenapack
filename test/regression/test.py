@@ -187,7 +187,7 @@ def main():
 
     # Build prefix list
     prefixes = [""]
-    mpi_prefix = "mpirun -np 3 "
+    mpi_prefix = "mpirun -np %s " % os.environ.get("NP", 3)
     if has_mpi() and (has_parmetis() or has_scotch()):
         prefixes.append(mpi_prefix)
     else:
