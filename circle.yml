@@ -13,4 +13,4 @@ test:
         -v $(pwd):/home/fenics/fenapack
         -w /home/fenics/fenapack
         quay.io/fenicsproject/stable
-        "export PYTHONPATH=\$PWD:\$PYTHONPATH; cd test/regression; NP=2 python test.py"
+        "export PYTHONPATH=\$PWD:\$PYTHONPATH; cd test/regression; NP=2 python -u test.py"
