@@ -13,4 +13,9 @@ test:
         -v $(pwd):/home/fenics/fenapack
         -w /home/fenics/fenapack
         quay.io/fenicsproject/dev
-        "export PYTHONPATH=\$PWD:\$PYTHONPATH; cd test/regression; NP=2 python -u test.py"
+        "
+        python -c'import ffc, dolfin; print(ffc.git_commit_hash(), ffc.ufc_signature(), dolfin.git_commit_hash())'
+        export PYTHONPATH=\$PWD:\$PYTHONPATH;
+        cd test/regression;
+        NP=2 python -u test.py
+        "
