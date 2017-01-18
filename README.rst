@@ -2,6 +2,9 @@
 FENaPack - FEniCS Navier-Stokes preconditioning package
 *******************************************************
 
+.. image:: https://circleci.com/gh/blechta/fenapack.svg?style=svg
+    :target: https://circleci.com/gh/blechta/fenapack
+
 
 FENaPack is a package implementing preconditioners for Navier-Stokes
 problem using FEniCS and PETSc packages. In particular, variants of PCD
