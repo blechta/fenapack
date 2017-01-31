@@ -89,8 +89,8 @@ def StabilizationParameterSD(wind, viscosity, density=None):
         density = Constant(1.0)
     mesh = wind.function_space().mesh()
     element = FiniteElement("DG", mesh.ufl_cell(), 0)
-    delta_sd = Expression(_streamline_diffusion_cpp,
-                          element=element, domain=mesh)
+    delta_sd = Expression(_streamline_diffusion_cpp, element=element,
+                          domain=mesh, mpi_comm=mesh.mpi_comm())
     delta_sd.wind = wind
     delta_sd.viscosity = viscosity
     delta_sd.density = density

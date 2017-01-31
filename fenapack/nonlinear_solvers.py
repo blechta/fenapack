@@ -46,13 +46,15 @@ class NewtonSolver(dolfin.NewtonSolver):
                 current iteration; :py:class:`bool` return value is ignored.
         """
         self._hook = debug_hook
+        comm = solver.mpi_comm()
         factory = dolfin.PETScFactory.instance()
-        dolfin.NewtonSolver.__init__(self, solver.mpi_comm(), solver, factory)
+        dolfin.NewtonSolver.__init__(self, comm, solver, factory)
         # Homebrewed implementation
         self._solver = solver
-        self._matA = dolfin.Matrix()
-        self._dx = dolfin.Vector()
-        self._b = dolfin.Vector()
+        self._mpi_comm = comm
+        self._matA = factory.create_matrix(comm)
+        self._dx = factory.create_vector(comm)
+        self._b = factory.create_vector(comm)
         self._residual = 0.0
         self._residual0 = 0.0
 
@@ -72,13 +74,13 @@ class NewtonSolver(dolfin.NewtonSolver):
             self._residual0 = self._residual
         relative_residual = self._residual/self._residual0
         # Print modified report message
-        if report and dolfin.MPI.rank(dolfin.mpi_comm_world()) == 0:
+        if report and dolfin.MPI.rank(self._mpi_comm) == 0:
             dolfin.info("Nonlinear iteration %d:"
                         " r (abs) = %.3e (tol = %.3e)"
                         " r (rel) = %.3e (tol = %.3e)"
                         % (newton_iteration,
                            self._residual, atol,
-                         relative_residual, rtol))
+                           relative_residual, rtol))
         return relative_residual < rtol or self._residual < atol
 
 
@@ -166,7 +168,7 @@ class NewtonSolver(dolfin.NewtonSolver):
                                     % convergence_criterion)
 
         if newton_converged:
-            if dolfin.MPI.rank(dolfin.mpi_comm_world()) == 0:
+            if dolfin.MPI.rank(self._mpi_comm) == 0:
                 dolfin.info("Nonlinear solver finished in %d iterations"
                             " and %d linear solver iterations."
                             % (self._newton_iteration, krylov_iterations))
@@ -241,12 +243,13 @@ class PCDProblem(dolfin.NonlinearProblem):
 
         # Matrices used to assemble parts of the preconditioner
         # NOTE: Some of them may be unused.
-        self._matP  = dolfin.Matrix()
-        self._matMp = dolfin.Matrix()
-        self._matMu = dolfin.Matrix()
-        self._matAp = dolfin.Matrix()
-        self._matFp = dolfin.Matrix()
-        self._matKp = dolfin.Matrix()
+        comm = F.ufl_domain().ufl_cargo().mpi_comm()
+        self._matP  = dolfin.PETScMatrix(comm)
+        self._matMp = dolfin.PETScMatrix(comm)
+        self._matMu = dolfin.PETScMatrix(comm)
+        self._matAp = dolfin.PETScMatrix(comm)
+        self._matFp = dolfin.PETScMatrix(comm)
+        self._matKp = dolfin.PETScMatrix(comm)
 
 
     def F(self, b, x):

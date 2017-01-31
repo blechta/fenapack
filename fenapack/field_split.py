@@ -39,7 +39,7 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         """
         # Create KSP
         ksp = self._ksp = PETSc.KSP()
-        ksp.create(PETSc.COMM_WORLD)
+        ksp.create(space.mesh().mpi_comm())
         ksp.setType(method)
         ksp.setOptionsPrefix(options_prefix)
 
@@ -116,8 +116,8 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
             classes in :py:class:`fenapack.preconditioners` module.
         """
         dolfin.PETScKrylovSolver.set_operators(self, A, P)
-        #assert self._ksp.getOperators() == \
-        #  (dolfin.as_backend_type(A).mat(), dolfin.as_backend_type(P).mat())
+        assert self._ksp.getOperators() == \
+          (dolfin.as_backend_type(A).mat(), dolfin.as_backend_type(P).mat())
 
         # Set up KSP
         self._set_from_parameters() # update global option database

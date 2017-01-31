@@ -26,9 +26,9 @@ __all__ = ['PCDPC_SEW', 'UnsteadyPCDPC_SEW', 'PCDPC_BRM']
 class BasePCDPC(object):
     """Base python context for pressure convection diffusion (PCD)
     preconditioners."""
-    def __init__(self):
-        self._ksp_Ap = self._prepare_default_ksp()
-        self._ksp_Mp = self._prepare_default_ksp()
+    def create(self, pc):
+        self._ksp_Ap = self._prepare_default_ksp(pc.comm)
+        self._ksp_Mp = self._prepare_default_ksp(pc.comm)
 
 
     def apply(self, pc, x, y):
@@ -71,8 +71,8 @@ class BasePCDPC(object):
 
 
     @staticmethod
-    def _prepare_default_ksp():
-        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
+    def _prepare_default_ksp(comm):
+        ksp = PETSc.KSP().create(comm)
         ksp.setType(PETSc.KSP.Type.PREONLY)
         pc = ksp.getPC()
         pc.setType(PETSc.PC.Type.LU)
