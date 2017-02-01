@@ -164,6 +164,10 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         OptDB["pc_fieldsplit_schur_precondition"] = \
           prm["fieldsplit"]["schur"]["precondition"]
 
-        # Hack for development version of DOLFIN
+        # FIXME: Sort out a way how to deal with parameters;
+        #        if one uses directly ksp() object, then DOLFIN
+        #        parameters are not used, that's why this workaround;
+        #        maybe rather use only petsc4py api and don't mess up
+        #        with any parameters
         OptDB["ksp_gmres_restart"] = \
           self.parameters["gmres"]["restart"]
