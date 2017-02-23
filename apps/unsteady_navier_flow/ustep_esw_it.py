@@ -236,16 +236,10 @@ OptDB_11["PCD_Mp_ksp_max_it"] = 5
 OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
 # NOTE: The above estimate is valid for P1 pressure approximation in 2D.
 
-# Define debugging hook executed at every nonlinear step
-#set_log_level(PROGRESS)
-def debug_hook(*args, **kwargs):
-    if plotting_enabled and get_log_level() <= PROGRESS:
-        plot(delta, mesh=mesh, title="stabilization parameter delta")
-
 # Nonlinear problem and solver
 problem_BE = PCDProblem(
     F_BE, bcs, J_BE, J_BE_pc, mu=mu, fp=fp_BE, mp=mp, bcs_pcd=bcs_pcd)
-solver_BE = NewtonSolver(inner_solver_BE, debug_hook)
+solver_BE = NewtonSolver(inner_solver_BE)
 #solver_BE.parameters["absolute_tolerance"] = 1e-10
 solver_BE.parameters["relative_tolerance"] = 1e-5
 solver_BE.parameters["maximum_iterations"] = 25

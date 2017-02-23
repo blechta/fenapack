@@ -246,14 +246,8 @@ else:
     OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.5"
     # NOTE: The above estimate is valid for P1 pressure approximation in 3D.
 
-# Define debugging hook executed at every nonlinear step
-def plot_delta(*args, **kwargs):
-    if plotting_enabled and get_log_level() <= PROGRESS:
-        plot(delta, mesh=mesh, title="stabilization parameter delta")
-
 # Set up nonlinear solver
-hook = plot_delta if args.insolver == "it" else None
-solver = NewtonSolver(inner_solver, debug_hook=hook)
+solver = NewtonSolver(inner_solver)
 #solver.parameters["absolute_tolerance"] = 1e-10
 solver.parameters["relative_tolerance"] = 1e-5
 solver.parameters["maximum_iterations"] = 25
