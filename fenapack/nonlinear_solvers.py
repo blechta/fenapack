@@ -112,10 +112,12 @@ class PCDProblem(dolfin.NonlinearProblem):
 
         dolfin.NonlinearProblem.__init__(self)
 
-        self._F = F
-        self._bcs = bcs
-        self._J = J
-        self._J_pc = J_pc
+        self.assembler = dolfin.SystemAssembler(J, F, bcs)
+        if J_pc is not None:
+            self.assembler_pc = dolfin.SystemAssembler(J_pc, F, bcs)
+        else:
+            self.assembler_pc = None
+
         self._mp = mp
         self._mu = mu
         self._ap = ap
@@ -126,7 +128,6 @@ class PCDProblem(dolfin.NonlinearProblem):
         # Matrices used to assemble parts of the preconditioner
         # NOTE: Some of them may be unused.
         comm = F.ufl_domain().ufl_cargo().mpi_comm()
-        self._matP  = dolfin.PETScMatrix(comm)
         self._matMp = dolfin.PETScMatrix(comm)
         self._matMu = dolfin.PETScMatrix(comm)
         self._matAp = dolfin.PETScMatrix(comm)
@@ -135,25 +136,16 @@ class PCDProblem(dolfin.NonlinearProblem):
 
 
     def F(self, b, x):
-        # b ... residual vector
-        dolfin.assemble(self._F, tensor=b)
-        for bc in self._bcs:
-            bc.apply(b, x)
+        self.assembler.assemble(b, x)
 
 
     def J(self, A, x):
-        # A ... system matrix
-        dolfin.assemble(self._J, tensor=A)
-        for bc in self._bcs:
-            bc.apply(A)
+        self.assembler.assemble(A)
 
 
     def J_pc(self, P, x):
-        # P ... preconditioning matrix
-        self._check_attr("J_pc")
-        dolfin.assemble(self._J_pc, tensor=P)
-        for bc in self._bcs:
-            bc.apply(P)
+        if self.assembler is not None:
+            self.assembler.assemble(P)
 
 
     def mp(self, Mp):
