@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2016 Jan Blechta and Martin Rehor
+# Copyright (C) 2015-2017 Jan Blechta and Martin Rehor
 #
 # This file is part of FENaPack.
 #
@@ -22,172 +22,54 @@ __all__ = ['NewtonSolver', 'PCDProblem']
 
 
 class NewtonSolver(dolfin.NewtonSolver):
-    """This class is a modification of :py:class:`dolfin.NewtonSolver`
-    suitable to deal appropriately with
-    :py:class:`fenapack.field_split.FieldSplitSolver` and PCD
-    preconditioners from :py:class:`fenapack.preconditioners` module.
-    In particular, it takes properly of linear solver and preconditioner
-    setup in between succesive Newton iterations.
-    """
-    def __init__(self, solver, debug_hook=None):
-        """Create Newton solver for solver for given problem. Optional
-        debug hook executed on every iteration can be provided.
 
-        *Arguments*
-            solver (:py:class:`GenericLinearSolver`)
-                A linear solver.
-            debug_hook (function)
-                A function of the signature::
-
-                    bool dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem, int iteration)
-
-                Provided ``r`` is a current residual vector, ``problem`` is
-                argument supplied to ``solve`` and ``iteration`` is number of
-                current iteration; :py:class:`bool` return value is ignored.
-        """
-        self._hook = debug_hook
+    def __init__(self, solver):
         comm = solver.mpi_comm()
         factory = dolfin.PETScFactory.instance()
         dolfin.NewtonSolver.__init__(self, comm, solver, factory)
-        # Homebrewed implementation
         self._solver = solver
-        self._mpi_comm = comm
-        self._matA = factory.create_matrix(comm)
-        self._dx = factory.create_vector(comm)
-        self._b = factory.create_vector(comm)
-        self._residual = 0.0
-        self._residual0 = 0.0
 
-
-    def converged(self, r, problem, newton_iteration):
-        # A Python rewrite of 'dolfin::NewtonSolver::converged' with
-        # possibility to call debugging hook.
-        if self._hook:
-            dolfin.debug('Calling debugging hook of NewtonSolver::converged'
-                         ' at iteration %d' % newton_iteration)
-            self._hook(r, problem, newton_iteration)
-        rtol = self.parameters["relative_tolerance"]
-        atol = self.parameters["absolute_tolerance"]
-        report = self.parameters["report"]
-        self._residual = r.norm("l2")
-        if newton_iteration == 0:
-            self._residual0 = self._residual
-        relative_residual = self._residual/self._residual0
-        # Print modified report message
-        if report and dolfin.MPI.rank(self._mpi_comm) == 0:
-            dolfin.info("Nonlinear iteration %d:"
-                        " r (abs) = %.3e (tol = %.3e)"
-                        " r (rel) = %.3e (tol = %.3e)"
-                        % (newton_iteration,
-                           self._residual, atol,
-                           relative_residual, rtol))
-        return relative_residual < rtol or self._residual < atol
-
-
-    # Homebrewed implementation
     def solve(self, problem, x):
-        """Solve abstract nonlinear problem :math:`F(x) = 0` for given
-        :math:`F` and Jacobian :math:`\dfrac{\partial F}{\partial x}`.
+        self._problem = problem
+        r = dolfin.NewtonSolver.solve(self, problem, x)
+        del self._problem
+        return r
 
-        *Arguments*
-            problem (:py:class:`dolfin.NonlinearProblem`)
-                The nonlinear problem.
-            x (:py:class:`dolfin.GenericVector`)
-                The unknown vector.
+    def solver_setup(self, A, P, nonlinear_problem, iteration):
+        linear_solver = self._solver
+        nonlinear_problem = self._problem
 
-        *Returns*
-            (int, bool)
-                Pair of number of Newton iterations, and whether
-                iteration converged)
-        """
-        # A Python rewrite of 'dolfin::NewtonSolver::solve'
-        # with modification in linear solver setup.
-        convergence_criterion = self.parameters["convergence_criterion"]
-        maxiter = self.parameters["maximum_iterations"]
+        if P.empty():
+            P = A
 
-        assert hasattr(self, "_solver")
-        # solver_type = self.parameters["linear_solver"]
-        # pc_type = self.parameters["preconditioner"]
-        # if not self._solver:
-        #     self._solver = dolfin.LinearSolver(solver_type, pc_type)
+        schur_approx = {}
 
-        # self._solver.update_parameters(self.parameters[self._solver.parameter_type()])
+        # FIXME: Clean this up! This is a mess!
 
-        krylov_iterations = 0
-        self._newton_iteration = 0
-
-        problem.F(self._b, x)
-        problem.form(self._matA, self._b, x)
-
-        if convergence_criterion == "residual":
-            newton_converged = self.converged(self._b, problem, 0)
-        elif convergence_criterion == "incremental":
-            newton_converged = False
-        else:
-            dolfin.dolfin_error("utils.py"
-                                "check for convergence",
-                                "The convergence criterion %s is unknown,"
-                                " known criteria are 'residual' or 'incremental'"
-                                % convergence_criterion)
-
-        relaxation = self.parameters["relaxation_parameter"]
-
-        while not newton_converged and self._newton_iteration < maxiter:
-            problem.J(self._matA, x)
-            # TODO: Fix this in DOLFIN. Setup of the linear solver should be
-            # handled by some appropriate method of 'NonlinearProblem'.
-            # By default, this method must call
-            #   self._solver.set_operator(self._matA)
-            # in order to retain original functionality of 'NewtonSolver'.
-            # Users should be allowed to overload this method to customize
-            # linear solver setup, e.g. to set preconditioner.
-            problem.linear_solver_setup(
-                self._solver, self._matA, self._newton_iteration)
-
-            if not self._dx.empty():
-                self._dx.zero()
-            krylov_iterations += self._solver.solve(self._dx, self._b)
-            if abs(1.0 - relaxation) < dolfin.DOLFIN_EPS:
-                x[:] -= self._dx
-            else:
-                x.axpy(-relaxation, self._dx)
-            self._newton_iteration += 1
-            problem.F(self._b, x)
-            problem.form(self._matA, self._b, x)
-            if convergence_criterion == "residual":
-                newton_converged = self.converged(self._b, problem,
-                                                  self._newton_iteration)
-            elif convergence_criterion == "incremental":
-                newton_converged = self.converged(self._dx, problem,
-                                                  self._newton_iteration-1)
-            else:
-                dolfin.dolfin_error("utils.py"
-                                    "check for convergence",
-                                    "The convergence criterion %s is unknown,"
-                                    " known criteria are 'residual' or 'incremental'"
-                                    % convergence_criterion)
-
-        if newton_converged:
-            if dolfin.MPI.rank(self._mpi_comm) == 0:
-                dolfin.info("Nonlinear solver finished in %d iterations"
-                            " and %d linear solver iterations."
-                            % (self._newton_iteration, krylov_iterations))
-        else:
-            error_on_nonconvergence = self.parameters["error_on_nonconvergence"]
-            if error_on_nonconvergence:
-                if self._newton_iteration == maxiter:
-                    dolfin.dolfin_error("utils.py",
-                                        "solve nonlinear system with NewtonSolver",
-                                        "Newton solver did not converge because"
-                                        " maximum number of iterations reached")
+        # Prepare matrices guaranteed to be constant during iterations once
+        if iteration == 0:
+            schur_approx["bcs"] = nonlinear_problem._bcs_pcd
+            for key in ["Ap", "Mp", "Mu"]:
+                mat_object = getattr(nonlinear_problem, "_mat"+key)
+                try:
+                    getattr(nonlinear_problem, key.lower())(mat_object) # assemble
+                except AttributeError:
+                    pass
                 else:
-                    dolfin.dolfin_error("utils.py",
-                                        "solve nonlinear system with NewtonSolver",
-                                        "Newton solver did not converge")
-            else:
-                dolfin.warning("Newton solver did not converge.")
+                    schur_approx[key] = mat_object
 
-        return self._newton_iteration, newton_converged
+        # Assemble non-constant matrices everytime
+        for key in ["Fp", "Kp"]:
+            mat_object = getattr(nonlinear_problem, "_mat"+key)
+            try:
+                getattr(nonlinear_problem, key.lower())(mat_object) # assemble
+            except AttributeError:
+                pass
+            else:
+                schur_approx[key] = mat_object
+
+        # Pass assembled operators and bc to linear solver
+        linear_solver.set_operators(A, P, **schur_approx)
 
 
 
@@ -266,7 +148,7 @@ class PCDProblem(dolfin.NonlinearProblem):
             bc.apply(A)
 
 
-    def J_pc(self, P):
+    def J_pc(self, P, x):
         # P ... preconditioning matrix
         self._check_attr("J_pc")
         dolfin.assemble(self._J_pc, tensor=P)
@@ -302,44 +184,6 @@ class PCDProblem(dolfin.NonlinearProblem):
         # Kp ... pressure convection matrix
         self._check_attr("kp")
         dolfin.assemble(self._kp, tensor=Kp)
-
-
-    #Hook called by :py:class:`NewtonSolver` on every iteration.
-    def linear_solver_setup(self, solver, A, it):
-        # Assemble preconditioner Jacobian or use system Jacobian
-        try:
-            self.J_pc(self._matP)
-        except AttributeError:
-            P = A
-        else:
-            P = self._matP
-
-        schur_approx = {}
-
-        # Prepare matrices guaranteed to be constant during iterations once
-        if it == 0:
-            schur_approx["bcs"] = self._bcs_pcd
-            for key in ["Ap", "Mp", "Mu"]:
-                mat_object = getattr(self, "_mat"+key)
-                try:
-                    getattr(self, key.lower())(mat_object) # assemble
-                except AttributeError:
-                    pass
-                else:
-                    schur_approx[key] = mat_object
-
-        # Assemble non-constant matrices everytime
-        for key in ["Fp", "Kp"]:
-            mat_object = getattr(self, "_mat"+key)
-            try:
-                getattr(self, key.lower())(mat_object) # assemble
-            except AttributeError:
-                pass
-            else:
-                schur_approx[key] = mat_object
-
-        # Pass assembled operators and bc to linear solver
-        solver.set_operators(A, P, **schur_approx)
 
 
     def _check_attr(self, attr):
