@@ -130,7 +130,7 @@ class NewtonSolver(dolfin.NewtonSolver):
                                 " known criteria are 'residual' or 'incremental'"
                                 % convergence_criterion)
 
-        relaxation = self.parameters["relaxation_parameter"]
+        relaxation = self.parameters["relaxation_parameter"] or self.get_relaxation_parameter()
 
         while not newton_converged and self._newton_iteration < maxiter:
             problem.J(self._matA, x)
