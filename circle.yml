@@ -12,7 +12,7 @@ test:
         docker run
         -v $(pwd):/home/fenics/fenapack
         -w /home/fenics/fenapack
-        quay.io/fenicsproject/dev
+        quay.io/fenicsproject_dev/dolfin:jan-fix-issue-714
         "
         python -c'import ffc, dolfin; print(ffc.git_commit_hash(), ffc.ufc_signature(), dolfin.git_commit_hash())';
         export PYTHONPATH=\$PWD:\$PYTHONPATH;
