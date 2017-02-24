@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016 Jan Blechta and Martin Rehor
+# Copyright (C) 2014-2017 Jan Blechta and Martin Rehor
 #
 # This file is part of FENaPack.
 #
@@ -20,8 +20,6 @@ from petsc4py import PETSc
 
 from fenapack._field_split_utils import SubfieldBC
 
-__all__ = ['PCDPC_SEW', 'UnsteadyPCDPC_SEW', 'PCDPC_BRM']
-
 
 class BasePCDPC(object):
     """Base python context for pressure convection diffusion (PCD)
@@ -29,10 +27,6 @@ class BasePCDPC(object):
     def create(self, pc):
         self._ksp_Ap = self._prepare_default_ksp(pc.comm)
         self._ksp_Mp = self._prepare_default_ksp(pc.comm)
-
-
-    def apply(self, pc, x, y):
-        raise NotImplementedError("This is abstract class")
 
 
     def setFromOptions(self, pc):
@@ -45,23 +39,6 @@ class BasePCDPC(object):
         # Update Mp
         self._ksp_Mp.setOptionsPrefix(options_prefix+"PCD_Mp_")
         self._ksp_Mp.setFromOptions()
-
-
-    def set_operators(self, is0, is1, A, P, **shur_approx):
-        """The index sets is0, is1 define particular blocks in a field-splitted
-        matrix.
-
-        From A and P one can extract their particular blocks and use them to
-        build the approximate Schur complement.
-
-        **Overloaded versions**
-
-          Other components used to build the approximate Schur complement
-          matrix can be provided as optional keyword arguments. These
-          components differ depending on the strategy used for PCD
-          preconditioning.
-        """
-        raise NotImplementedError("This is abstract class")
 
 
     def _raise_attribute_error(self, attr):
