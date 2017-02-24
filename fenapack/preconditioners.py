@@ -130,18 +130,17 @@ class PCDPC_SEW(BasePCDPC):
 
         # Update Ap
         if Ap is not None:
-            self._Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
+            self._Ap = Ap.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Ap', None))
             # Apply boundary conditions along outflow boundary
             for bc in self._bcs:
                 bc.apply_fdm(self._Ap)
-            #self._Ap.setOption(PETSc.Mat.Option.SPD, True)
             self._ksp_Ap.setOperators(self._Ap)
         elif not hasattr(self, "_Ap"):
             self._raise_attribute_error("Ap")
 
         # Update Fp
         if Fp is not None:
-            self._Fp = dolfin.as_backend_type(Fp).mat().getSubMatrix(is1, is1)
+            self._Fp = Fp.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Fp', None))
             # Apply boundary conditions along outflow boundary
             for bc in self._bcs:
                 bc.apply_fdm(self._Fp)
@@ -150,8 +149,8 @@ class PCDPC_SEW(BasePCDPC):
 
         # Update Mp
         if Mp:
-            self._Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
-            #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
+            self._Mp = Mp.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Mp', None))
+            self._Mp.setOption(PETSc.Mat.Option.SPD, True)
             self._ksp_Mp.setOperators(self._Mp)
         elif not hasattr(self, "_Mp"):
             self._raise_attribute_error("Mp")
@@ -204,7 +203,7 @@ class UnsteadyPCDPC_SEW(PCDPC_SEW):
         # Assemble Ap using A and Mu
         if Mu is not None:
             # Get velocity mass matrix as PETSc Mat object
-            Mu = dolfin.as_backend_type(Mu).mat().getSubMatrix(is0, is0)
+            Mu = Mu.mat().getSubMatrix(is0, is0)
 
             # Get diagonal of the velocity mass matrix
             diagMu = Mu.getDiagonal()
@@ -216,14 +215,14 @@ class UnsteadyPCDPC_SEW(PCDPC_SEW):
             diagMu.sqrtabs() # \sqrt{diag(Mu)^{-1}}
 
             # Extract 01-block, i.e. "grad", from the matrix operator A
-            Bt = dolfin.as_backend_type(A).mat().getSubMatrix(is0, is1)
+            Bt = A.mat().getSubMatrix(is0, is1)
             Bt.diagonalScale(L=diagMu) # scale rows of Bt
 
             # Get Ap
             self._Ap = Bt.transposeMatMult(Bt) # Ap = Bt^T*Bt
 
             # Set up special options
-            #self._Ap.setOption(PETSc.Mat.Option.SPD, True)
+            self._Ap.setOption(PETSc.Mat.Option.SPD, True)
 
             # Store matrix in the corresponding ksp
             self._ksp_Ap.setOperators(self._Ap)
@@ -246,6 +245,10 @@ class PCDPC_BRM(BasePCDPC):
            preconditioners for the discrete Oseen problem*.
            SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.
     """
+    def __init__(self):
+        self._Ap = None
+
+
     def apply(self, pc, x, y):
         r"""This method implements the action of the inverse of the approximate
         Schur complement :math:`-\hat{S}^{-1}`, that is
@@ -328,24 +331,31 @@ class PCDPC_BRM(BasePCDPC):
         # Update Ap
         if Ap is not None:
             # Apply boundary conditions along inflow boundary
+            # NOTE: BC might already have been applied but this is not
+            #       harmful. If symmetric approach (using SystemAssembler)
+            #       was used then only homogeneous BC makes sense
             for bc in self._bcs:
                 bc.apply(Ap)
-            self._Ap = dolfin.as_backend_type(Ap).mat().getSubMatrix(is1, is1)
-            #self._Ap.setOption(PETSc.Mat.Option.SPD, True)
+            self._Ap = Ap.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Ap', None))
             self._ksp_Ap.setOperators(self._Ap)
         elif not hasattr(self, "_Ap"):
             self._raise_attribute_error("Ap")
 
         # Update Kp
         if Kp is not None:
-            self._Kp = dolfin.as_backend_type(Kp).mat().getSubMatrix(is1, is1)
+            # NOTE: getSubMatrix is deep, createSubMatrix is shallow
+            # FIXME: Need a proper interface, this is really hacky!
+            #self._Kp = Kp.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Kp', None))
+            if not hasattr(self, "_Kp"):
+                # Need to createSubMatrix only once
+                self._Kp = PETSc.Mat().createSubMatrix(Kp.mat(), is1, is1)
         elif not hasattr(self, "_Kp"):
             self._raise_attribute_error("Kp")
 
         # Update Mp
         if Mp is not None:
-            self._Mp = dolfin.as_backend_type(Mp).mat().getSubMatrix(is1, is1)
-            #self._Mp.setOption(PETSc.Mat.Option.SPD, True)
+            self._Mp = Mp.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Mp', None))
+            self._Mp.setOption(PETSc.Mat.Option.SPD, True)
             self._ksp_Mp.setOperators(self._Mp)
         elif not hasattr(self, "_Mp"):
             self._raise_attribute_error("Mp")
