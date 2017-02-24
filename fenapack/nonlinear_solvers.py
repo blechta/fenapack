@@ -16,7 +16,7 @@
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 import dolfin
-import re
+from petsc4py import PETSc
 
 __all__ = ['NewtonSolver', 'PCDProblem']
 
@@ -112,12 +112,17 @@ class PCDProblem(dolfin.NonlinearProblem):
 
         dolfin.NonlinearProblem.__init__(self)
 
+        # Assembler for Newton/Picard system
+        # FIXME: Does it get broken for Oseen system?
         self.assembler = dolfin.SystemAssembler(J, F, bcs)
+
+        # Assembler for preconditioner
         if J_pc is not None:
             self.assembler_pc = dolfin.SystemAssembler(J_pc, F, bcs)
         else:
             self.assembler_pc = None
 
+        self._F = F
         self._mp = mp
         self._mu = mu
         self._ap = ap
@@ -163,7 +168,11 @@ class PCDProblem(dolfin.NonlinearProblem):
     def ap(self, Ap):
         # Ap ... pressure Laplacian matrix
         self._check_attr("ap")
-        dolfin.assemble(self._ap, tensor=Ap)
+
+        if Ap.empty():
+            assembler = dolfin.SystemAssembler(self._ap, self._F, self._bcs_pcd)
+            assembler.assemble(Ap)
+            Ap.mat().setOption(PETSc.Mat.Option.SPD, True)
 
 
     def fp(self, Fp):
