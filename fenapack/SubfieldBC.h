@@ -37,7 +37,7 @@
 
 namespace dolfin {
 
-  class SubfieldBC
+  class SubfieldBC : public PETScObject
   {
   public:
 
@@ -49,6 +49,14 @@ namespace dolfin {
       dolfin_assert(bc.function_space());
       compute_subfield_bc(_subfield_bc_indices, _subfield_bc_values, bc,
                           *bc.function_space()->dofmap(), subfield_is);
+    }
+
+    /// Return whether BC is homogeneous
+    bool is_homogeneous()
+    {
+      return std::all_of(_subfield_bc_values.cbegin(),
+                         _subfield_bc_values.cend(),
+                         [](double v){ return v == 0.0; });
     }
 
     /// Return computed bc indices and values (for debugging purposes)
@@ -112,14 +120,12 @@ namespace dolfin {
       // Get subfield size
       la_index subfield_size;
       ierr = ISGetLocalSize(subfield_is, &subfield_size);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "ISGetSize");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "ISGetSize");
 
       // Get subfield indices
       const la_index* subfield_indices;
       ierr = ISGetIndices(subfield_is, &subfield_indices);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "ISGetIndices");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "ISGetIndices");
 
       // Prepare data for storing results
       subfield_bc_indices.clear();
@@ -149,8 +155,7 @@ namespace dolfin {
 
       // Destroy subfield indices
       ierr = ISRestoreIndices(subfield_is, &subfield_indices);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "ISRestoreIndices");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "ISRestoreIndices");
     }
 
     static void apply_subfield_bc(Vec x,
@@ -165,17 +170,14 @@ namespace dolfin {
       // Set bc values of Vec
       ierr = VecSetValues(x, indices.size(), indices.data(), values.data(),
                           INSERT_VALUES);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "VecSetValues");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "VecSetValues");
 
       // Assemble vector after completing all calls to VecSetValues()
       // FIXME: Maybe wait with assembly?!
       ierr = VecAssemblyBegin(x);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "VecAssemblyBegin");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "VecAssemblyBegin");
       ierr = VecAssemblyEnd(x);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "VecAssemblyEnd");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "VecAssemblyEnd");
     }
 
     static void apply_subfield_bc_fdm(Mat A,
@@ -188,35 +190,33 @@ namespace dolfin {
 
       // A shall be square, let's abuse notation
       ierr = MatCreateVecs(A, &scale, &diag);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "MatCreateVecs");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "MatCreateVecs");
 
       // Create vector with twos on boundary and ones in bulk
       ierr = VecSet(scale, 1.0);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "VecSet");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "VecSet");
       std::vector<double> values(indices.size(), 2.0);
       ierr = VecSetValues(scale, indices.size(), indices.data(),
                           values.data(), INSERT_VALUES);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "VecSetValues");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "VecSetValues");
       ierr = VecAssemblyBegin(scale);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "VecAssemblyBegin");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "VecAssemblyBegin");
       ierr = VecAssemblyEnd(scale);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "VecAssemblyEnd");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "VecAssemblyEnd");
 
       // Scale the diagonal
       ierr = MatGetDiagonal(A, diag);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "MatGetDiagonal");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "MatGetDiagonal");
       ierr = VecPointwiseMult(diag, scale, diag);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "VecPointwiseMult");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "VecPointwiseMult");
       ierr = MatDiagonalSet(A, diag, INSERT_VALUES);
-      if (ierr != 0)
-        PETScObject::petsc_error(ierr, "field_split.py", "MatDiagonalSet");
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "MatDiagonalSet");
+
+      // Clean-up
+      ierr = VecDestroy(&diag);
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "VecDestroy");
+      ierr = VecDestroy(&scale);
+      if (ierr != 0) petsc_error(ierr, "SubfieldBC.h", "VecDestroy");
     }
 
   };
