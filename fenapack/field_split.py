@@ -115,9 +115,16 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
             differ depending on the strategy used for preconditioning. See
             classes in :py:class:`fenapack.preconditioners` module.
         """
+        # Down cast to PETScMatrix
+        A = dolfin.as_backend_type(A)
+        P = dolfin.as_backend_type(P)
+        for key in schur_approx:
+            if isinstance(schur_approx[key], dolfin.GenericMatrix):
+                schur_approx[key] = dolfin.as_backend_type(schur_approx[key])
+
+        # Set operators of super class
         dolfin.PETScKrylovSolver.set_operators(self, A, P)
-        assert self._ksp.getOperators() == \
-          (dolfin.as_backend_type(A).mat(), dolfin.as_backend_type(P).mat())
+        assert self._ksp.getOperators() == (A.mat(), P.mat())
 
         # Set up KSP
         self._set_from_parameters() # update global option database
