@@ -104,7 +104,7 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
             " Use 'set_operators' method instead.")
 
 
-    def set_operators(self, A, P, **schur_approx):
+    def set_operators(self, A, P, pcd_problem=None):
         """``A`` and ``P`` represents a system matrix operator and
         a preconditioner in the usual sense.
 
@@ -118,9 +118,6 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         # Down cast to PETScMatrix
         A = dolfin.as_backend_type(A)
         P = dolfin.as_backend_type(P)
-        for key in schur_approx:
-            if isinstance(schur_approx[key], dolfin.GenericMatrix):
-                schur_approx[key] = dolfin.as_backend_type(schur_approx[key])
 
         # Set operators of super class
         dolfin.PETScKrylovSolver.set_operators(self, A, P)
@@ -139,7 +136,11 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         # 11-block inverse. If so, use **schur_approx to set up this context.
         if self._OptDB_11.hasName("pc_python_type"):
             ctx = pc1.getPythonContext()
-            ctx.set_operators(self._is0, self._is1, A, P, **schur_approx)
+            ctx.init(pcd_problem)
+
+        # Pass index set is1 to pcd problem if needs it
+        if hasattr(pcd_problem, "set_is1"):
+            pcd_problem.set_is1(self._is1)
 
         # Set up each subPC explicitly before calling 'self.solve'. In such
         # a case, the time needed for setup is not included in timings under

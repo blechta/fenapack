@@ -18,9 +18,12 @@
 import dolfin
 from petsc4py import PETSc
 
+from fenapack._field_split_utils import SubfieldBC
+
 __all__ = ['NewtonSolver', 'PCDProblem']
 
 
+# FIXME: Rename, this is specialized
 class NewtonSolver(dolfin.NewtonSolver):
 
     def __init__(self, solver):
@@ -36,40 +39,13 @@ class NewtonSolver(dolfin.NewtonSolver):
         return r
 
     def solver_setup(self, A, P, nonlinear_problem, iteration):
+        # C++ references passed in do not have Python context
         linear_solver = self._solver
         nonlinear_problem = self._problem
 
-        if P.empty():
-            P = A
+        P = A if P.empty() else P
 
-        schur_approx = {}
-
-        # FIXME: Clean this up! This is a mess!
-
-        # Prepare matrices guaranteed to be constant during iterations once
-        if iteration == 0:
-            schur_approx["bcs"] = nonlinear_problem._bcs_pcd
-            for key in ["Ap", "Mp", "Mu"]:
-                mat_object = getattr(nonlinear_problem, "_mat"+key)
-                try:
-                    getattr(nonlinear_problem, key.lower())(mat_object) # assemble
-                except AttributeError:
-                    pass
-                else:
-                    schur_approx[key] = mat_object
-
-        # Assemble non-constant matrices everytime
-        for key in ["Fp", "Kp"]:
-            mat_object = getattr(nonlinear_problem, "_mat"+key)
-            try:
-                getattr(nonlinear_problem, key.lower())(mat_object) # assemble
-            except AttributeError:
-                pass
-            else:
-                schur_approx[key] = mat_object
-
-        # Pass assembled operators and bc to linear solver
-        linear_solver.set_operators(A, P, **schur_approx)
+        linear_solver.set_operators(A, P, pcd_problem=nonlinear_problem)
 
 
 
@@ -132,12 +108,12 @@ class PCDProblem(dolfin.NonlinearProblem):
 
         # Matrices used to assemble parts of the preconditioner
         # NOTE: Some of them may be unused.
-        comm = F.ufl_domain().ufl_cargo().mpi_comm()
-        self._matMp = dolfin.PETScMatrix(comm)
-        self._matMu = dolfin.PETScMatrix(comm)
-        self._matAp = dolfin.PETScMatrix(comm)
-        self._matFp = dolfin.PETScMatrix(comm)
-        self._matKp = dolfin.PETScMatrix(comm)
+        self._mpi_comm = F.ufl_domain().ufl_cargo().mpi_comm()
+        self._matMp = dolfin.PETScMatrix(self._mpi_comm)
+        self._matMu = dolfin.PETScMatrix(self._mpi_comm)
+        self._matAp = dolfin.PETScMatrix(self._mpi_comm)
+        self._matFp = dolfin.PETScMatrix(self._mpi_comm)
+        self._matKp = dolfin.PETScMatrix(self._mpi_comm)
 
 
     def F(self, b, x):
@@ -187,7 +163,118 @@ class PCDProblem(dolfin.NonlinearProblem):
         dolfin.assemble(self._kp, tensor=Kp)
 
 
+    def pcd_bcs(self):
+        return self._bcs_pcd
+
+
     def _check_attr(self, attr):
         if getattr(self, "_"+attr) is None:
             raise AttributeError("Keyword argument '%s' of 'PCDProblem' object"
                                  " has not been set." % attr)
+
+
+    # FIXME: Remove me if not needed
+    def mpi_comm(self):
+        return self._mpi_comm
+
+
+    def setup_ksp_Ap(self, ksp):
+        self._setup_ksp_once(ksp, self.ap)
+
+
+    def setup_ksp_Mp(self, ksp):
+        self._setup_ksp_once(ksp, self.mp)
+
+
+    def setup_mat_Kp(self, mat):
+        # FIXME: Parametrize me
+        return self._setup_Kp_shallow(mat)
+        #return self._setup_Kp_deep(mat)
+
+
+    def apply_pcd_bcs(self, vec):
+        # FIXME: interface for general bc tweaks of matrices?
+        self._apply_bcs(vec, self.pcd_bcs)
+
+
+    # Move everything bellow to backend
+
+
+    # Factor two following function from Kp
+
+    def _setup_Kp_shallow(self, mat):
+        # FIXME: Improve this confusing logic and naming?!
+        scratch = getattr(self, "_Kp_scratch", None)
+        mat, scratch = self._assemble_mat_shallow(mat, self.kp, scratch)
+        self._Kp_scratch = scratch
+        return mat
+
+    def _setup_Kp_deep(self, mat):
+        return self._assemble_mat_deep(mat, self.kp)
+
+
+    def _apply_bcs(self, vec, bcs_getter):
+        # FIXME: Improve this confusing logic and naming?!
+        subbcs = getattr(self, "_subbcs", None)
+        if subbcs is None:
+            bcs = bcs_getter()
+            bcs = [bcs] if isinstance(bcs, dolfin.DirichletBC) else bcs
+            subbcs = [SubfieldBC(bc, self._is1) for bc in bcs]
+        self._subbcs = subbcs
+
+        for bc in subbcs:
+            bc.apply(vec)
+
+
+    def _setup_ksp_once(self, ksp, assembler_func):
+        mat = ksp.getOperators()[0]
+        # FIXME: This logic that it is created once should be visible
+        #        in higher level, not in these internals
+        if mat.type is None:
+            # FIXME: Could have shared work matrix
+            A = dolfin.PETScMatrix(mat.comm)
+            assembler_func(A)
+            mat = self._get_deep_submat(A, None, self._is1)
+            ksp.setOperators(mat, mat)
+            assert ksp.getOperators()[0].type is not None
+
+
+    def _assemble_mat_shallow(self, petsc_mat, assembler_func, dolfin_mat=None):
+        # Assemble dolfin_mat everytime
+        dolfin_mat = dolfin_mat or dolfin.PETScMatrix(self.mpi_comm())
+        assembler_func(dolfin_mat)
+
+        # FIXME: This logic that it is created once should be visible
+        #        in higher level, not in these internals
+        # Create shallow submatrix once
+        if petsc_mat is None or petsc_mat.type is None:
+            petsc_mat = self._get_shallow_submat(dolfin_mat, petsc_mat, self._is1)
+            assert petsc_mat.type is not None
+
+        # Return allocated mats so that client can strore it
+        return petsc_mat, dolfin_mat
+
+
+    def _assemble_mat_deep(self, petsc_mat, assembler_func):
+        # FIXME: Could have shared work matrix
+        dolfin_mat = dolfin.PETScMatrix(self.mpi_comm())
+        assembler_func(dolfin_mat)
+        return self._get_deep_submat(dolfin_mat, petsc_mat, self._is1)
+
+
+    @staticmethod
+    def _get_deep_submat(dolfin_mat, petsc_submat, iset):
+        #if petsc_submat is not None and petsc_submat.type is None:
+        #    petsc_submat.setSizes(((iset.size, iset.size), (iset.size, iset.size)))
+        return dolfin_mat.mat().getSubMatrix(iset, iset, submat=petsc_submat)
+
+
+    @staticmethod
+    def _get_shallow_submat(dolfin_mat, petsc_submat, iset):
+        if petsc_submat is None:
+            petsc_submat = PETSc.Mat().create(iset.comm)
+        return petsc_submat.createSubMatrix(dolfin_mat.mat(), iset, iset)
+
+
+    def set_is1(self, is1):
+        self._is1 = is1
