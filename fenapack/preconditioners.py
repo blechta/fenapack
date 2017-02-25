@@ -56,6 +56,7 @@ class BasePCDPC(object):
         return ksp
 
 
+    # FIXME: Rename to work_vector
     def _z(self, v):
         """Return cached duplicate of PETSc Vec v."""
         try:
@@ -245,9 +246,6 @@ class PCDPC_BRM(BasePCDPC):
            preconditioners for the discrete Oseen problem*.
            SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.
     """
-    def __init__(self):
-        self._Ap = None
-
 
     def apply(self, pc, x, y):
         r"""This method implements the action of the inverse of the approximate
@@ -281,83 +279,30 @@ class PCDPC_BRM(BasePCDPC):
         x.copy(result=z)
 
         # Apply subfield boundary conditions to rhs
-        for bc in self._subfield_bcs:
-            bc.apply(z)
+        self._bcs_applier(z)
 
         # Apply PCD
         self._ksp_Ap.solve(z, y) # y = A_p^{-1} z
-        self._Kp.mult(-y, z)     # z = -K_p y
+        self._mat_Kp.mult(-y, z) # z = -K_p y
         z.axpy(-1.0, x)          # z = z - x
         self._ksp_Mp.solve(z, y) # y = M_p^{-1} z
 
         timer.stop()
 
 
-    def set_operators(self, is0, is1, A, P,
-                      Mp=None, Ap=None, Kp=None, bcs=None):
-        """Set operators for the approximate Schur complement matrix
+    def init(self, pcd_problem):
+        self._problem = pcd_problem
 
-        *Arguments*
-            is0, is1 (:py:class:`petsc4py.PETSc.IS`)
-                The index sets defining blocks in the field splitted matrix.
-            A (:py:class:`GenericMatrix`)
-                Dummy system matrix. Not used by this implementation.
-            P (:py:class:`GenericMatrix`)
-                Dummy preconditioning matrix. Not used by this implementation.
 
-        *Keyword arguments*
-            Mp (:py:class:`GenericMatrix`)
-                The matrix containing pressure mass matrix as its 11-block.
-            Ap (:py:class:`GenericMatrix`)
-                The matrix containing pressure laplacian as its 11-block.
-            Kp (:py:class:`GenericMatrix`)
-                The matrix containing pressure convection plus possibly mass
-                matrix comming from the time derivative as its 11-block.
-            bcs (:py:class:`DirichletBC`)
-                List of boundary conditions that will be applied during
-                :math:`A_p^{-1} x` solve.
-        """
-        timer = dolfin.Timer("FENaPack: PCDPC_BRM set_operators")
+    def setUp(self, pc):
+        #self._mat_Kp = PETSc.Mat().create(pc.comm)
+        self._mat_Kp = None
+        # FIXME: Maybe move Mp and Ap setup to init and remove
+        # logic in backend. This will make it obvious
+        self._problem.setup_ksp_Mp(self._ksp_Mp)
+        self._problem.setup_ksp_Ap(self._ksp_Ap)
+        self._mat_Kp = self._problem.setup_mat_Kp(self._mat_Kp)
+        self._bcs_applier = self._problem.apply_pcd_bcs
 
-        # Prepare bcs for adjusting field split vector in PC apply
-        if bcs is not None:
-            if not hasattr(bcs, "__iter__"):
-                bcs = [bcs]
-            self._bcs = bcs
-            self._subfield_bcs = [SubfieldBC(bc, is1) for bc in bcs]
-        elif not hasattr(self, "_bcs"):
-            self._raise_attribute_error("bcs")
-
-        # Update Ap
-        if Ap is not None:
-            # Apply boundary conditions along inflow boundary
-            # NOTE: BC might already have been applied but this is not
-            #       harmful. If symmetric approach (using SystemAssembler)
-            #       was used then only homogeneous BC makes sense
-            for bc in self._bcs:
-                bc.apply(Ap)
-            self._Ap = Ap.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Ap', None))
-            self._ksp_Ap.setOperators(self._Ap)
-        elif not hasattr(self, "_Ap"):
-            self._raise_attribute_error("Ap")
-
-        # Update Kp
-        if Kp is not None:
-            # NOTE: getSubMatrix is deep, createSubMatrix is shallow
-            # FIXME: Need a proper interface, this is really hacky!
-            #self._Kp = Kp.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Kp', None))
-            if not hasattr(self, "_Kp"):
-                # Need to createSubMatrix only once
-                self._Kp = PETSc.Mat().createSubMatrix(Kp.mat(), is1, is1)
-        elif not hasattr(self, "_Kp"):
-            self._raise_attribute_error("Kp")
-
-        # Update Mp
-        if Mp is not None:
-            self._Mp = Mp.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Mp', None))
-            self._Mp.setOption(PETSc.Mat.Option.SPD, True)
-            self._ksp_Mp.setOperators(self._Mp)
-        elif not hasattr(self, "_Mp"):
-            self._raise_attribute_error("Mp")
-
-        timer.stop()
+    #def setOperators(self, *args, **kwargs):
+    #    import pdb; pdb.set_trace()
