@@ -19,6 +19,7 @@ import dolfin
 from petsc4py import PETSc
 
 from fenapack._field_split_utils import dofmap_dofs_is
+from fenapack.nonlinear_solvers import _PCDProblem
 
 __all__ = ['FieldSplitSolver']
 
@@ -131,6 +132,9 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         # Get subKSP and subPC objects
         ksp0, ksp1 = self._ksp.getPC().getFieldSplitSubKSP()
         pc0, pc1 = ksp0.getPC(), ksp1.getPC()
+
+        # Get backend implementation of PCDProblem
+        pcd_problem = _PCDProblem.from_pcd_problem(pcd_problem)
 
         # Check if python context has been set up to define approximation of
         # 11-block inverse. If so, use **schur_approx to set up this context.
