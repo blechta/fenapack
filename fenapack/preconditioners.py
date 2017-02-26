@@ -52,7 +52,7 @@ class BasePCDPC(object):
         ksp = PETSc.KSP().create(comm)
         ksp.setType(PETSc.KSP.Type.PREONLY)
         pc = ksp.getPC()
-        pc.setType(PETSc.PC.Type.LU)
+        pc.setType(PETSc.PC.Type.CHOLESKY)
         return ksp
 
 
