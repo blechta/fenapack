@@ -24,6 +24,10 @@ split PCD preconditioning."""
 from dolfin import *
 from fenapack import FieldSplitSolver, NewtonSolver, PCDProblem, StabilizationParameterSD
 
+SubSystemsManager.init_petsc()
+from petsc4py import PETSc
+PETSc.Sys.pushErrorHandler("traceback")
+
 
 parameters["form_compiler"]["representation"] = "uflacs"
 parameters["form_compiler"]["optimize"] = True
@@ -133,14 +137,17 @@ OptDB_00["pc_hypre_type"] = "boomeramg"
 OptDB_11["ksp_type"] = "preonly"
 OptDB_11["pc_type"] = "python"
 OptDB_11["pc_python_type"] = "fenapack.PCDPC_BRM"
-OptDB_11["PCD_Ap_ksp_type"] = "richardson"
-OptDB_11["PCD_Ap_ksp_max_it"] = 2
-OptDB_11["PCD_Ap_pc_type"] = "hypre"
-OptDB_11["PCD_Ap_pc_hypre_type"] = "boomeramg"
-OptDB_11["PCD_Mp_ksp_type"] = "chebyshev"
-OptDB_11["PCD_Mp_ksp_max_it"] = 5
-OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
-OptDB_11["PCD_Mp_pc_type"] = "jacobi"
+#OptDB_11["PCD_Ap_ksp_type"] = "richardson"
+#OptDB_11["PCD_Ap_ksp_max_it"] = 2
+#OptDB_11["PCD_Ap_pc_type"] = "hypre"
+#OptDB_11["PCD_Ap_pc_hypre_type"] = "boomeramg"
+#OptDB_11["PCD_Mp_ksp_type"] = "chebyshev"
+#OptDB_11["PCD_Mp_ksp_max_it"] = 5
+#OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
+#OptDB_11["PCD_Mp_pc_type"] = "jacobi"
+
+PETScOptions.set("mat_mumps_icntl_4", 2)
+OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
 
 # Set up nonlinear solver
 solver = NewtonSolver(linear_solver)

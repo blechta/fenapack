@@ -148,7 +148,6 @@ class PCDProblem(dolfin.NonlinearProblem):
         if Ap.empty():
             assembler = dolfin.SystemAssembler(self._ap, self._F, self._bcs_pcd)
             assembler.assemble(Ap)
-            Ap.mat().setOption(PETSc.Mat.Option.SPD, True)
 
 
     def fp(self, Fp):
@@ -235,6 +234,7 @@ class PCDProblem(dolfin.NonlinearProblem):
             A = dolfin.PETScMatrix(mat.comm)
             assembler_func(A)
             mat = self._get_deep_submat(A, None, self._is1)
+            mat.setOption(PETSc.Mat.Option.SPD, True)  # FIXME: Can't do this for Kp/Fp
             ksp.setOperators(mat, mat)
             assert ksp.getOperators()[0].type is not None
 
