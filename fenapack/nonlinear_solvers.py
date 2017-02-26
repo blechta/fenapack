@@ -98,22 +98,26 @@ class PCDProblem(dolfin.NonlinearProblem):
         else:
             self.assembler_pc = None
 
-        self._F = F
-        self._mp = mp
-        self._mu = mu
-        self._ap = ap
-        self._fp = fp
-        self._kp = kp
+        # Store forms/bcs for later
+        self.forms = {
+            "F": F,
+            "ap": ap,
+            "mp": mp,
+            "mu": mu,
+            "fp": fp,
+            "kp": kp,
+        }
         self._bcs_pcd = bcs_pcd
 
-        # Matrices used to assemble parts of the preconditioner
-        # NOTE: Some of them may be unused.
+        # Store mpi comm
         self._mpi_comm = F.ufl_domain().ufl_cargo().mpi_comm()
-        self._matMp = dolfin.PETScMatrix(self._mpi_comm)
-        self._matMu = dolfin.PETScMatrix(self._mpi_comm)
-        self._matAp = dolfin.PETScMatrix(self._mpi_comm)
-        self._matFp = dolfin.PETScMatrix(self._mpi_comm)
-        self._matKp = dolfin.PETScMatrix(self._mpi_comm)
+
+
+    def get_form(self, key):
+        try:
+            return self.forms[key]
+        except KeyError:
+            raise AttributeError("From '%s' requested by not available" % key)
 
 
     def F(self, b, x):
@@ -129,52 +133,57 @@ class PCDProblem(dolfin.NonlinearProblem):
             self.assembler_pc.assemble(P)
 
 
-    def mp(self, Mp):
-        # Mp ... pressure mass matrix
-        self._check_attr("mp")
-        dolfin.assemble(self._mp, tensor=Mp)
-
-
-    def mu(self, Mu):
-        # Mu ... velocity mass matrix
-        self._check_attr("mu")
-        dolfin.assemble(self._mu, tensor=Mu)
-
-
     def ap(self, Ap):
-        # Ap ... pressure Laplacian matrix
-        self._check_attr("ap")
-
+        # FIXME: Do we want to have this logic here?
         if Ap.empty():
-            assembler = dolfin.SystemAssembler(self._ap, self._F, self._bcs_pcd)
+            ap = self.get_form("ap")
+            F = self.get_form("F")  # Dummy form
+            bcs_pcd = self.pcd_bcs()
+            assembler = dolfin.SystemAssembler(ap, F, bcs_pcd)
             assembler.assemble(Ap)
 
 
+    def mp(self, Mp):
+        dolfin.assemble(self.get_form("mp"), tensor=Mp)
+
+
+    def mu(self, Mu):
+        dolfin.assemble(self.get_form("mu"), tensor=Mu)
+
+
     def fp(self, Fp):
-        # Fp ... pressure convection-diffusion matrix
-        self._check_attr("fp")
-        dolfin.assemble(self._fp, tensor=Fp)
+        dolfin.assemble(self.get_form("fp"), tensor=Fp)
 
 
     def kp(self, Kp):
-        # Kp ... pressure convection matrix
-        self._check_attr("kp")
-        dolfin.assemble(self._kp, tensor=Kp)
+        dolfin.assemble(self.get_form("kp"), tensor=Kp)
 
 
+    # FIXME: Naming
     def pcd_bcs(self):
-        return self._bcs_pcd
+        try:
+            assert self._bcs_pcd is not None
+            return self._bcs_pcd
+        except (AttributeError, AssertionError):
+            raise AttributeError("PCD BCs requested by not available")
 
 
-    def _check_attr(self, attr):
-        if getattr(self, "_"+attr) is None:
-            raise AttributeError("Keyword argument '%s' of 'PCDProblem' object"
-                                 " has not been set." % attr)
-
-
-    # FIXME: Remove me if not needed
     def mpi_comm(self):
         return self._mpi_comm
+
+
+
+# backend
+class _PCDProblem(PCDProblem):
+    def __init__(self):
+        pass
+
+
+    @classmethod
+    def from_pcd_problem(cls, pcd_problem):
+        self = cls()
+        self.__dict__ = pcd_problem.__dict__
+        return self
 
 
     def setup_ksp_Ap(self, ksp):
@@ -194,9 +203,6 @@ class PCDProblem(dolfin.NonlinearProblem):
     def apply_pcd_bcs(self, vec):
         # FIXME: interface for general bc tweaks of matrices?
         self._apply_bcs(vec, self.pcd_bcs)
-
-
-    # Move everything bellow to backend
 
 
     # Factor two following function from Kp
