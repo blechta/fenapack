@@ -125,8 +125,8 @@ class PCDProblem(dolfin.NonlinearProblem):
 
 
     def J_pc(self, P, x):
-        if self.assembler is not None:
-            self.assembler.assemble(P)
+        if self.assembler_pc is not None:
+            self.assembler_pc.assemble(P)
 
 
     def mp(self, Mp):
