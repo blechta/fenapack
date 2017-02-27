@@ -15,172 +15,121 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import print_function
+
 import dolfin
 from petsc4py import PETSc
 
 from fenapack._field_split_utils import dofmap_dofs_is
 from fenapack.nonlinear_solvers import _PCDProblem
+from fenapack.preconditioners import PCDPC_BRM1
 
-__all__ = ['FieldSplitSolver']
-
-
-class FieldSplitSolver(dolfin.PETScKrylovSolver):
-    """This class derives from :py:class:`dolfin.PETScKrylovSolver` and
-    implements field split preconditioner for saddle point problems like
-    incompressible (Navier-)Stokes flow."""
-    def __init__(self, space, method, options_prefix=""):
-        """Create field split solver on a given space for a particular method.
-
-        *Arguments*
-            space (:py:class:`dolfin.FunctionSpace`)
-                Mixed function space determining the field split.
-            method (:py:class:`string`)
-                Type of a PETSc KSP object, see
-                help(:py:class:`petsc4py.PETSc.KSP.Type`).
-        """
-        # Create KSP
-        ksp = self._ksp = PETSc.KSP()
-        ksp.create(space.mesh().mpi_comm())
-        ksp.setType(method)
-        ksp.setOptionsPrefix(options_prefix)
-
-        # Init parent class
-        dolfin.PETScKrylovSolver.__init__(self, ksp)
-
-        # Set up FIELDSPLIT preconditioning
-        pc = ksp.getPC()
-        pc.setType(PETSc.PC.Type.FIELDSPLIT)
-        self._is0 = dofmap_dofs_is(space.sub(0).dofmap())
-        self._is1 = dofmap_dofs_is(space.sub(1).dofmap())
-        pc.setFieldSplitIS(["u", self._is0], ["p", self._is1])
-
-        # Initiate option databases for subsolvers
-        self._OptDB_00 = PETSc.Options(options_prefix+"fieldsplit_u_")
-        self._OptDB_11 = PETSc.Options(options_prefix+"fieldsplit_p_")
-
-        # Set default parameter values
-        self.parameters = self.default_parameters()
+__all__ = ['PCDKSP', 'PCDKrylovSolver']
 
 
-    @staticmethod
-    def default_parameters():
-        """Extend default parameter set of parent class."""
-        # Get default parameters for parent class
-        prm = dolfin.PETScKrylovSolver.default_parameters()
+def _create_pcd_ksp(comm, is0, is1, ksp=None):
+    if ksp is None:
+        ksp = PETSc.KSP()
 
-        # Hack for development version of DOLFIN
-        if not prm.has_parameter_set("gmres"):
-            prm.add(dolfin.Parameters("gmres"))
-            prm["gmres"].add("restart", 100)
+    ksp.create(comm)
+    ksp.setType(PETSc.KSP.Type.GMRES)
+    ksp.setPCSide(PETSc.PC.Side.RIGHT)
+    ksp.pc.setType(PETSc.PC.Type.FIELDSPLIT)
+    ksp.pc.setFieldSplitType(PETSc.PC.CompositeType.SCHUR)
+    ksp.pc.setFieldSplitSchurFactType(PETSc.PC.SchurFactType.UPPER)
+    ksp.pc.setFieldSplitSchurPreType(PETSc.PC.SchurPreType.USER)
+    ksp.pc.setFieldSplitIS(["u", is0], ["p", is1])
 
-        # Add new parameters
-        prm.add(dolfin.Parameters("preconditioner"))
-        prm["preconditioner"].add("side", "right",
-                                  ["left", "right", "symmetric"])
-        prm_fs = dolfin.Parameters("fieldsplit")
-        prm_fs.add("type", "schur",
-                   ["additive", "multiplicative", "symmetric_multiplicative",
-                    "special", "schur"])
-        prm_fs.add(dolfin.Parameters("schur"))
-        prm_fs["schur"].add("fact_type", "upper",
-                            ["diag", "lower", "upper", "full"])
-        prm_fs["schur"].add("precondition", "user",
-                            ["self", "selfp", "a11", "user", "full"])
-
-        # Add new parameters to 'petsc_krylov_solver' parameters
-        prm["preconditioner"].add(prm_fs)
-
-        return prm
+    return ksp
 
 
-    def get_subopts(self):
-        """Return :py:class:`petsc4py.PETSc.Options` databases of 00 and 11
-        subKSP."""
-        return self._OptDB_00, self._OptDB_11
+class PCDKSP(PETSc.KSP):
+    def __init__(self, function_space):
+        super(PCDKSP, self).__init__()
+
+        comm = function_space.mesh().mpi_comm()
+        is0 = dofmap_dofs_is(function_space.sub(0).dofmap())
+        is1 = dofmap_dofs_is(function_space.sub(1).dofmap())
+
+        self._is0, self._is1 = is0, is1
+
+        _create_pcd_ksp(comm, is0, is1, ksp=self)
 
 
-    def set_operator(self, A):
-        raise NotImplementedError(
-            "This has been discarded for 'FieldSplitSolver'."
-            " Use 'set_operators' method instead.")
+    # FIXME: We currently do not have a mechanism to make PETSc call this
+    # except of KSPPYTHON which we don't want to use (for performance reasons?)
+    #def setUp(self):
+    #    super(PCDKSP, self).setUp()
 
 
-    def set_operators(self, A, P, pcd_problem=None):
-        """``A`` and ``P`` represents a system matrix operator and
-        a preconditioner in the usual sense.
-
-        **Overloaded versions**
-
-            Optional keyword arguments in ``schur_approx`` can be used to build
-            an approximate Schur complement matrix. These optional arguments
-            differ depending on the strategy used for preconditioning. See
-            classes in :py:class:`fenapack.preconditioners` module.
-        """
-        # Down cast to PETScMatrix
-        A = dolfin.as_backend_type(A)
-        P = dolfin.as_backend_type(P)
-
-        # Set operators of super class
-        dolfin.PETScKrylovSolver.set_operators(self, A, P)
-        assert self._ksp.getOperators() == (A.mat(), P.mat())
-
-        # Set up KSP
-        self._set_from_parameters() # update global option database
-        self._ksp.setFromOptions()
-        self._ksp.setUp() # NOTE: this includes operations within 'PCSetUp'
-
-        # Get subKSP and subPC objects
-        ksp0, ksp1 = self._ksp.getPC().getFieldSplitSubKSP()
-        pc0, pc1 = ksp0.getPC(), ksp1.getPC()
+    def init_pcd(self, pcd_problem, pcd_pc_class=None):
+        """Initialize from PCDProblem instance. Needs to be
+        called after ``setOperators`` and ``setUp``."""
+        # FIXME: Make this decorator
+        # Don't allow multiple call to this
+        if getattr(self, "_init_pcd_called", False):
+            raise RuntimeError("Multiple calls to init_pcd not allowed")
+        self._init_pcd_called = True
 
         # Get backend implementation of PCDProblem
         # FIXME: Make me parameter
         deep_submats = False
         #deep_submats = True
-        # FIXME: Is this executed only once?
-        pcd_problem = _PCDProblem.from_pcd_problem(pcd_problem,
-                self._is0, self._is1, deep_submats=deep_submats)
+        _PCDProblem.reclass(pcd_problem, self._is0, self._is1,
+                            deep_submats=deep_submats)
+        del self._is0, self._is1
 
-        # Check if python context has been set up to define approximation of
-        # 11-block inverse. If so, use **schur_approx to set up this context.
-        if self._OptDB_11.hasName("pc_python_type"):
-            ctx = pc1.getPythonContext()
-            ctx.init(pcd_problem)
+        # Extract fieldsplit subKSPs
+        self.pc.setUp()
+        ksp0, ksp1 = self.pc.getFieldSplitSubKSP()
 
-        # Set up each subPC explicitly before calling 'self.solve'. In such
-        # a case, the time needed for setup is not included in timings under
-        # "PETSc Krylov Solver".
-        timer = dolfin.Timer("FENaPack: set up subPC object pc0")
-        dolfin.log(dolfin.PROGRESS, "Preparing for the use of pc0 (calling PCSetUp).")
-        pc0.setUp()
-        timer.stop()
-        timer = dolfin.Timer("FENaPack: set up subPC object pc1")
-        dolfin.log(dolfin.PROGRESS, "Preparing for the use of pc1 (calling PCSetUp).")
-        pc1.setUp()
-        timer.stop()
+        # Set some sensible defaults
+        ksp0.setType(PETSc.KSP.Type.PREONLY)
+        ksp0.pc.setType(PETSc.PC.Type.LU)
+        # FIXME: Have utility function looking for mumps, superlu, etc.
+        ksp0.pc.setFactorSolverPackage("mumps")
+        ksp1.setType(PETSc.KSP.Type.PREONLY)
+        ksp1.pc.setType(PETSc.PC.Type.PYTHON)
+
+        #ksp0.setFromOptions()  # FIXME: Who calls this for us?
+
+        # FIXME: Why don't we let user do this? This would simplify things
+        # Initialize PCD PC context
+        pcd_pc_prefix = ksp1.pc.getOptionsPrefix()
+        pcd_pc_opt = PETSc.Options(pcd_pc_prefix).getString("pc_python_type","")
+        # Use PCDPC class given by option
+        if pcd_pc_opt != "":
+            ksp1.pc.setFromOptions()
+            pcd_pc = ksp1.pc.getPythonContext()
+        # Use PCDPC class specified as argument
+        elif pcd_pc_class is not None:
+            pcd_pc = pcd_pc_class()
+            ksp1.pc.setPythonContext(pcd_pc)
+            ksp1.pc.setFromOptions()
+        # Use default PCDPC class
+        else:
+            pcd_pc = PCDPC_BRM1()
+            ksp1.pc.setPythonContext(pcd_pc)
+            ksp1.pc.setFromOptions()
+
+        # FIXME: Why don't we let user do this? This would simplify things
+        # Provide assembling routines to PCD
+        try:
+            pcd_pc.init_pcd(pcd_problem)
+        except Exception:
+            print("Initialization of PCD PC from PCDProblem failed!")
+            print("Maybe wrong PCD PC class or PCDProblem instance.")
+            raise
+
+        # TODO: We could call here pc setups and time them separately
 
 
-    def _set_from_parameters(self):
-        """Set up extra parameters added to parent class."""
-        # Get access to global option database
-        OptDB = PETSc.Options(self._ksp.getOptionsPrefix())
-        #OptDB["help"] = True
 
-        # Add extra solver parameters to the global option database
-        prm = self.parameters["preconditioner"]
-        OptDB["ksp_pc_side"] = \
-          prm["side"]
-        OptDB["pc_fieldsplit_type"] = \
-          prm["fieldsplit"]["type"]
-        OptDB["pc_fieldsplit_schur_fact_type"] = \
-          prm["fieldsplit"]["schur"]["fact_type"]
-        OptDB["pc_fieldsplit_schur_precondition"] = \
-          prm["fieldsplit"]["schur"]["precondition"]
-
-        # FIXME: Sort out a way how to deal with parameters;
-        #        if one uses directly ksp() object, then DOLFIN
-        #        parameters are not used, that's why this workaround;
-        #        maybe rather use only petsc4py api and don't mess up
-        #        with any parameters
-        OptDB["ksp_gmres_restart"] = \
-          self.parameters["gmres"]["restart"]
+class PCDKrylovSolver(dolfin.PETScKrylovSolver):
+    def __init__(self, function_space):
+        self._ksp = PCDKSP(function_space)
+        super(PCDKrylovSolver, self).__init__(self._ksp)
+    def ksp(self):
+        return self._ksp
+    def init_pcd(self, pcd_problem, pcd_pc_class=None):
+        self._ksp.init_pcd(pcd_problem, pcd_pc_class=pcd_pc_class)
