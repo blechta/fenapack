@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016 Jan Blechta and Martin Rehor
+# Copyright (C) 2014-2017 Jan Blechta and Martin Rehor
 #
 # This file is part of FENaPack.
 #

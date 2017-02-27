@@ -2,7 +2,7 @@
 solved using Newton/Picard iterative method. Linear solver is based on field
 split PCD preconditioning."""
 
-# Copyright (C) 2015-2016 Martin Rehor
+# Copyright (C) 2015-2017 Martin Rehor, Jan Blechta
 #
 # This file is part of FENaPack.
 #
@@ -28,6 +28,7 @@ from fenapack import PCDProblem
 from fenapack import StabilizationParameterSD
 
 
+# FIXME: Move me somewhere else (FENaPack init, or DOLFIN init)
 SubSystemsManager.init_petsc()
 from petsc4py import PETSc
 PETSc.Sys.pushErrorHandler("traceback")

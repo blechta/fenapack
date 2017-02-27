@@ -23,7 +23,6 @@ from fenapack._field_split_utils import SubfieldBC
 __all__ = ['PCDNewtonSolver', 'PCDProblem']
 
 
-# FIXME: Rename, this is specialized
 class PCDNewtonSolver(dolfin.NewtonSolver):
 
     def __init__(self, solver):
