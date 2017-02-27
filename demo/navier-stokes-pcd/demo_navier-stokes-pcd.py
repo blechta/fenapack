@@ -22,7 +22,11 @@ split PCD preconditioning."""
 # Begin demo
 
 from dolfin import *
-from fenapack import FieldSplitSolver, NewtonSolver, PCDProblem, StabilizationParameterSD
+from fenapack import PCDKrylovSolver
+from fenapack import PCDNewtonSolver
+from fenapack import PCDProblem
+from fenapack import StabilizationParameterSD
+
 
 SubSystemsManager.init_petsc()
 from petsc4py import PETSc
@@ -119,40 +123,29 @@ ap = inner(grad(p), grad(q))*dx
 problem = PCDProblem(F, [bc0, bc1], J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
 
 # Set up linear field split solver
-linear_solver = FieldSplitSolver(W, "gmres")
+linear_solver = PCDKrylovSolver(W)
 linear_solver.parameters["monitor_convergence"] = True
 linear_solver.parameters["relative_tolerance"] = 1e-6
-linear_solver.parameters["nonzero_initial_guess"] = False
-linear_solver.parameters["preconditioner"]["side"] = "right"
-linear_solver.parameters["preconditioner"]["fieldsplit"]["type"] = "schur"
-linear_solver.parameters["preconditioner"]["fieldsplit"]["schur"]["fact_type"] = "upper"
-linear_solver.parameters["preconditioner"]["fieldsplit"]["schur"]["precondition"] = "user"
 
 # Set up subsolvers
-OptDB_00, OptDB_11 = linear_solver.get_subopts()
-OptDB_00["ksp_type"] = "richardson"
-OptDB_00["ksp_max_it"] = 1
-OptDB_00["pc_type"] = "hypre"
-OptDB_00["pc_hypre_type"] = "boomeramg"
-OptDB_11["ksp_type"] = "preonly"
-OptDB_11["pc_type"] = "python"
-OptDB_11["pc_python_type"] = "fenapack.PCDPC_BRM"
-OptDB_11["PCD_Ap_ksp_type"] = "richardson"
-OptDB_11["PCD_Ap_ksp_max_it"] = 2
-OptDB_11["PCD_Ap_pc_type"] = "hypre"
-OptDB_11["PCD_Ap_pc_hypre_type"] = "boomeramg"
-OptDB_11["PCD_Mp_ksp_type"] = "chebyshev"
-OptDB_11["PCD_Mp_ksp_max_it"] = 5
-OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
-OptDB_11["PCD_Mp_pc_type"] = "jacobi"
-
-# Direct solver for debugging purposes
-#PETScOptions.set("mat_mumps_icntl_4", 2)
-#OptDB_11["PCD_Ap_pc_factor_mat_solver_package"] = "mumps"
-#OptDB_11["PCD_Mp_pc_factor_mat_solver_package"] = "mumps"
+PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
+PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
+PETScOptions.set("fieldsplit_u_pc_type", "hypre")
+PETScOptions.set("fieldsplit_u_pc_hypre_type", "boomeramg")
+#PETScOptions.set("fieldsplit_p_ksp_type", "preonly")
+#PETScOptions.set("fieldsplit_p_pc_type", "python")  # FIXME: Causes double init of PCDPC
+#PETScOptions.set("fieldsplit_p_pc_python_type", "fenapack.PCDPC_BRM2")  # FIXME: Need different kp and bc
+PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_type", "richardson")
+PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_max_it", 2)
+PETScOptions.set("fieldsplit_p_PCD_Ap_pc_type", "hypre")
+PETScOptions.set("fieldsplit_p_PCD_Ap_pc_hypre_type", "boomeramg")
+PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_type", "chebyshev")
+PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_max_it", 5)
+PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues", "0.5, 2.0")
+PETScOptions.set("fieldsplit_p_PCD_Mp_pc_type", "jacobi")
 
 # Set up nonlinear solver
-solver = NewtonSolver(linear_solver)
+solver = PCDNewtonSolver(linear_solver)
 solver.parameters["relative_tolerance"] = 1e-5
 
 # Solve problem

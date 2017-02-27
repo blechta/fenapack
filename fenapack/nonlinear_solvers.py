@@ -20,35 +20,51 @@ from petsc4py import PETSc
 
 from fenapack._field_split_utils import SubfieldBC
 
-__all__ = ['NewtonSolver', 'PCDProblem']
+__all__ = ['PCDNewtonSolver', 'PCDProblem']
 
 
 # FIXME: Rename, this is specialized
-class NewtonSolver(dolfin.NewtonSolver):
+class PCDNewtonSolver(dolfin.NewtonSolver):
 
     def __init__(self, solver):
+        # Initialize DOLFIN Newton solver
         comm = solver.mpi_comm()
         factory = dolfin.PETScFactory.instance()
         dolfin.NewtonSolver.__init__(self, comm, solver, factory)
+
+        # Store Python reference for solver setup
         self._solver = solver
 
+
     def solve(self, problem, x):
+        # Store Python reference for solver setup
         self._problem = problem
+
+        # Solve the problem, drop the reference, and return
         r = dolfin.NewtonSolver.solve(self, problem, x)
         del self._problem
         return r
 
+
     def solver_setup(self, A, P, nonlinear_problem, iteration):
+        # Only do the setup once
+        if iteration > 0:
+            return
+
         # C++ references passed in do not have Python context
         linear_solver = self._solver
         nonlinear_problem = self._problem
 
+        # Set operators and initialize PCD
         P = A if P.empty() else P
+        linear_solver.set_operators(A, P)
+        #linear_solver.set_from_options()  # FIXME: Who calls this for us?
+        linear_solver.init_pcd(nonlinear_problem)
 
-        linear_solver.set_operators(A, P, pcd_problem=nonlinear_problem)
 
 
-
+# FIXME: Separate Newton and PCD part of this class. Linear PCD problem
+# has nothing to do with Newton part
 class PCDProblem(dolfin.NonlinearProblem):
     """Class for interfacing with not only :py:class:`NewtonSolver`."""
     # TODO: Add abstract base class with docstrings
@@ -177,6 +193,7 @@ class PCDProblem(dolfin.NonlinearProblem):
 
 
 # backend
+# FIXME: Here will come GenericPCDProblem
 class _PCDProblem(PCDProblem):
     """Wrapper of PCDProblem for interfacing with PCD PC
     using fieldsplit backend. Convection fieldsplit submatrices
@@ -196,15 +213,14 @@ class _PCDProblem(PCDProblem):
             self._scratch = {}
 
 
+    # FIXME: We are mutating input pcd_problem
     @classmethod
-    def from_pcd_problem(cls, pcd_problem, is_u, is_p, deep_submats=False):
-        """Initialize from PCDProblem instance"""
-        #self = cls(is_u, is_p, deep_submats=deep_submats)
-        #self.__dict__ = pcd_problem.__dict__
-        #return self
+    def reclass(cls, pcd_problem, is_u, is_p, deep_submats=False):
+        """Reclasses instance of PCDProblem into this class"""
+        if isinstance(pcd_problem, cls):
+            raise TypeError("Cannot reclass. Already this class.")
         pcd_problem.__class__ = cls
         cls.__init__(pcd_problem, is_u, is_p, deep_submats=deep_submats)
-        return pcd_problem
 
 
     def setup_ksp_Ap(self, ksp):

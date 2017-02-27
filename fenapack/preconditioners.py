@@ -25,220 +25,51 @@ class BasePCDPC(object):
     """Base python context for pressure convection diffusion (PCD)
     preconditioners."""
     def create(self, pc):
-        self._ksp_Ap = self._prepare_default_ksp(pc.comm)
-        self._ksp_Mp = self._prepare_default_ksp(pc.comm)
+        self.ksp_Ap = self.create_default_ksp(pc.comm)
+        self.ksp_Mp = self.create_default_ksp(pc.comm)
+
+        options_prefix = pc.getOptionsPrefix()
+        self.ksp_Ap.setOptionsPrefix(options_prefix + "PCD_Ap_")
+        self.ksp_Mp.setOptionsPrefix(options_prefix + "PCD_Mp_")
 
 
     def setFromOptions(self, pc):
-        options_prefix = pc.getOptionsPrefix()
-
-        # Update Ap
-        self._ksp_Ap.setOptionsPrefix(options_prefix+"PCD_Ap_")
-        self._ksp_Ap.setFromOptions()
-
-        # Update Mp
-        self._ksp_Mp.setOptionsPrefix(options_prefix+"PCD_Mp_")
-        self._ksp_Mp.setFromOptions()
-
-
-    def _raise_attribute_error(self, attr):
-        raise AttributeError(
-            "Attribute '_%s' must be set using '%s.set_operators()'"
-            % (attr, type(self).__name__))
+        self.ksp_Ap.setFromOptions()
+        self.ksp_Mp.setFromOptions()
 
 
     @staticmethod
-    def _prepare_default_ksp(comm):
+    def create_default_ksp(comm):
+        """Return Cholesky factorization KSP"""
         ksp = PETSc.KSP().create(comm)
         ksp.setType(PETSc.KSP.Type.PREONLY)
-        pc = ksp.getPC()
-        pc.setType(PETSc.PC.Type.CHOLESKY)
+        ksp.pc.setType(PETSc.PC.Type.CHOLESKY)
+        # FIXME: Have utility function looking for mumps, superlu, etc.
+        ksp.pc.setFactorSolverPackage("mumps")
         return ksp
 
 
-    # FIXME: Rename to work_vector
-    def _z(self, v):
-        """Return cached duplicate of PETSc Vec v."""
+    def get_work_vecs(self, v, num):
+        """Return ``num`` of work vecs initially duplicated from v"""
         try:
-            return self._z_vec
+            vecs = self._work_vecs
+            assert len(vecs) == num
         except AttributeError:
-            self._z_vec = v.duplicate()
-            return self._z_vec
+            self._work_vecs = vecs = tuple(v.duplicate() for i in range(num))
+        except AssertionError:
+            raise ValueError("Changing number of work vecs not allowed")
+        return vecs
+
+
+    def init_pcd(self, pcd_problem):
+        """Initialize by PCDProblem instance"""
+        if hasattr(self, "problem"):
+            raise RuntimeError("Reinitialization of PCDPC not allowed")
+        self.problem = pcd_problem
 
 
 
-class PCDPC_SEW(BasePCDPC):
-    """This class implements steady variant of PCD described in [1]_.
-
-    .. [1] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast
-           Iterative Solvers: With Application in Incompressible Fluid Dynamics*.
-           Oxford University Press 2005. 2nd edition 2014.
-    """
-    def apply(self, pc, x, y):
-        """This method implements the action of the inverse of the approximate
-        Schur complement :math:`\hat{S} = -M_p F_p^{-1} A_p`, that is
-
-        .. math::
-
-            y = \hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x.
-        """
-        timer = dolfin.Timer("FENaPack: PCDPC_SEW apply")
-
-        # Fetch cached duplicate of x
-        z = self._z(x)
-
-        # Apply PCD
-        self._ksp_Mp.solve(x, y) # y = M_p^{-1} x
-        self._Fp.mult(-y, z)     # z = -F_p y
-        self._ksp_Ap.solve(z, y) # y = A_p^{-1} z
-
-        timer.stop()
-
-
-    def set_operators(self, is0, is1, A, P,
-                      Mp=None, Ap=None, Fp=None, bcs=None):
-        """Set operators for the approximate Schur complement matrix
-
-        *Arguments*
-            is0, is1 (:py:class:`petsc4py.PETSc.IS`)
-                The index sets defining blocks in the field-splitted matrix.
-            A (:py:class:`GenericMatrix`)
-                Dummy system matrix. Not used by this implementation.
-            P (:py:class:`GenericMatrix`)
-                Dummy preconditioning matrix. Not used by this implementation.
-
-        *Keyword arguments*
-            Mp (:py:class:`GenericMatrix`)
-                The matrix containing pressure mass matrix as its 11-block.
-            Ap (:py:class:`GenericMatrix`)
-                The matrix containing pressure laplacian as its 11-block.
-            Fp (:py:class:`GenericMatrix`)
-                The matrix containing pressure convection-diffusion as its
-                11-block.
-            bcs (:py:class:`DirichletBC`)
-                List of boundary conditions that will be "applied" on
-                :math:`A_p` and :math:`F_p`.
-        """
-        timer = dolfin.Timer("FENaPack: PCDPC_SEW set_operators")
-
-        # Prepare bcs for adjusting field split matrix
-        if bcs is not None:
-            if not hasattr(bcs, "__iter__"):
-                bcs = [bcs]
-            self._bcs = [SubfieldBC(bc, is1) for bc in bcs]
-        elif not hasattr(self, "_bcs"):
-            self._raise_attribute_error("bcs")
-
-        # Update Ap
-        if Ap is not None:
-            self._Ap = Ap.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Ap', None))
-            # Apply boundary conditions along outflow boundary
-            for bc in self._bcs:
-                bc.apply_fdm(self._Ap)
-            self._ksp_Ap.setOperators(self._Ap)
-        elif not hasattr(self, "_Ap"):
-            self._raise_attribute_error("Ap")
-
-        # Update Fp
-        if Fp is not None:
-            self._Fp = Fp.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Fp', None))
-            # Apply boundary conditions along outflow boundary
-            for bc in self._bcs:
-                bc.apply_fdm(self._Fp)
-        elif not hasattr(self, "_Fp"):
-            self._raise_attribute_error("Fp")
-
-        # Update Mp
-        if Mp:
-            self._Mp = Mp.mat().getSubMatrix(is1, is1, submat=getattr(self, '_Mp', None))
-            self._Mp.setOption(PETSc.Mat.Option.SPD, True)
-            self._ksp_Mp.setOperators(self._Mp)
-        elif not hasattr(self, "_Mp"):
-            self._raise_attribute_error("Mp")
-
-        timer.stop()
-
-
-
-class UnsteadyPCDPC_SEW(PCDPC_SEW):
-    r"""This class implements variant of PCD described in [1]_ appropriate for
-    unsteady problems. It derives from :py:class:`PCDPC_SEW` but pressure Laplacian
-    :math:`A_p` is approximated by :math:`B (\operatorname{diag} M_u)^{-1}
-    B^\top`, where :math:`M_u` is the velocity mass matrix, :math:`B`
-    corresponds to 10-block of the system matrix (:math:`\operatorname{div}`
-    operator) and :math:`B^\top` is its transpose, i.e. 01-block of the system
-    matrix (:math:`\operatorname{grad}` operator).
-
-    Note that :math:`B^\top` contains zero rows corresponding to dofs on the
-    Dirichlet boundary since bcs have been applied on :math:`A`. Moreover,
-    :math:`B (\operatorname{diag} M_u)^{-1} B^\top` is nonsingular for
-    inflow-outflow problems, thus we do not need to prescribe any artificial
-    boundary conditions for pressure.
-    """
-    def set_operators(self, is0, is1, A, P,
-                      Mp=None, Mu=None, Fp=None, bcs=None):
-        """Set operators for the approximate Schur complement matrix
-
-        *Arguments*
-            is0, is1 (:py:class:`petsc4py.PETSc.IS`)
-                The index sets defining blocks in the field splitted matrix.
-            A (:py:class:`GenericMatrix`)
-                The system matrix.
-            P (:py:class:`GenericMatrix`)
-                Dummy preconditioning matrix. Not used by this implementation.
-
-        *Keyword arguments*
-            Mp (:py:class:`GenericMatrix`)
-                The matrix containing pressure mass matrix as its 11-block.
-            Mu (:py:class:`GenericMatrix`)
-                The matrix containing velocity mass matrix as its 00-block.
-            Fp (:py:class:`GenericMatrix`)
-                The matrix containing pressure convection-diffusion as its
-                11-block.
-            bcs (:py:class:`DirichletBC`)
-                List of boundary conditions that will be "applied" on
-                :math:`F_p`.
-        """
-        timer = dolfin.Timer("FENaPack: UnsteadyPCDPC_SEW set_operators")
-
-        # Assemble Ap using A and Mu
-        if Mu is not None:
-            # Get velocity mass matrix as PETSc Mat object
-            Mu = Mu.mat().getSubMatrix(is0, is0)
-
-            # Get diagonal of the velocity mass matrix
-            diagMu = Mu.getDiagonal()
-
-            # Make inverse of diag(Mu)
-            diagMu.reciprocal() # diag(Mu)^{-1}
-
-            # Make square root of the diagonal and use it for scaling
-            diagMu.sqrtabs() # \sqrt{diag(Mu)^{-1}}
-
-            # Extract 01-block, i.e. "grad", from the matrix operator A
-            Bt = A.mat().getSubMatrix(is0, is1)
-            Bt.diagonalScale(L=diagMu) # scale rows of Bt
-
-            # Get Ap
-            self._Ap = Bt.transposeMatMult(Bt) # Ap = Bt^T*Bt
-
-            # Set up special options
-            self._Ap.setOption(PETSc.Mat.Option.SPD, True)
-
-            # Store matrix in the corresponding ksp
-            self._ksp_Ap.setOperators(self._Ap)
-
-        elif not hasattr(self, "_Ap"):
-            self._raise_attribute_error("Ap")
-
-        # Update remaining operators in the same way as in the parent class
-        PCDPC_SEW.set_operators(self, is0, is1, A, P, Mp=Mp, Fp=Fp, bcs=bcs)
-
-        timer.stop()
-
-
-
-class PCDPC_BRM(BasePCDPC):
+class PCDPC_BRM1(BasePCDPC):
     """This class implements a modification of PCD variant similar to one by
     [2]_.
 
@@ -274,35 +105,73 @@ class PCDPC_BRM(BasePCDPC):
         """
         timer = dolfin.Timer("FENaPack: PCDPC_BRM apply")
 
-        # Fetch cached duplicate of x
-        z = self._z(x)
-        x.copy(result=z)
-
-        # Apply subfield boundary conditions to rhs
-        self._bcs_applier(z)
+        # Fetch work vector
+        z, = self.get_work_vecs(x, 1)
 
         # Apply PCD
-        self._ksp_Ap.solve(z, y) # y = A_p^{-1} z
-        self._mat_Kp.mult(-y, z) # z = -K_p y
-        z.axpy(-1.0, x)          # z = z - x
-        self._ksp_Mp.solve(z, y) # y = M_p^{-1} z
+        x.copy(result=z)        # z = x
+        self.bcs_applier(z)     # apply bcs to z
+        self.ksp_Ap.solve(z, y) # y = A_p^{-1} z
+        self.mat_Kp.mult(y, z)  # z = K_p y
+        z.axpy(1.0, x)          # z = z + x
+        self.ksp_Mp.solve(z, y) # y = M_p^{-1} z
+        # FIXME: How is with the sign bussines?
+        y.scale(-1.0)           # y = -y
 
         timer.stop()
 
 
-    def init(self, pcd_problem):
-        self._problem = pcd_problem
+    def setUp(self, pc):
+        # FIXME: Maybe move Mp and Ap setup to init and remove logic in backend.
+        #        This will make it obvious that this is done once.
+        self.problem.setup_ksp_Mp(self.ksp_Mp)
+        self.problem.setup_ksp_Ap(self.ksp_Ap)
+        self.mat_Kp = self.problem.setup_mat_Kp(
+                mat=getattr(self, "mat_Kp", None))
+        self.bcs_applier = self.problem.apply_pcd_bcs
+
+
+
+class PCDPC_BRM2(BasePCDPC):
+    """This class implements a modification steady variant of PCD
+    described in [1]_.
+
+    .. [1] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast
+           Iterative Solvers: With Application in Incompressible Fluid Dynamics*.
+           Oxford University Press 2005. 2nd edition 2014.
+    """
+    def apply(self, pc, x, y):
+        # FIXME: Fix the docstring
+        """This method implements the action of the inverse of the approximate
+        Schur complement :math:`\hat{S} = -M_p F_p^{-1} A_p`, that is
+
+        .. math::
+
+            y = \hat{S}^{-1} x = - (I + A_p^{-1} K_p) M_p^{-1} x.
+        """
+        timer = dolfin.Timer("FENaPack: PCDPC_BRM2 apply")
+
+        # Fetch work vector
+        z0, z1 = self.get_work_vecs(x, 2)
+
+        # Apply PCD
+        self.ksp_Mp.solve(x, y)   # y = M_p^{-1} x
+        y.copy(result=z0)         # z0 = y
+        self.mat_Kp.mult(z0, z1)  # z1 = K_p z0
+        self.bcs_applier(z1)      # apply bcs to z1
+        self.ksp_Ap.solve(z1, z0) # z0 = A_p^{-1} z1
+        y.axpy(1.0, z0)           # y = y + z0
+        # FIXME: How is with the sign bussines?
+        y.scale(-1.0)             # y = -y
+
+        timer.stop()
 
 
     def setUp(self, pc):
-        #self._mat_Kp = PETSc.Mat().create(pc.comm)
-        self._mat_Kp = None
-        # FIXME: Maybe move Mp and Ap setup to init and remove
-        # logic in backend. This will make it obvious
-        self._problem.setup_ksp_Mp(self._ksp_Mp)
-        self._problem.setup_ksp_Ap(self._ksp_Ap)
-        self._mat_Kp = self._problem.setup_mat_Kp(self._mat_Kp)
-        self._bcs_applier = self._problem.apply_pcd_bcs
-
-    #def setOperators(self, *args, **kwargs):
-    #    import pdb; pdb.set_trace()
+        # FIXME: Maybe move Mp and Ap setup to init and remove logic in backend.
+        #        This will make it obvious that this is done once.
+        self.problem.setup_ksp_Mp(self.ksp_Mp)
+        self.problem.setup_ksp_Ap(self.ksp_Ap)
+        self.mat_Kp = self.problem.setup_mat_Kp(
+                mat=getattr(self, "mat_Kp", None))
+        self.bcs_applier = self.problem.apply_pcd_bcs
