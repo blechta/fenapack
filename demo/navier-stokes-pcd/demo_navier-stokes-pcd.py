@@ -157,3 +157,5 @@ u, p = w.split()
 plot(u, title="velocity")
 plot(p, title="pressure")
 interactive()
+
+list_timings(TimingClear_clear, [TimingType_wall, TimingType_user])
