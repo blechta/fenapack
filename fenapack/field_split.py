@@ -134,17 +134,18 @@ class FieldSplitSolver(dolfin.PETScKrylovSolver):
         pc0, pc1 = ksp0.getPC(), ksp1.getPC()
 
         # Get backend implementation of PCDProblem
-        pcd_problem = _PCDProblem.from_pcd_problem(pcd_problem)
+        # FIXME: Make me parameter
+        deep_submats = False
+        #deep_submats = True
+        # FIXME: Is this executed only once?
+        pcd_problem = _PCDProblem.from_pcd_problem(pcd_problem,
+                self._is0, self._is1, deep_submats=deep_submats)
 
         # Check if python context has been set up to define approximation of
         # 11-block inverse. If so, use **schur_approx to set up this context.
         if self._OptDB_11.hasName("pc_python_type"):
             ctx = pc1.getPythonContext()
             ctx.init(pcd_problem)
-
-        # Pass index set is1 to pcd problem if needs it
-        if hasattr(pcd_problem, "set_is1"):
-            pcd_problem.set_is1(self._is1)
 
         # Set up each subPC explicitly before calling 'self.solve'. In such
         # a case, the time needed for setup is not included in timings under

@@ -50,7 +50,13 @@ class NewtonSolver(dolfin.NewtonSolver):
 
 
 class PCDProblem(dolfin.NonlinearProblem):
-    """Class for interfacing with :py:class:`NewtonSolver`."""
+    """Class for interfacing with not only :py:class:`NewtonSolver`."""
+    # TODO: Add abstract base class with docstrings
+    # TODO: What about interface
+    #          pcd_problem = PCDProblem()
+    #          pcd_problem.forms.F = F
+    #          pcd_problem.forms.J = J
+    #          ....
     def __init__(self, F, bcs, J, J_pc=None,
                  mp=None, mu=None, ap=None, fp=None, kp=None, bcs_pcd=[]):
         """Return subclass of :py:class:`dolfin.NonlinearProblem` suitable
@@ -117,7 +123,7 @@ class PCDProblem(dolfin.NonlinearProblem):
         try:
             return self.forms[key]
         except KeyError:
-            raise AttributeError("From '%s' requested by not available" % key)
+            raise AttributeError("Form '%s' requested by PCD not available" % key)
 
 
     def F(self, b, x):
@@ -134,13 +140,10 @@ class PCDProblem(dolfin.NonlinearProblem):
 
 
     def ap(self, Ap):
-        # FIXME: Do we want to have this logic here?
-        if Ap.empty():
-            ap = self.get_form("ap")
-            F = self.get_form("F")  # Dummy form
-            bcs_pcd = self.pcd_bcs()
-            assembler = dolfin.SystemAssembler(ap, F, bcs_pcd)
-            assembler.assemble(Ap)
+        assembler = dolfin.SystemAssembler(self.get_form("ap"),
+                                           self.get_form("F"),
+                                           self.pcd_bcs())
+        assembler.assemble(Ap)
 
 
     def mp(self, Mp):
@@ -175,112 +178,136 @@ class PCDProblem(dolfin.NonlinearProblem):
 
 # backend
 class _PCDProblem(PCDProblem):
-    def __init__(self):
-        pass
+    """Wrapper of PCDProblem for interfacing with PCD PC
+    using fieldsplit backend. Convection fieldsplit submatrices
+    are extracted as shallow or deep submatrices according to
+    ``deep_submats`` parameter."""
+    def __init__(self, is_u, is_p, deep_submats=False):
+        # Store isets
+        self.is_u = is_u
+        self.is_p = is_p
+
+        # Choose submatrix implementation
+        assert isinstance(deep_submats, bool)
+        if deep_submats:
+            self.assemble_operator = self._assemble_operator_deep
+        else:
+            self.assemble_operator = self._assemble_operator_shallow
+            self._scratch = {}
 
 
     @classmethod
-    def from_pcd_problem(cls, pcd_problem):
-        self = cls()
-        self.__dict__ = pcd_problem.__dict__
-        return self
+    def from_pcd_problem(cls, pcd_problem, is_u, is_p, deep_submats=False):
+        """Initialize from PCDProblem instance"""
+        #self = cls(is_u, is_p, deep_submats=deep_submats)
+        #self.__dict__ = pcd_problem.__dict__
+        #return self
+        pcd_problem.__class__ = cls
+        cls.__init__(pcd_problem, is_u, is_p, deep_submats=deep_submats)
+        return pcd_problem
 
 
     def setup_ksp_Ap(self, ksp):
-        self._setup_ksp_once(ksp, self.ap)
+        """Setup pressure Laplacian ksp and assemble matrix"""
+        self.setup_ksp_once(ksp, self.ap, self.is_p)
 
 
     def setup_ksp_Mp(self, ksp):
-        self._setup_ksp_once(ksp, self.mp)
+        """Setup pressure mass matrix ksp and assemble matrix"""
+        self.setup_ksp_once(ksp, self.mp, self.is_p)
 
 
-    def setup_mat_Kp(self, mat):
-        # FIXME: Parametrize me
-        return self._setup_Kp_shallow(mat)
-        #return self._setup_Kp_deep(mat)
+    def setup_ksp_Mu(self, ksp):
+        """Setup velocity mass matrix ksp and assemble matrix"""
+        self.setup_ksp_once(ksp, self.mu, self.is_u)
+
+
+    def setup_mat_Kp(self, mat=None):
+        """Setup and assemble pressure convection
+        matrix and return it"""
+        return self.assemble_operator(self.kp, self.is_p, submat=mat)
+
+
+    def setup_mat_Fp(self, mat=None):
+        """Setup and assemble pressure convection-diffusion
+        matrix and return it"""
+        return self.assemble_operator(self.fp, self.is_p, submat=mat)
 
 
     def apply_pcd_bcs(self, vec):
-        # FIXME: interface for general bc tweaks of matrices?
-        self._apply_bcs(vec, self.pcd_bcs)
+        """Apply bcs to intermediate pressure vector of PCD pc"""
+        self.apply_bcs(vec, self.pcd_bcs, self.is_p)
 
 
-    # Factor two following function from Kp
-
-    def _setup_Kp_shallow(self, mat):
-        # FIXME: Improve this confusing logic and naming?!
-        scratch = getattr(self, "_Kp_scratch", None)
-        mat, scratch = self._assemble_mat_shallow(mat, self.kp, scratch)
-        self._Kp_scratch = scratch
-        return mat
-
-    def _setup_Kp_deep(self, mat):
-        return self._assemble_mat_deep(mat, self.kp)
-
-
-    def _apply_bcs(self, vec, bcs_getter):
-        # FIXME: Improve this confusing logic and naming?!
-        subbcs = getattr(self, "_subbcs", None)
-        if subbcs is None:
-            bcs = bcs_getter()
-            bcs = [bcs] if isinstance(bcs, dolfin.DirichletBC) else bcs
-            subbcs = [SubfieldBC(bc, self._is1) for bc in bcs]
-        self._subbcs = subbcs
-
-        for bc in subbcs:
-            bc.apply(vec)
-
-
-    def _setup_ksp_once(self, ksp, assembler_func):
+    def setup_ksp_once(self, ksp, assembler_func, iset):
+        """Assemble into operator of given ksp if not yet assembled"""
         mat = ksp.getOperators()[0]
         # FIXME: This logic that it is created once should be visible
         #        in higher level, not in these internals
+        # FIXME: Shouldn't we check mat.isAssembled()
         if mat.type is None:
             # FIXME: Could have shared work matrix
             A = dolfin.PETScMatrix(mat.comm)
             assembler_func(A)
-            mat = self._get_deep_submat(A, None, self._is1)
-            mat.setOption(PETSc.Mat.Option.SPD, True)  # FIXME: Can't do this for Kp/Fp
+            mat = self._get_deep_submat(A, iset, submat=None)
+            mat.setOption(PETSc.Mat.Option.SPD, True)
             ksp.setOperators(mat, mat)
             assert ksp.getOperators()[0].type is not None
 
 
-    def _assemble_mat_shallow(self, petsc_mat, assembler_func, dolfin_mat=None):
-        # Assemble dolfin_mat everytime
-        dolfin_mat = dolfin_mat or dolfin.PETScMatrix(self.mpi_comm())
-        assembler_func(dolfin_mat)
+    def _assemble_operator_shallow(self, assemble_func, iset, submat=None):
+        """Assemble operator of given name using shallow submat"""
+        # Allocate dolfin matrix and store it for future
+        dolfin_mat = self._scratch.get(assemble_func, None)
+        if dolfin_mat is None:
+            self._scratch[assemble_func] = \
+                    dolfin_mat = dolfin.PETScMatrix(self.mpi_comm())
+
+        # Assemble dolfin matrix everytime
+        assemble_func(dolfin_mat)
 
         # FIXME: This logic that it is created once should be visible
         #        in higher level, not in these internals
         # Create shallow submatrix once
-        if petsc_mat is None or petsc_mat.type is None:
-            petsc_mat = self._get_shallow_submat(dolfin_mat, petsc_mat, self._is1)
-            assert petsc_mat.type is not None
+        if submat is None or submat.type is None:
+            submat = self._get_shallow_submat(dolfin_mat, iset, submat=submat)
+            assert submat.type is not None
 
-        # Return allocated mats so that client can strore it
-        return petsc_mat, dolfin_mat
+        return submat
 
 
-    def _assemble_mat_deep(self, petsc_mat, assembler_func):
+    def _assemble_operator_deep(self, assemble_func, iset, submat=None):
+        """Assemble operator of given name using shallow submat"""
         # FIXME: Could have shared work matrix
         dolfin_mat = dolfin.PETScMatrix(self.mpi_comm())
-        assembler_func(dolfin_mat)
-        return self._get_deep_submat(dolfin_mat, petsc_mat, self._is1)
+        assemble_func(dolfin_mat)
+        return self._get_deep_submat(dolfin_mat, iset, submat=submat)
+
+
+    def apply_bcs(self, vec, bcs_getter, iset):
+        """Transform dolfin bcs obtained using ``bcs_getter`` function
+        into fieldsplit subBCs and apply them to fieldsplit vector.
+        SubBCs are cached."""
+        # Fetch subbcs from cache or construct it
+        subbcs = getattr(self, "_subbcs", None)
+        if subbcs is None:
+            bcs = bcs_getter()
+            bcs = [bcs] if isinstance(bcs, dolfin.DirichletBC) else bcs
+            subbcs = [SubfieldBC(bc, iset) for bc in bcs]
+            self._subbcs = subbcs
+
+        # Apply bcs
+        for bc in subbcs:
+            bc.apply(vec)
 
 
     @staticmethod
-    def _get_deep_submat(dolfin_mat, petsc_submat, iset):
-        #if petsc_submat is not None and petsc_submat.type is None:
-        #    petsc_submat.setSizes(((iset.size, iset.size), (iset.size, iset.size)))
-        return dolfin_mat.mat().getSubMatrix(iset, iset, submat=petsc_submat)
+    def _get_deep_submat(dolfin_mat, iset, submat=None):
+        return dolfin_mat.mat().getSubMatrix(iset, iset, submat=submat)
 
 
     @staticmethod
-    def _get_shallow_submat(dolfin_mat, petsc_submat, iset):
-        if petsc_submat is None:
-            petsc_submat = PETSc.Mat().create(iset.comm)
-        return petsc_submat.createSubMatrix(dolfin_mat.mat(), iset, iset)
-
-
-    def set_is1(self, is1):
-        self._is1 = is1
+    def _get_shallow_submat(dolfin_mat, iset, submat=None):
+        if submat is None:
+            submat = PETSc.Mat().create(iset.comm)
+        return submat.createSubMatrix(dolfin_mat.mat(), iset, iset)
