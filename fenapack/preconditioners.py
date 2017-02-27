@@ -78,6 +78,7 @@ class PCDPC_BRM1(BasePCDPC):
            SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.
     """
 
+    @dolfin.timed("FENaPack: PCDPC_BRM1 apply")
     def apply(self, pc, x, y):
         r"""This method implements the action of the inverse of the approximate
         Schur complement :math:`-\hat{S}^{-1}`, that is
@@ -103,8 +104,6 @@ class PCDPC_BRM1(BasePCDPC):
         Good strategy is to use :math:`M_p` and :math:`K_p` both scaled by
         :math:`\nu^{-1}`.
         """
-        timer = dolfin.Timer("FENaPack: PCDPC_BRM apply")
-
         # Fetch work vector
         z, = self.get_work_vecs(x, 1)
 
@@ -117,8 +116,6 @@ class PCDPC_BRM1(BasePCDPC):
         self.ksp_Mp.solve(z, y) # y = M_p^{-1} z
         # FIXME: How is with the sign bussines?
         y.scale(-1.0)           # y = -y
-
-        timer.stop()
 
 
     def setUp(self, pc):
@@ -140,6 +137,8 @@ class PCDPC_BRM2(BasePCDPC):
            Iterative Solvers: With Application in Incompressible Fluid Dynamics*.
            Oxford University Press 2005. 2nd edition 2014.
     """
+
+    @dolfin.timed("FENaPack: PCDPC_BRM2 apply")
     def apply(self, pc, x, y):
         # FIXME: Fix the docstring
         """This method implements the action of the inverse of the approximate
@@ -149,8 +148,6 @@ class PCDPC_BRM2(BasePCDPC):
 
             y = \hat{S}^{-1} x = - (I + A_p^{-1} K_p) M_p^{-1} x.
         """
-        timer = dolfin.Timer("FENaPack: PCDPC_BRM2 apply")
-
         # Fetch work vector
         z0, z1 = self.get_work_vecs(x, 2)
 
@@ -163,8 +160,6 @@ class PCDPC_BRM2(BasePCDPC):
         y.axpy(1.0, z0)           # y = y + z0
         # FIXME: How is with the sign bussines?
         y.scale(-1.0)             # y = -y
-
-        timer.stop()
 
 
     def setUp(self, pc):
