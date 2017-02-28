@@ -289,7 +289,7 @@ class _PCDProblem(PCDProblem):
         mat = ksp.getOperators()[0]
         # FIXME: This logic that it is created once should be visible
         #        in higher level, not in these internals
-        if not mat.isAssembled():
+        if mat.type is None or not mat.isAssembled():
             dolfin_mat = self.get_work_dolfin_mat(assemble_func,
                                                   can_be_destroyed=True,
                                                   can_be_shared=True)
