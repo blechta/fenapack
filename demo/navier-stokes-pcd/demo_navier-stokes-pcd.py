@@ -27,13 +27,6 @@ from fenapack import PCDNewtonSolver
 from fenapack import PCDProblem
 from fenapack import StabilizationParameterSD
 
-
-# FIXME: Move me somewhere else (FENaPack init, or DOLFIN init)
-SubSystemsManager.init_petsc()
-from petsc4py import PETSc
-PETSc.Sys.pushErrorHandler("traceback")
-
-
 parameters["form_compiler"]["representation"] = "uflacs"
 parameters["form_compiler"]["optimize"] = True
 
