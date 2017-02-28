@@ -27,3 +27,9 @@ from fenapack.field_split import *
 from fenapack.preconditioners import *
 from fenapack.nonlinear_solvers import *
 from fenapack.stabilization import *
+
+# Do not use petsc4py python error handler (hides error messages
+# to PETSc C calls), workaround to DOLFIN issue #801
+SubSystemsManager.init_petsc()
+from petsc4py import PETSc
+PETSc.Sys.pushErrorHandler("traceback")
