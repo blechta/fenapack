@@ -24,6 +24,7 @@ from fenapack._field_split_utils import dofmap_dofs_is
 from fenapack.nonlinear_solvers import _PCDProblem
 from fenapack.preconditioners import PCDPC_BRM1
 from fenapack.utils import get_default_factor_solver_package
+from fenapack.utils import allow_only_one_call
 
 __all__ = ['PCDKSP', 'PCDKrylovSolver']
 
@@ -63,15 +64,10 @@ class PCDKSP(PETSc.KSP):
     #    super(PCDKSP, self).setUp()
 
 
+    @allow_only_one_call
     def init_pcd(self, pcd_problem, pcd_pc_class=None):
         """Initialize from PCDProblem instance. Needs to be
         called after ``setOperators`` and ``setUp``."""
-        # FIXME: Make this decorator
-        # Don't allow multiple call to this
-        if getattr(self, "_init_pcd_called", False):
-            raise RuntimeError("Multiple calls to init_pcd not allowed")
-        self._init_pcd_called = True
-
         # Get backend implementation of PCDProblem
         # FIXME: Make me parameter
         deep_submats = False
@@ -87,7 +83,7 @@ class PCDKSP(PETSc.KSP):
         # Set some sensible defaults
         ksp0.setType(PETSc.KSP.Type.PREONLY)
         ksp0.pc.setType(PETSc.PC.Type.LU)
-        ksp0.pc.setFactorSolverPackage(get_default_factor_solver_package(comm))
+        ksp0.pc.setFactorSolverPackage(get_default_factor_solver_package(self.comm))
         ksp1.setType(PETSc.KSP.Type.PREONLY)
         ksp1.pc.setType(PETSc.PC.Type.PYTHON)
 
