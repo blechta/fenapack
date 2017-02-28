@@ -209,7 +209,9 @@ class _PCDProblem(PCDProblem):
             self.assemble_operator = self._assemble_operator_deep
         else:
             self.assemble_operator = self._assemble_operator_shallow
-            self._scratch = {}
+
+        # Dictionary for storing work mats
+        self.scratch = {}
 
 
     # FIXME: We are mutating input pcd_problem
@@ -224,17 +226,17 @@ class _PCDProblem(PCDProblem):
 
     def setup_ksp_Ap(self, ksp):
         """Setup pressure Laplacian ksp and assemble matrix"""
-        self.setup_ksp_once(ksp, self.ap, self.is_p)
+        self.setup_ksp_once(ksp, self.ap, self.is_p, spd=True)
 
 
     def setup_ksp_Mp(self, ksp):
         """Setup pressure mass matrix ksp and assemble matrix"""
-        self.setup_ksp_once(ksp, self.mp, self.is_p)
+        self.setup_ksp_once(ksp, self.mp, self.is_p, spd=True)
 
 
     def setup_ksp_Mu(self, ksp):
         """Setup velocity mass matrix ksp and assemble matrix"""
-        self.setup_ksp_once(ksp, self.mu, self.is_u)
+        self.setup_ksp_once(ksp, self.mu, self.is_u, spd=True)
 
 
     def setup_mat_Kp(self, mat=None):
@@ -254,35 +256,62 @@ class _PCDProblem(PCDProblem):
         self.apply_bcs(vec, self.pcd_bcs, self.is_p)
 
 
-    def setup_ksp_once(self, ksp, assembler_func, iset):
+    def get_work_dolfin_mat(self, key, can_be_destroyed=None, can_be_shared=None):
+        """Get working DOLFIN matrix by key. ``can_be_destroyed=True`` tells
+        that it is probably favourable to not store the matrix unless it is
+        shared as it will not be used ever again, ``None`` means that it can
+        be destroyed but it is not probably favourable and ``False`` forbids
+        the destruction. ``can_be_shared`` tells if a work matrix can be the
+        same with work matrices for other keys."""
+        # TODO: Add mechanism for sharing DOLFIN mats
+        # NOTE: Maybe we don't really need sharing. If only persistent matrix
+        #       is convection then there is nothing to be shared.
+
+        # Check if requested matrix is in scratch
+        dolfin_mat = self.scratch.get(key, None)
+
+        # Allocate new matrix otherwise
+        if dolfin_mat is None:
+            dolfin_mat = dolfin.PETScMatrix(self.mpi_comm())
+
+        # Store or pop the matrix as requested
+        if can_be_destroyed in [False, None]:
+            self.scratch[key] = dolfin_mat
+        else:
+            assert can_be_destroyed is True
+            self.scratch.pop(key, None)
+
+        return dolfin_mat
+
+
+    def setup_ksp_once(self, ksp, assemble_func, iset, spd=False):
         """Assemble into operator of given ksp if not yet assembled"""
         mat = ksp.getOperators()[0]
         # FIXME: This logic that it is created once should be visible
         #        in higher level, not in these internals
         if not mat.isAssembled():
-            # FIXME: Could have shared work matrix
-            A = dolfin.PETScMatrix(mat.comm)
-            assembler_func(A)
-            mat = self._get_deep_submat(A, iset, submat=None)
-            mat.setOption(PETSc.Mat.Option.SPD, True)
+            dolfin_mat = self.get_work_dolfin_mat(assemble_func,
+                                                  can_be_destroyed=True,
+                                                  can_be_shared=True)
+            assemble_func(dolfin_mat)
+            mat = self._get_deep_submat(dolfin_mat, iset, submat=None)
+            mat.setOption(PETSc.Mat.Option.SPD, spd)
             ksp.setOperators(mat, mat)
             assert ksp.getOperators()[0].isAssembled()
 
 
     def _assemble_operator_shallow(self, assemble_func, iset, submat=None):
         """Assemble operator of given name using shallow submat"""
-        # Allocate dolfin matrix and store it for future
-        dolfin_mat = self._scratch.get(assemble_func, None)
-        if dolfin_mat is None:
-            self._scratch[assemble_func] = \
-                    dolfin_mat = dolfin.PETScMatrix(self.mpi_comm())
-
-        # Assemble dolfin matrix everytime
+        # Assemble into persistent DOLFIN matrix everytime
+        # TODO: Does not shallow submat take care of parents lifetime? How?
+        dolfin_mat = self.get_work_dolfin_mat(assemble_func,
+                                              can_be_destroyed=False,
+                                              can_be_shared=False)
         assemble_func(dolfin_mat)
 
         # FIXME: This logic that it is created once should be visible
         #        in higher level, not in these internals
-        # Create shallow submatrix once
+        # Create shallow submatrix (view into dolfin mat) once
         if submat is None or submat.type is None or not submat.isAssembled():
             submat = self._get_shallow_submat(dolfin_mat, iset, submat=submat)
             assert submat.isAssembled()
@@ -291,9 +320,10 @@ class _PCDProblem(PCDProblem):
 
 
     def _assemble_operator_deep(self, assemble_func, iset, submat=None):
-        """Assemble operator of given name using shallow submat"""
-        # FIXME: Could have shared work matrix
-        dolfin_mat = dolfin.PETScMatrix(self.mpi_comm())
+        """Assemble operator of given name using deep submat"""
+        dolfin_mat = self.get_work_dolfin_mat(assemble_func,
+                                              can_be_destroyed=None,
+                                              can_be_shared=True)
         assemble_func(dolfin_mat)
         return self._get_deep_submat(dolfin_mat, iset, submat=submat)
 
@@ -325,10 +355,3 @@ class _PCDProblem(PCDProblem):
         if submat is None:
             submat = PETSc.Mat().create(iset.comm)
         return submat.createSubMatrix(dolfin_mat.mat(), iset, iset)
-
-    # TODO: Not easy; because of possibly differing sparsity
-    #def _get_work_dolfinmat(self, comm):
-    #    M = getattr(self, "_work_dolfinmat", None)
-    #    if M is None:
-    #        self._work_dolfinmat = M = dolfin.PETScMatrix(comm)
-    #    return M
