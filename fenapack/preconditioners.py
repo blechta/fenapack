@@ -19,6 +19,7 @@ import dolfin
 from petsc4py import PETSc
 
 from fenapack._field_split_utils import SubfieldBC
+from fenapack.utils import get_default_factor_solver_package
 
 
 class BasePCDPC(object):
@@ -44,8 +45,7 @@ class BasePCDPC(object):
         ksp = PETSc.KSP().create(comm)
         ksp.setType(PETSc.KSP.Type.PREONLY)
         ksp.pc.setType(PETSc.PC.Type.CHOLESKY)
-        # FIXME: Have utility function looking for mumps, superlu, etc.
-        ksp.pc.setFactorSolverPackage("mumps")
+        ksp.pc.setFactorSolverPackage(get_default_factor_solver_package(comm))
         return ksp
 
 

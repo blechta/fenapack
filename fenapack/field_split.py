@@ -23,6 +23,7 @@ from petsc4py import PETSc
 from fenapack._field_split_utils import dofmap_dofs_is
 from fenapack.nonlinear_solvers import _PCDProblem
 from fenapack.preconditioners import PCDPC_BRM1
+from fenapack.utils import get_default_factor_solver_package
 
 __all__ = ['PCDKSP', 'PCDKrylovSolver']
 
@@ -56,8 +57,8 @@ class PCDKSP(PETSc.KSP):
         _create_pcd_ksp(comm, is0, is1, ksp=self)
 
 
-    # FIXME: We currently do not have a mechanism to make PETSc call this
-    # except of KSPPYTHON which we don't want to use (for performance reasons?)
+    # FIXME: We currently do not have a mechanism to make PETSc call this unless
+    # using KSPPYTHON which we don't want to use (for performance reasons?)
     #def setUp(self):
     #    super(PCDKSP, self).setUp()
 
@@ -86,8 +87,7 @@ class PCDKSP(PETSc.KSP):
         # Set some sensible defaults
         ksp0.setType(PETSc.KSP.Type.PREONLY)
         ksp0.pc.setType(PETSc.PC.Type.LU)
-        # FIXME: Have utility function looking for mumps, superlu, etc.
-        ksp0.pc.setFactorSolverPackage("mumps")
+        ksp0.pc.setFactorSolverPackage(get_default_factor_solver_package(comm))
         ksp1.setType(PETSc.KSP.Type.PREONLY)
         ksp1.pc.setType(PETSc.PC.Type.PYTHON)
 
