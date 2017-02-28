@@ -24,8 +24,13 @@ Usage
 =====
 
 To use FENaPack matching version of FEniCS (version |version|) compiled with
-PETSc and petsc4py is needed. To use FENaPack either install it by standard
-procedures or ``source fenapack.conf``.
+PETSc and petsc4py is needed. To use install FENaPack while in repository
+root directory::
+
+  pip install [--user|--prefix=...] [-e] .
+
+Editable install using ``-e`` allows to use FENaPack directly from source
+directory while editing it which is suitable for development.
 
 Meshes for running demos can be downloaded from the FEniCS project
 website by executing ``download-meshes`` script. Demos can be run
