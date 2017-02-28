@@ -23,6 +23,8 @@ __author__ = "Jan Blechta, Martin Řehoř"
 __version__ = "2017.1.0.dev0"
 __license__ = "GNU LGPL v3"
 
+from dolfin import SubSystemsManager
+
 from fenapack.field_split import *
 from fenapack.preconditioners import *
 from fenapack.nonlinear_solvers import *
@@ -30,6 +32,7 @@ from fenapack.stabilization import *
 
 # Do not use petsc4py python error handler (hides error messages
 # to PETSc C calls), workaround to DOLFIN issue #801
-SubSystemsManager.init_petsc()
+SubSystemsManager.init_petsc()  # init PETSc by DOLFIN before petsc4py import
 from petsc4py import PETSc
 PETSc.Sys.pushErrorHandler("traceback")
+del SubSystemsManager, PETSc

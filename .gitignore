@@ -7,4 +7,5 @@
 /build/
 /FENaPack.egg-info/
 
+.cache/
 test/regression/demo.log
