@@ -259,15 +259,14 @@ class _PCDProblem(PCDProblem):
         mat = ksp.getOperators()[0]
         # FIXME: This logic that it is created once should be visible
         #        in higher level, not in these internals
-        # FIXME: Shouldn't we check mat.isAssembled()
-        if mat.type is None:
+        if not mat.isAssembled():
             # FIXME: Could have shared work matrix
             A = dolfin.PETScMatrix(mat.comm)
             assembler_func(A)
             mat = self._get_deep_submat(A, iset, submat=None)
             mat.setOption(PETSc.Mat.Option.SPD, True)
             ksp.setOperators(mat, mat)
-            assert ksp.getOperators()[0].type is not None
+            assert ksp.getOperators()[0].isAssembled()
 
 
     def _assemble_operator_shallow(self, assemble_func, iset, submat=None):
@@ -284,9 +283,9 @@ class _PCDProblem(PCDProblem):
         # FIXME: This logic that it is created once should be visible
         #        in higher level, not in these internals
         # Create shallow submatrix once
-        if submat is None or submat.type is None:
+        if submat is None or submat.type is None or not submat.isAssembled():
             submat = self._get_shallow_submat(dolfin_mat, iset, submat=submat)
-            assert submat.type is not None
+            assert submat.isAssembled()
 
         return submat
 
@@ -326,3 +325,10 @@ class _PCDProblem(PCDProblem):
         if submat is None:
             submat = PETSc.Mat().create(iset.comm)
         return submat.createSubMatrix(dolfin_mat.mat(), iset, iset)
+
+    # TODO: Not easy; because of possibly differing sparsity
+    #def _get_work_dolfinmat(self, comm):
+    #    M = getattr(self, "_work_dolfinmat", None)
+    #    if M is None:
+    #        self._work_dolfinmat = M = dolfin.PETScMatrix(comm)
+    #    return M
