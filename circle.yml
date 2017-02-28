@@ -18,14 +18,14 @@ test:
         export PYTHONPATH=\$PWD:\$PYTHONPATH;
 
         py.test test/unit -sv;
-        ((rc+=$?));
+        ((rc+=\$?));
 
         mpirun -n 2 py.test test/unit -sv;
-        ((rc+=$?));
+        ((rc+=\$?));
 
         cd test/regression;
         NP=2 python -u test.py;
-        ((rc+=$?));
+        ((rc+=\$?));
 
-        exit $rc;
+        exit \$rc
         "
