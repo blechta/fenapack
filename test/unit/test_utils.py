@@ -6,6 +6,10 @@ from fenapack.utils import get_default_factor_solver_package
 from fenapack.utils import allow_only_one_call
 
 
+def test_fail():
+    1/0
+
+
 def test_get_default_factor_solver_package():
     # Get available methods from DOLFIN
     methods = lu_solver_methods()
