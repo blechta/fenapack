@@ -117,7 +117,7 @@ def main():
     # NOTE: Demo must be listed here iff unimplemented otherwse the test will
     #       fail. This is meant to protect against usual bad named demos not
     #       executed for ages in regression tests.
-    not_implemented = []
+    not_implemented = [os.path.join(demodir, "defcon", "navier-stokes.py")]
 
     # Demos to run
     cppdemos = []
@@ -144,7 +144,11 @@ def main():
         else:
             for f in fnames:
                 if len(f) > 3 and f[-3:] == '.py':
-                    pydemos.append(os.path.join(dpath, f))
+                    d = os.path.join(dpath, f)
+                    if d in not_implemented:
+                        print("***Skipping demo '%s' marked as not_implemented" % d)
+                        continue
+                    pydemos.append(d)
 
     # Set non-interactive
     os.putenv('DOLFIN_NOPLOT', '1')
