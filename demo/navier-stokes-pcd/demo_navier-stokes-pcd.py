@@ -42,8 +42,16 @@ parser.add_argument("-l", type=int, dest="level", default=4,
                     help="level of mesh refinement")
 parser.add_argument("--nu", type=float, dest="viscosity", default=0.02,
                     help="kinematic viscosity")
-parser.add_argument("--pcd", type=str, dest="pcd_variant", default="BRM1",
+parser.add_argument("--pcd", type=str, dest="pcd_variant", default="BRM2",
                     choices=["BRM1", "BRM2"], help="PCD variant")
+parser.add_argument("--nls", type=str, dest="nls", default="picard",
+                    choices=["picard", "newton"], help="nonlinear solver")
+parser.add_argument("--ls", type=str, dest="ls", default="iterative",
+                    choices=["direct", "iterative"], help="linear solvers")
+parser.add_argument("--dm", action='store_true', dest="mumps_debug",
+                    help="debug MUMPS")
+parser.add_argument("--twice", action='store_true', dest="run_twice",
+                    help="run the solve twice (for testing)")
 args = parser.parse_args(sys.argv[1:])
 
 # Load mesh from file and refine uniformly
@@ -107,17 +115,23 @@ F = (
     - q*div(u_)
 )*dx
 
-# Picard linearization (one could use full Newton)
-J = (
-      nu*inner(grad(u), grad(v))
-    + inner(dot(grad(u), u_), v)
-    - p*div(v)
-    - q*div(u)
-)*dx
+# Jacobian
+if args.nls == "picard":
+    J = (
+          nu*inner(grad(u), grad(v))
+        + inner(dot(grad(u), u_), v)
+        - p*div(v)
+        - q*div(u)
+    )*dx
+elif args.nls == "newton":
+    J = derivative(F, w)
 
 # Add stabilization for AMG 00-block
-delta = StabilizationParameterSD(w.sub(0), nu)
-J_pc = J + delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
+if args.ls == "iterative":
+    delta = StabilizationParameterSD(w.sub(0), nu)
+    J_pc = J + delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
+elif args.ls == "direct":
+    J_pc = None
 
 # PCD operators
 mp = Constant(1.0/nu)*p*q*dx
@@ -138,25 +152,26 @@ linear_solver.parameters["relative_tolerance"] = 1e-6
 PETScOptions.set("ksp_monitor")
 PETScOptions.set("ksp_gmres_restart", 150)
 
-# Debugging MUMPS (only used if below options are commented out)
-#PETScOptions.set("fieldsplit_u_mat_mumps_icntl_4", 2)
-#PETScOptions.set("fieldsplit_p_PCD_Ap_mat_mumps_icntl_4", 2)
-#PETScOptions.set("fieldsplit_p_PCD_Mp_mat_mumps_icntl_4", 2)
-
 # Set up subsolvers
-PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
-PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
-PETScOptions.set("fieldsplit_u_pc_type", "hypre")
-PETScOptions.set("fieldsplit_u_pc_hypre_type", "boomeramg")
-PETScOptions.set("fieldsplit_p_pc_python_type", "fenapack.PCDPC_" + args.pcd_variant)
-PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_type", "richardson")
-PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_max_it", 2)
-PETScOptions.set("fieldsplit_p_PCD_Ap_pc_type", "hypre")
-PETScOptions.set("fieldsplit_p_PCD_Ap_pc_hypre_type", "boomeramg")
-PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_type", "chebyshev")
-PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_max_it", 5)
-PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues", "0.5, 2.0")
-PETScOptions.set("fieldsplit_p_PCD_Mp_pc_type", "jacobi")
+if args.ls == "iterative":
+    PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
+    PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
+    PETScOptions.set("fieldsplit_u_pc_type", "hypre")
+    PETScOptions.set("fieldsplit_u_pc_hypre_type", "boomeramg")
+    PETScOptions.set("fieldsplit_p_pc_python_type", "fenapack.PCDPC_" + args.pcd_variant)
+    PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_type", "richardson")
+    PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_max_it", 2)
+    PETScOptions.set("fieldsplit_p_PCD_Ap_pc_type", "hypre")
+    PETScOptions.set("fieldsplit_p_PCD_Ap_pc_hypre_type", "boomeramg")
+    PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_type", "chebyshev")
+    PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_max_it", 5)
+    PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues", "0.5, 2.0")
+    PETScOptions.set("fieldsplit_p_PCD_Mp_pc_type", "jacobi")
+elif args.ls == "direct" and args.mumps_debug:
+    # Debugging MUMPS (only used if below options are commented out)
+    PETScOptions.set("fieldsplit_u_mat_mumps_icntl_4", 2)
+    PETScOptions.set("fieldsplit_p_PCD_Ap_mat_mumps_icntl_4", 2)
+    PETScOptions.set("fieldsplit_p_PCD_Mp_mat_mumps_icntl_4", 2)
 
 # Apply options
 linear_solver.set_from_options()
@@ -167,6 +182,8 @@ solver.parameters["relative_tolerance"] = 1e-5
 
 # Solve problem
 solver.solve(problem, w.vector())
+if args.run_twice:
+    solver.solve(problem, w.vector())
 
 # Report timings
 list_timings(TimingClear_clear, [TimingType_wall, TimingType_user])
