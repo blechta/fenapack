@@ -299,12 +299,15 @@ class _PCDProblem(PCDProblem):
             # Use eventual spd flag
             mat.setOption(PETSc.Mat.Option.SPD, spd)
 
+            # Set correct options prefix
+            prefix = ksp.getOptionsPrefix()
+            mat.setOptionsPrefix(prefix)
+
             # Use also as preconditioner matrix
             ksp.setOperators(mat, mat)
             assert ksp.getOperators()[0].isAssembled()
 
             # Setup ksp
-            prefix = ksp.getOptionsPrefix()
             with dolfin.Timer("FENaPack: {} setup".format(prefix)):
                 ksp.setUp()
 

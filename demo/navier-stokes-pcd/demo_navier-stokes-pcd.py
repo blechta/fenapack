@@ -138,6 +138,11 @@ linear_solver.parameters["relative_tolerance"] = 1e-6
 PETScOptions.set("ksp_monitor")
 PETScOptions.set("ksp_gmres_restart", 150)
 
+# Debugging MUMPS (only used if below options are commented out)
+#PETScOptions.set("fieldsplit_u_mat_mumps_icntl_4", 2)
+#PETScOptions.set("fieldsplit_p_PCD_Ap_mat_mumps_icntl_4", 2)
+#PETScOptions.set("fieldsplit_p_PCD_Mp_mat_mumps_icntl_4", 2)
+
 # Set up subsolvers
 PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
 PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
