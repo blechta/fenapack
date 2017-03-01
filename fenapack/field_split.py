@@ -76,9 +76,13 @@ class PCDKSP(PETSc.KSP):
                             deep_submats=deep_submats)
         del self._is0, self._is1
 
-        # Extract fieldsplit subKSPs
-        # NOTE: Hacky PCSetUp_FieldSplit calls setFromOptions to subKSPs
-        self.pc.setUp()
+        # Setup fieldsplit preconditioner
+        # NOTE: Hacky PCSetUp_FieldSplit calls setFromOptions on subKSPs
+        pc_prefix = self.pc.getOptionsPrefix() or ""
+        with dolfin.Timer("FENaPack: PCDKSP PC {} setup".format(pc_prefix)):
+            self.pc.setUp()
+
+        # Extract fieldsplit subKSPs (only once self.pc is set up)
         ksp0, ksp1 = self.pc.getFieldSplitSubKSP()
 
         # Set some sensible defaults
@@ -87,6 +91,12 @@ class PCDKSP(PETSc.KSP):
         ksp0.pc.setFactorSolverPackage(get_default_factor_solver_package(self.comm))
         ksp1.setType(PETSc.KSP.Type.PREONLY)
         ksp1.pc.setType(PETSc.PC.Type.PYTHON)
+
+        # Setup 0,0-block pc so that we have accurate timing
+        ksp0_pc_prefix = ksp0.pc.getOptionsPrefix()
+        with dolfin.Timer("FENaPack: {} setup".format(ksp0_pc_prefix)):
+            ksp0.pc.setFromOptions()
+            ksp0.pc.setUp()
 
         # FIXME: Why don't we let user do this? This would simplify things
         # Initialize PCD PC context
@@ -116,7 +126,9 @@ class PCDKSP(PETSc.KSP):
             print("Maybe wrong PCD PC class or PCDProblem instance.")
             raise
 
-        # TODO: We could call here pc setups and time them separately
+        # Setup PCD PC so that we have accurate timing
+        with dolfin.Timer("FENaPack: {} setup".format(pcd_pc_prefix)):
+            ksp1.pc.setUp()
 
 
 

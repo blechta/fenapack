@@ -289,14 +289,24 @@ class _PCDProblem(PCDProblem):
         # FIXME: This logic that it is created once should be visible
         #        in higher level, not in these internals
         if mat.type is None or not mat.isAssembled():
+            # Assemble matrix
             dolfin_mat = self.get_work_dolfin_mat(assemble_func,
                                                   can_be_destroyed=True,
                                                   can_be_shared=True)
             assemble_func(dolfin_mat)
             mat = self._get_deep_submat(dolfin_mat, iset, submat=None)
+
+            # Use eventual spd flag
             mat.setOption(PETSc.Mat.Option.SPD, spd)
+
+            # Use also as preconditioner matrix
             ksp.setOperators(mat, mat)
             assert ksp.getOperators()[0].isAssembled()
+
+            # Setup ksp
+            prefix = ksp.getOptionsPrefix()
+            with dolfin.Timer("FENaPack: {} setup".format(prefix)):
+                ksp.setUp()
 
 
     def _assemble_operator_shallow(self, assemble_func, iset, submat=None):
