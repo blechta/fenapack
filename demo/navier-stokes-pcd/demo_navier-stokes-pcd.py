@@ -22,22 +22,28 @@ split PCD preconditioning."""
 # Begin demo
 
 from dolfin import *
+from matplotlib import pyplot
+
 from fenapack import PCDKrylovSolver
 from fenapack import PCDNewtonSolver
 from fenapack import PCDProblem
 from fenapack import StabilizationParameterSD
 
+import argparse, sys
+
 parameters["form_compiler"]["representation"] = "uflacs"
 parameters["form_compiler"]["optimize"] = True
+parameters["plotting_backend"] = "matplotlib"
 
 # Parse input arguments
-import argparse, sys
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=
                                  argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-l", type=int, dest="level", default=4,
                     help="level of mesh refinement")
 parser.add_argument("--nu", type=float, dest="viscosity", default=0.02,
                     help="kinematic viscosity")
+parser.add_argument("--pcd", type=str, dest="pcd_variant", default="BRM1",
+                    choices=["BRM1", "BRM2"], help="PCD variant")
 args = parser.parse_args(sys.argv[1:])
 
 # Load mesh from file and refine uniformly
@@ -74,7 +80,10 @@ inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0"), degree=2)
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 
 # Artificial BC for PCD preconditioner
-bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 1)
+if args.pcd_variant == "BRM1":
+    bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 1)
+elif args.pcd_variant == "BRM2":
+    bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 2)
 
 # Provide some info about the current problem
 info("Reynolds number: Re = %g" % (2.0/args.viscosity))
@@ -84,8 +93,10 @@ info("Dimension of the function space: %g" % W.dim())
 u, p = TrialFunctions(W)
 v, q = TestFunctions(W)
 w = Function(W)
+# FIXME: Which split is correct? Both work but one might use
+# restrict_as_ufc_function
 u_, p_ = split(w)
-n = FacetNormal(mesh)
+#u_, p_ = w.split()
 nu = Constant(args.viscosity)
 
 # Nonlinear equation
@@ -112,6 +123,11 @@ J_pc = J + delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
 mp = Constant(1.0/nu)*p*q*dx
 kp = Constant(1.0/nu)*dot(grad(p), u_)*q*dx
 ap = inner(grad(p), grad(q))*dx
+if args.pcd_variant == "BRM2":
+    n = FacetNormal(mesh)
+    ds = Measure("ds", subdomain_data=boundary_markers)
+    kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(1)
+    #kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(0)  # TODO: Is this beneficial?
 
 # Collect forms to define nonlinear problem
 problem = PCDProblem(F, [bc0, bc1], J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
@@ -128,7 +144,7 @@ PETScOptions.set("fieldsplit_u_pc_type", "hypre")
 PETScOptions.set("fieldsplit_u_pc_hypre_type", "boomeramg")
 #PETScOptions.set("fieldsplit_p_ksp_type", "preonly")
 #PETScOptions.set("fieldsplit_p_pc_type", "python")  # FIXME: Causes double init of PCDPC
-#PETScOptions.set("fieldsplit_p_pc_python_type", "fenapack.PCDPC_BRM2")  # FIXME: Need different kp and bc
+PETScOptions.set("fieldsplit_p_pc_python_type", "fenapack.PCDPC_"+args.pcd_variant)
 PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_type", "richardson")
 PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_max_it", 2)
 PETScOptions.set("fieldsplit_p_PCD_Ap_pc_type", "hypre")
@@ -138,6 +154,12 @@ PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_max_it", 5)
 PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues", "0.5, 2.0")
 PETScOptions.set("fieldsplit_p_PCD_Mp_pc_type", "jacobi")
 
+# FIXME: Some of the abve options might actually be unused!!!!
+# PETSc report the gmres restart as used but it's not unless set_from_options
+# is called. Sort out the options business robustly!
+PETScOptions.set("ksp_gmres_restart", 300)
+linear_solver.set_from_options()
+
 # Set up nonlinear solver
 solver = PCDNewtonSolver(linear_solver)
 solver.parameters["relative_tolerance"] = 1e-5
@@ -145,10 +167,13 @@ solver.parameters["relative_tolerance"] = 1e-5
 # Solve problem
 solver.solve(problem, w.vector())
 
+# Report timings
+list_timings(TimingClear_clear, [TimingType_wall, TimingType_user])
+
 # Plot solution
 u, p = w.split()
+pyplot.subplot(2, 1, 1)
 plot(u, title="velocity")
+pyplot.subplot(2, 1, 2)
 plot(p, title="pressure")
-interactive()
-
-list_timings(TimingClear_clear, [TimingType_wall, TimingType_user])
+pyplot.show()
