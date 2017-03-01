@@ -57,7 +57,6 @@ class PCDNewtonSolver(dolfin.NewtonSolver):
         # Set operators and initialize PCD
         P = A if P.empty() else P
         linear_solver.set_operators(A, P)
-        #linear_solver.set_from_options()  # FIXME: Who calls this for us?
         linear_solver.init_pcd(nonlinear_problem)
 
 
