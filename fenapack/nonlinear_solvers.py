@@ -47,8 +47,10 @@ class PCDNewtonSolver(dolfin.NewtonSolver):
 
     def solver_setup(self, A, P, nonlinear_problem, iteration):
         # Only do the setup once
-        if iteration > 0:
+        # FIXME: Is this good?
+        if iteration > 0 or getattr(self, "_initialized", False):
             return
+        self._initialized = True
 
         # C++ references passed in do not have Python context
         linear_solver = self._solver
