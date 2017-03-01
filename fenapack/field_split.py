@@ -88,6 +88,7 @@ class PCDKSP(PETSc.KSP):
         ksp1.pc.setType(PETSc.PC.Type.PYTHON)
 
         #ksp0.setFromOptions()  # FIXME: Who calls this for us?
+        #ksp1.setFromOptions()  # FIXME: Who calls this for us?
 
         # FIXME: Why don't we let user do this? This would simplify things
         # Initialize PCD PC context

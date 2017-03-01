@@ -134,8 +134,13 @@ problem = PCDProblem(F, [bc0, bc1], J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd
 
 # Set up linear field split solver
 linear_solver = PCDKrylovSolver(W)
-linear_solver.parameters["monitor_convergence"] = True
 linear_solver.parameters["relative_tolerance"] = 1e-6
+PETScOptions.set("ksp_monitor")
+PETScOptions.set("ksp_gmres_restart", 150)
+#linear_solver.set_from_options()
+# FIXME: Some of the below options might actually be unused!!!!
+# PETSc report the gmres restart as used but it's not unless set_from_options
+# is called. Sort out the options business robustly!
 
 # Set up subsolvers
 PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
@@ -154,12 +159,6 @@ PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_max_it", 5)
 PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues", "0.5, 2.0")
 PETScOptions.set("fieldsplit_p_PCD_Mp_pc_type", "jacobi")
 
-# FIXME: Some of the abve options might actually be unused!!!!
-# PETSc report the gmres restart as used but it's not unless set_from_options
-# is called. Sort out the options business robustly!
-PETScOptions.set("ksp_gmres_restart", 300)
-linear_solver.set_from_options()
-
 # Set up nonlinear solver
 solver = PCDNewtonSolver(linear_solver)
 solver.parameters["relative_tolerance"] = 1e-5
@@ -172,8 +171,11 @@ list_timings(TimingClear_clear, [TimingType_wall, TimingType_user])
 
 # Plot solution
 u, p = w.split()
+pyplot.figure()
 pyplot.subplot(2, 1, 1)
 plot(u, title="velocity")
 pyplot.subplot(2, 1, 2)
 plot(p, title="pressure")
+pyplot.figure()
+plot(p, title="pressure", mode="warp")
 pyplot.show()
