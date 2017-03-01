@@ -77,6 +77,7 @@ class PCDKSP(PETSc.KSP):
         del self._is0, self._is1
 
         # Extract fieldsplit subKSPs
+        # NOTE: Hacky PCSetUp_FieldSplit calls setFromOptions to subKSPs
         self.pc.setUp()
         ksp0, ksp1 = self.pc.getFieldSplitSubKSP()
 
@@ -86,9 +87,6 @@ class PCDKSP(PETSc.KSP):
         ksp0.pc.setFactorSolverPackage(get_default_factor_solver_package(self.comm))
         ksp1.setType(PETSc.KSP.Type.PREONLY)
         ksp1.pc.setType(PETSc.PC.Type.PYTHON)
-
-        #ksp0.setFromOptions()  # FIXME: Who calls this for us?
-        #ksp1.setFromOptions()  # FIXME: Who calls this for us?
 
         # FIXME: Why don't we let user do this? This would simplify things
         # Initialize PCD PC context
