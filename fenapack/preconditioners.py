@@ -68,6 +68,24 @@ class BasePCDPC(object):
         self.problem = pcd_problem
 
 
+    def setUp(self, pc):
+
+        # Prepare mass matrix and Laplacian solvers
+        # NOTE: Called function ensures that assembly, submat extraction and
+        #       ksp setup is done only once during preconditioner lifetime.
+        # FIXME: Maybe move Mp and Ap setup to init and remove logic in backend.
+        #        This will make it obvious that this is done once.
+        self.problem.setup_ksp_Mp(self.ksp_Mp)
+        self.problem.setup_ksp_Ap(self.ksp_Ap)
+
+        # Prepare convection matrix
+        self.mat_Kp = self.problem.setup_mat_Kp(mat=getattr(self, "mat_Kp", None))
+        self.mat_Kp.setOptionsPrefix(pc.getOptionsPrefix() + "PCD_Kp_")
+
+        # Fetch bcs apply function
+        self.bcs_applier = self.problem.apply_pcd_bcs
+
+
 
 class PCDPC_BRM1(BasePCDPC):
     """This class implements a modification of PCD variant similar to one by
@@ -118,16 +136,6 @@ class PCDPC_BRM1(BasePCDPC):
         y.scale(-1.0)           # y = -y
 
 
-    def setUp(self, pc):
-        # FIXME: Maybe move Mp and Ap setup to init and remove logic in backend.
-        #        This will make it obvious that this is done once.
-        self.problem.setup_ksp_Mp(self.ksp_Mp)
-        self.problem.setup_ksp_Ap(self.ksp_Ap)
-        self.mat_Kp = self.problem.setup_mat_Kp(
-                mat=getattr(self, "mat_Kp", None))
-        self.bcs_applier = self.problem.apply_pcd_bcs
-
-
 
 class PCDPC_BRM2(BasePCDPC):
     """This class implements a modification steady variant of PCD
@@ -160,13 +168,3 @@ class PCDPC_BRM2(BasePCDPC):
         y.axpy(1.0, z0)           # y = y + z0
         # FIXME: How is with the sign bussines?
         y.scale(-1.0)             # y = -y
-
-
-    def setUp(self, pc):
-        # FIXME: Maybe move Mp and Ap setup to init and remove logic in backend.
-        #        This will make it obvious that this is done once.
-        self.problem.setup_ksp_Mp(self.ksp_Mp)
-        self.problem.setup_ksp_Ap(self.ksp_Ap)
-        self.mat_Kp = self.problem.setup_mat_Kp(
-                mat=getattr(self, "mat_Kp", None))
-        self.bcs_applier = self.problem.apply_pcd_bcs
