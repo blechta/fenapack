@@ -218,7 +218,11 @@ class _PCDProblem(PCDProblem):
     def reclass(cls, pcd_problem, is_u, is_p, deep_submats=False):
         """Reclasses instance of PCDProblem into this class"""
         if isinstance(pcd_problem, cls):
-            raise TypeError("Cannot reclass. Already this class.")
+            #raise TypeError("Cannot reclass. Already this class.")
+            # FIXME: Is this good?
+            #assert is_u == pcd_problem.is_u  # FIXME: Does not work in defcon
+            #assert is_p == pcd_problem.is_p  # FIXME: Does not work in defcon
+            return
         pcd_problem.__class__ = cls
         cls.__init__(pcd_problem, is_u, is_p, deep_submats=deep_submats)
 
