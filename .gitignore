@@ -4,6 +4,8 @@
 *.xdmf
 *.h5
 
+*.pdf
+
 /build/
 /FENaPack.egg-info/
 
