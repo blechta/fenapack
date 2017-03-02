@@ -161,6 +161,7 @@ class NavierStokesProblem(BifurcationProblem):
             "ksp_gmres_restart": 64,
             "ksp_rtol": 1.0e-5,
             "ksp_atol": 0.0,
+            "fieldsplit_p_pc_python_type": "fenapack.PCDPC_" + pcd_variant,
         }
 
         if inner_solvers == "iterative":
@@ -169,7 +170,6 @@ class NavierStokesProblem(BifurcationProblem):
                 "fieldsplit_u_ksp_max_it": 1,
                 "fieldsplit_u_pc_type": "hypre",
                 "fieldsplit_u_pc_hypre_type": "boomeramg",
-                "fieldsplit_p_pc_python_type": "fenapack.PCDPC_" + pcd_variant,
                 "fieldsplit_p_PCD_Ap_ksp_type": "richardson",
                 "fieldsplit_p_PCD_Ap_ksp_max_it": 2,
                 "fieldsplit_p_PCD_Ap_pc_type": "hypre",
