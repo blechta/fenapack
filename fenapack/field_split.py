@@ -17,16 +17,14 @@
 
 from __future__ import print_function
 
-import dolfin
+from dolfin import Timer, PETScKrylovSolver
 from petsc4py import PETSc
 
 from fenapack._field_split_utils import dofmap_dofs_is
-from fenapack.nonlinear_solvers import _PCDProblem
+from fenapack.field_split_backend import PCDInterface
 from fenapack.preconditioners import PCDPC_BRM1
 from fenapack.utils import get_default_factor_solver_package
 from fenapack.utils import allow_only_one_call
-
-__all__ = ['PCDKSP', 'PCDKrylovSolver']
 
 
 def _create_pcd_ksp(comm, is0, is1, ksp=None):
@@ -46,7 +44,17 @@ def _create_pcd_ksp(comm, is0, is1, ksp=None):
 
 
 class PCDKSP(PETSc.KSP):
+    """GMRES with right fieldsplit preconditioning using upper
+    Schur factorization and PCD Schur complement approximation"""
+
+    # NOTE: We are not able to overload PETSc.KSP methods in this
+    # class. That would only be possible with KSPPYTHON type but
+    # we do not need it.
+
     def __init__(self, function_space):
+        """Initialize PCDKSP for given mixed DOLFIN function
+        space"""
+
         super(PCDKSP, self).__init__()
 
         comm = function_space.mesh().mpi_comm()
@@ -58,28 +66,17 @@ class PCDKSP(PETSc.KSP):
         _create_pcd_ksp(comm, is0, is1, ksp=self)
 
 
-    # FIXME: We currently do not have a mechanism to make PETSc call this unless
-    # using KSPPYTHON which we don't want to use (for performance reasons?)
-    #def setUp(self):
-    #    super(PCDKSP, self).setUp()
-
-
     @allow_only_one_call
     def init_pcd(self, pcd_problem, pcd_pc_class=None):
-        """Initialize from PCDProblem instance. Needs to be
-        called after ``setOperators`` and ``setUp``."""
-        # Get backend implementation of PCDProblem
-        # FIXME: Make me parameter
-        deep_submats = False
-        #deep_submats = True
-        _PCDProblem.reclass(pcd_problem, self._is0, self._is1,
-                            deep_submats=deep_submats)
-        del self._is0, self._is1
+        """Initialize from ``PCDProblem`` instance. Needs to be called
+        after ``setOperators`` and ``setUp``. That's why two-phase
+        initialization is needed: first ``__init__``, then ``init_pcd``.
+        """
 
         # Setup fieldsplit preconditioner
         # NOTE: Hacky PCSetUp_FieldSplit calls setFromOptions on subKSPs
         pc_prefix = self.pc.getOptionsPrefix() or ""
-        with dolfin.Timer("FENaPack: PCDKSP PC {} setup".format(pc_prefix)):
+        with Timer("FENaPack: PCDKSP PC {} setup".format(pc_prefix)):
             self.pc.setUp()
 
         # Extract fieldsplit subKSPs (only once self.pc is set up)
@@ -94,7 +91,7 @@ class PCDKSP(PETSc.KSP):
 
         # Setup 0,0-block pc so that we have accurate timing
         ksp0_pc_prefix = ksp0.pc.getOptionsPrefix()
-        with dolfin.Timer("FENaPack: {} setup".format(ksp0_pc_prefix)):
+        with Timer("FENaPack: {} setup".format(ksp0_pc_prefix)):
             ksp0.pc.setFromOptions()
             ksp0.pc.setUp()
 
@@ -117,26 +114,44 @@ class PCDKSP(PETSc.KSP):
             ksp1.pc.setPythonContext(pcd_pc)
             ksp1.pc.setFromOptions()
 
+        # Get backend implementation of PCDProblem
+        # FIXME: Make me parameter
+        deep_submats = False
+        #deep_submats = True
+        pcd_interface = PCDInterface(pcd_problem, self._is0, self._is1,
+                                     deep_submats=deep_submats)
+        del self._is0, self._is1
+
         # FIXME: Why don't we let user do this? This would simplify things
         # Provide assembling routines to PCD
         try:
-            pcd_pc.init_pcd(pcd_problem)
+            pcd_pc.init_pcd(pcd_interface)
         except Exception:
             print("Initialization of PCD PC from PCDProblem failed!")
             print("Maybe wrong PCD PC class or PCDProblem instance.")
             raise
 
         # Setup PCD PC so that we have accurate timing
-        with dolfin.Timer("FENaPack: {} setup".format(pcd_pc_prefix)):
+        with Timer("FENaPack: {} setup".format(pcd_pc_prefix)):
             ksp1.pc.setUp()
 
 
 
-class PCDKrylovSolver(dolfin.PETScKrylovSolver):
+class PCDKrylovSolver(PETScKrylovSolver):
+    """GMRES with right fieldsplit preconditioning using upper
+    Schur factorization and PCD Schur complement approximation"""
+
     def __init__(self, function_space):
+        """Initialize using given mixed function space"""
         self._ksp = PCDKSP(function_space)
         super(PCDKrylovSolver, self).__init__(self._ksp)
+
     def ksp(self):
         return self._ksp
+
     def init_pcd(self, pcd_problem, pcd_pc_class=None):
+        """Initialize from ``PCDProblem`` instance. Needs to be called
+        after ``setOperators`` and ``setUp``. That's why two-phase
+        initialization is needed: first ``__init__``, then ``init_pcd``.
+        """
         self._ksp.init_pcd(pcd_problem, pcd_pc_class=pcd_pc_class)

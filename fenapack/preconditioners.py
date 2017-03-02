@@ -15,10 +15,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
-import dolfin
+from dolfin import timed
 from petsc4py import PETSc
 
-from fenapack._field_split_utils import SubfieldBC
 from fenapack.utils import get_default_factor_solver_package
 
 
@@ -61,11 +60,11 @@ class BasePCDPC(object):
         return vecs
 
 
-    def init_pcd(self, pcd_problem):
-        """Initialize by PCDProblem instance"""
-        if hasattr(self, "problem"):
+    def init_pcd(self, pcd_interface):
+        """Initialize by PCDInterface instance"""
+        if hasattr(self, "interface"):
             raise RuntimeError("Reinitialization of PCDPC not allowed")
-        self.problem = pcd_problem
+        self.interface = pcd_interface
 
 
     def setUp(self, pc):
@@ -75,15 +74,15 @@ class BasePCDPC(object):
         #       ksp setup is done only once during preconditioner lifetime.
         # FIXME: Maybe move Mp and Ap setup to init and remove logic in backend.
         #        This will make it obvious that this is done once.
-        self.problem.setup_ksp_Mp(self.ksp_Mp)
-        self.problem.setup_ksp_Ap(self.ksp_Ap)
+        self.interface.setup_ksp_Mp(self.ksp_Mp)
+        self.interface.setup_ksp_Ap(self.ksp_Ap)
 
         # Prepare convection matrix
-        self.mat_Kp = self.problem.setup_mat_Kp(mat=getattr(self, "mat_Kp", None))
+        self.mat_Kp = self.interface.setup_mat_Kp(mat=getattr(self, "mat_Kp", None))
         self.mat_Kp.setOptionsPrefix(pc.getOptionsPrefix() + "PCD_Kp_")
 
         # Fetch bcs apply function
-        self.bcs_applier = self.problem.apply_pcd_bcs
+        self.bcs_applier = self.interface.apply_pcd_bcs
 
 
 
@@ -96,7 +95,7 @@ class PCDPC_BRM1(BasePCDPC):
            SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.
     """
 
-    @dolfin.timed("FENaPack: PCDPC_BRM1 apply")
+    @timed("FENaPack: PCDPC_BRM1 apply")
     def apply(self, pc, x, y):
         r"""This method implements the action of the inverse of the approximate
         Schur complement :math:`-\hat{S}^{-1}`, that is
@@ -146,7 +145,7 @@ class PCDPC_BRM2(BasePCDPC):
            Oxford University Press 2005. 2nd edition 2014.
     """
 
-    @dolfin.timed("FENaPack: PCDPC_BRM2 apply")
+    @timed("FENaPack: PCDPC_BRM2 apply")
     def apply(self, pc, x, y):
         # FIXME: Fix the docstring
         """This method implements the action of the inverse of the approximate

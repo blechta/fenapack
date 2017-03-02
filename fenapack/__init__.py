@@ -25,10 +25,10 @@ __license__ = "GNU LGPL v3"
 
 from dolfin import SubSystemsManager
 
-from fenapack.field_split import *
-from fenapack.preconditioners import *
-from fenapack.nonlinear_solvers import *
-from fenapack.stabilization import *
+from fenapack.field_split import PCDKSP, PCDKrylovSolver
+from fenapack.nonlinear_solvers import PCDNewtonSolver, PCDProblem
+from fenapack.preconditioners import PCDPC_BRM1, PCDPC_BRM2
+from fenapack.stabilization import StabilizationParameterSD
 
 # Do not use petsc4py python error handler (hides error messages
 # to PETSc C calls), workaround to DOLFIN issue #801
