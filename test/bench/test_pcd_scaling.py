@@ -4,6 +4,8 @@ from dolfin import *
 from matplotlib import pyplot, gridspec
 import pytest
 
+import os
+
 from fenapack import PCDKrylovSolver
 from fenapack import PCDNewtonSolver
 from fenapack import PCDProblem
@@ -15,9 +17,16 @@ parameters["form_compiler"]["optimize"] = True
 parameters["plotting_backend"] = "matplotlib"
 
 
+@pytest.fixture
+def data_dir():
+    path = os.path.join(os.getcwd(), os.path.dirname(__file__),
+                        os.pardir, os.pardir, "data")
+    return os.path.realpath(path)
+
+
 def create_function_space(refinement_level):
     # Load mesh from file and refine uniformly
-    mesh = Mesh("../../data/step_domain.xml.gz")
+    mesh = Mesh(os.path.join(data_dir(), "step_domain.xml.gz"))
     for i in range(refinement_level):
         mesh = refine(mesh)
 

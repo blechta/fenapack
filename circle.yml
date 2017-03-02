@@ -32,3 +32,5 @@ test:
 
         exit \$rc
         "
+  post:
+    - mv *.pdf $CIRCLE_ARTIFACTS
