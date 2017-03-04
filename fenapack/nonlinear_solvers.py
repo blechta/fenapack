@@ -57,6 +57,10 @@ class PCDNewtonSolver(NewtonSolver):
         linear_solver.init_pcd(nonlinear_problem)
 
 
+    def linear_solver(self):
+        return self._solver
+
+
 
 # FIXME: Separate Newton and PCD part of this class. Linear PCD problem
 # has nothing to do with Newton part
@@ -132,6 +136,10 @@ class PCDProblem(NonlinearProblem):
         if form is None:
             raise AttributeError("Form '%s' requested by PCD not available" % key)
         return form
+
+
+    def function_space(self):
+        return self.forms["F"].arguments()[0].function_space()
 
 
     def F(self, b, x):
