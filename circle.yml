@@ -23,7 +23,7 @@ test:
         mpirun -n 2 py.test test/unit -sv;
         ((rc+=\$?));
 
-        py.test test/bench -v;
+        py.test test/bench -sv;
         ((rc+=\$?));
 
         cd test/regression;
