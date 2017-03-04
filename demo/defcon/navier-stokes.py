@@ -188,7 +188,7 @@ class NavierStokesProblem(BifurcationProblem):
     def solver(self, problem, solver_params, prefix="", **kwargs):
         # Create linear solver
         Z = problem.u.function_space()
-        ksp = PCDKSP(Z)
+        ksp = PCDKSP(comm=Z.mesh().mpi_comm())
 
         # Create nonlinear solver
         solver = SNUFLSolver(problem, prefix=prefix,

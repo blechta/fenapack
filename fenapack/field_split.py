@@ -27,22 +27,6 @@ from fenapack.utils import get_default_factor_solver_package
 from fenapack.utils import allow_only_one_call
 
 
-def _create_pcd_ksp(comm, is0, is1, ksp=None):
-    if ksp is None:
-        ksp = PETSc.KSP()
-
-    ksp.create(comm)
-    ksp.setType(PETSc.KSP.Type.GMRES)
-    ksp.setPCSide(PETSc.PC.Side.RIGHT)
-    ksp.pc.setType(PETSc.PC.Type.FIELDSPLIT)
-    ksp.pc.setFieldSplitType(PETSc.PC.CompositeType.SCHUR)
-    ksp.pc.setFieldSplitSchurFactType(PETSc.PC.SchurFactType.UPPER)
-    ksp.pc.setFieldSplitSchurPreType(PETSc.PC.SchurPreType.USER)
-    ksp.pc.setFieldSplitIS(["u", is0], ["p", is1])
-
-    return ksp
-
-
 class PCDKSP(PETSc.KSP):
     """GMRES with right fieldsplit preconditioning using upper
     Schur factorization and PCD Schur complement approximation"""
@@ -51,30 +35,46 @@ class PCDKSP(PETSc.KSP):
     # class. That would only be possible with KSPPYTHON type but
     # we do not need it.
 
-    def __init__(self, function_space):
-        """Initialize PCDKSP for given mixed DOLFIN function
-        space"""
+    def __init__(self, comm=None):
+        """Initialize PCDKSP on given MPI comm"""
 
         super(PCDKSP, self).__init__()
 
-        comm = function_space.mesh().mpi_comm()
-        is0 = dofmap_dofs_is(function_space.sub(0).dofmap())
-        is1 = dofmap_dofs_is(function_space.sub(1).dofmap())
-
-        self._is0, self._is1 = is0, is1
-
-        _create_pcd_ksp(comm, is0, is1, ksp=self)
+        self.create(comm)
+        self.setType(PETSc.KSP.Type.GMRES)
+        self.setPCSide(PETSc.PC.Side.RIGHT)
+        self.pc.setType(PETSc.PC.Type.FIELDSPLIT)
+        self.pc.setFieldSplitType(PETSc.PC.CompositeType.SCHUR)
+        self.pc.setFieldSplitSchurFactType(PETSc.PC.SchurFactType.UPPER)
+        self.pc.setFieldSplitSchurPreType(PETSc.PC.SchurPreType.USER)
 
 
     @allow_only_one_call
     def init_pcd(self, pcd_problem, pcd_pc_class=None):
         """Initialize from ``PCDProblem`` instance. Needs to be called
         after ``setOperators`` and ``setUp``. That's why two-phase
-        initialization is needed: first ``__init__``, then ``init_pcd``.
+        initialization is needed: first ``__init__``, then ``init_pcd``
+
+        Note that this function automatically calls setFromOptions to
+        all subKSP objects.
         """
 
+        # Get subfield index sets
+        V = pcd_problem.function_space()
+        is0 = dofmap_dofs_is(V.sub(0).dofmap())
+        is1 = dofmap_dofs_is(V.sub(1).dofmap())
+
+        assert self.comm == V.mesh().mpi_comm(), "Non-matching MPI comm"
+
+        # Set subfields index sets
+        # NOTE: Doing only so late here so that user has a chance to
+        # set options prefix, see PETSc issue #160
+        self.pc.setFieldSplitIS(["u", is0], ["p", is1])
+
+        # From now on forbid setting options prefix (at least from Python)
+        self.setOptionsPrefix = self._forbid_setOptionsPrefix
+
         # Setup fieldsplit preconditioner
-        # NOTE: Hacky PCSetUp_FieldSplit calls setFromOptions on subKSPs
         pc_prefix = self.pc.getOptionsPrefix() or ""
         with Timer("FENaPack: PCDKSP PC {} setup".format(pc_prefix)):
             self.pc.setUp()
@@ -90,39 +90,36 @@ class PCDKSP(PETSc.KSP):
         ksp1.pc.setType(PETSc.PC.Type.PYTHON)
 
         # Setup 0,0-block pc so that we have accurate timing
-        ksp0_pc_prefix = ksp0.pc.getOptionsPrefix()
-        with Timer("FENaPack: {} setup".format(ksp0_pc_prefix)):
-            ksp0.pc.setFromOptions()
+        ksp0_prefix = ksp0.getOptionsPrefix()
+        with Timer("FENaPack: {} setup".format(ksp0_prefix)):
+            ksp0.setFromOptions()  # Override defaults above by user's options
             ksp0.pc.setUp()
 
-        # FIXME: Why don't we let user do this? This would simplify things
         # Initialize PCD PC context
         pcd_pc_prefix = ksp1.pc.getOptionsPrefix()
         pcd_pc_opt = PETSc.Options(pcd_pc_prefix).getString("pc_python_type","")
         # Use PCDPC class given by option
         if pcd_pc_opt != "":
-            ksp1.pc.setFromOptions()
+            ksp1.setFromOptions()  # Override defaults above by user's options
             pcd_pc = ksp1.pc.getPythonContext()
         # Use PCDPC class specified as argument
         elif pcd_pc_class is not None:
             pcd_pc = pcd_pc_class()
             ksp1.pc.setPythonContext(pcd_pc)
-            ksp1.pc.setFromOptions()
+            ksp1.setFromOptions()  # Override defaults above by user's options
         # Use default PCDPC class
         else:
             pcd_pc = PCDPC_BRM1()
             ksp1.pc.setPythonContext(pcd_pc)
-            ksp1.pc.setFromOptions()
+            ksp1.setFromOptions()  # Override defaults above by user's options
 
         # Get backend implementation of PCDProblem
         # FIXME: Make me parameter
         deep_submats = False
         #deep_submats = True
-        pcd_interface = PCDInterface(pcd_problem, self._is0, self._is1,
+        pcd_interface = PCDInterface(pcd_problem, is0, is1,
                                      deep_submats=deep_submats)
-        del self._is0, self._is1
 
-        # FIXME: Why don't we let user do this? This would simplify things
         # Provide assembling routines to PCD
         try:
             pcd_pc.init_pcd(pcd_interface)
@@ -136,22 +133,36 @@ class PCDKSP(PETSc.KSP):
             ksp1.pc.setUp()
 
 
+    def _forbid_setOptionsPrefix(self, prefix):
+        raise RuntimeError("Options prefix cannot be set now. "
+                           "Set it before init_pcd.")
+
+
 
 class PCDKrylovSolver(PETScKrylovSolver):
     """GMRES with right fieldsplit preconditioning using upper
     Schur factorization and PCD Schur complement approximation"""
 
-    def __init__(self, function_space):
-        """Initialize using given mixed function space"""
-        self._ksp = PCDKSP(function_space)
+    def __init__(self, comm=None):
+        """Initialize Krylov solver on given MPI comm"""
+        self._ksp = PCDKSP(comm=comm)
         super(PCDKrylovSolver, self).__init__(self._ksp)
 
-    def ksp(self):
-        return self._ksp
 
     def init_pcd(self, pcd_problem, pcd_pc_class=None):
         """Initialize from ``PCDProblem`` instance. Needs to be called
         after ``setOperators`` and ``setUp``. That's why two-phase
-        initialization is needed: first ``__init__``, then ``init_pcd``.
+        initialization is needed: first ``__init__``, then ``init_pcd``
+
+        Note that this function automatically calls setFromOptions to
+        all subKSP objects.
         """
         self._ksp.init_pcd(pcd_problem, pcd_pc_class=pcd_pc_class)
+
+
+    def ksp(self):
+        return self._ksp
+
+
+    def set_options_prefix(self, prefix):
+        self._ksp.setOptionsPrefix(prefix)

@@ -5,6 +5,7 @@ from matplotlib import pyplot, gridspec
 import pytest
 
 import os
+import uuid
 
 from fenapack import PCDKrylovSolver
 from fenapack import PCDNewtonSolver
@@ -22,6 +23,10 @@ def data_dir():
     path = os.path.join(os.getcwd(), os.path.dirname(__file__),
                         os.pardir, os.pardir, "data")
     return os.path.realpath(path)
+
+
+def get_random_string():
+    return uuid.uuid4().hex
 
 
 def create_function_space(refinement_level):
@@ -142,35 +147,37 @@ def create_pcd_problem(F, bcs, J, J_pc, w, nu, boundary_markers, pcd_variant):
     return problem
 
 
-def create_solver(W, pcd_variant, ls, mumps_debug=False):
+def create_solver(comm, pcd_variant, ls, mumps_debug=False):
+    prefix = "s" + get_random_string() + "_"
 
     # Set up linear solver (GMRES with right preconditioning using Schur fact)
-    linear_solver = PCDKrylovSolver(W)
+    linear_solver = PCDKrylovSolver(comm=comm)
+    linear_solver.set_options_prefix(prefix)
     linear_solver.parameters["relative_tolerance"] = 1e-6
     #PETScOptions.set("ksp_monitor")
-    PETScOptions.set("ksp_gmres_restart", 150)
+    PETScOptions.set(prefix+"ksp_gmres_restart", 150)
 
     # Set up subsolvers
-    PETScOptions.set("fieldsplit_p_pc_python_type", "fenapack.PCDPC_" + pcd_variant)
+    PETScOptions.set(prefix+"fieldsplit_p_pc_python_type", "fenapack.PCDPC_" + pcd_variant)
     if ls == "iterative":
-        PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
-        PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
-        PETScOptions.set("fieldsplit_u_pc_type", "hypre")
-        PETScOptions.set("fieldsplit_u_pc_hypre_type", "boomeramg")
-        PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_type", "richardson")
-        PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_max_it", 2)
-        PETScOptions.set("fieldsplit_p_PCD_Ap_pc_type", "hypre")
-        PETScOptions.set("fieldsplit_p_PCD_Ap_pc_hypre_type", "boomeramg")
-        PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_type", "chebyshev")
-        PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_max_it", 5)
-        PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues", "0.5, 2.0")
-        PETScOptions.set("fieldsplit_p_PCD_Mp_pc_type", "jacobi")
+        PETScOptions.set(prefix+"fieldsplit_u_ksp_type", "richardson")
+        PETScOptions.set(prefix+"fieldsplit_u_ksp_max_it", 1)
+        PETScOptions.set(prefix+"fieldsplit_u_pc_type", "hypre")
+        PETScOptions.set(prefix+"fieldsplit_u_pc_hypre_type", "boomeramg")
+        PETScOptions.set(prefix+"fieldsplit_p_PCD_Ap_ksp_type", "richardson")
+        PETScOptions.set(prefix+"fieldsplit_p_PCD_Ap_ksp_max_it", 2)
+        PETScOptions.set(prefix+"fieldsplit_p_PCD_Ap_pc_type", "hypre")
+        PETScOptions.set(prefix+"fieldsplit_p_PCD_Ap_pc_hypre_type", "boomeramg")
+        PETScOptions.set(prefix+"fieldsplit_p_PCD_Mp_ksp_type", "chebyshev")
+        PETScOptions.set(prefix+"fieldsplit_p_PCD_Mp_ksp_max_it", 5)
+        PETScOptions.set(prefix+"fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues", "0.5, 2.0")
+        PETScOptions.set(prefix+"fieldsplit_p_PCD_Mp_pc_type", "jacobi")
     elif ls == "direct":
         # Debugging MUMPS
         if mumps_debug:
-            PETScOptions.set("fieldsplit_u_mat_mumps_icntl_4", 2)
-            PETScOptions.set("fieldsplit_p_PCD_Ap_mat_mumps_icntl_4", 2)
-            PETScOptions.set("fieldsplit_p_PCD_Mp_mat_mumps_icntl_4", 2)
+            PETScOptions.set(prefix+"fieldsplit_u_mat_mumps_icntl_4", 2)
+            PETScOptions.set(prefix+"fieldsplit_p_PCD_Ap_mat_mumps_icntl_4", 2)
+            PETScOptions.set(prefix+"fieldsplit_p_PCD_Mp_mat_mumps_icntl_4", 2)
     else:
         assert False
 
@@ -190,7 +197,6 @@ def create_solver(W, pcd_variant, ls, mumps_debug=False):
 @pytest.mark.parametrize("pcd_variant", ["BRM1", "BRM2"])
 @pytest.mark.parametrize("ls",          ["direct", "iterative"])
 def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
-    #PETScOptions.set("ksp_monitor")
     set_log_level(WARNING)
 
     name = "nu_{}-alpha_{}-{}-{}-{}".format(nu, alpha, nls, pcd_variant, ls)
@@ -198,7 +204,8 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
 
     # Iterate over refinement level
     #for level in range(7):
-    for level in range(6):
+    #for level in range(6):
+    for level in range(2):
 
         # Prepare problem and solvers
         with Timer("Prepare") as t_prepare:
@@ -207,7 +214,12 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
             F, bcs, J, J_pc = create_forms(w, boundary_markers, nu, alpha, nls, ls)
             pcd_problem = create_pcd_problem(F, bcs, J, J_pc, w, nu,
                                              boundary_markers, pcd_variant)
-            solver = create_solver(W, pcd_variant, ls, mumps_debug=False)
+            solver = create_solver(W.mesh().mpi_comm(), pcd_variant, ls,
+                                   mumps_debug=False)
+            prefix = solver.linear_solver().get_options_prefix()
+
+            #PETScOptions.set(prefix+"ksp_monitor")
+            #solver.linear_solver().set_from_options()
 
         # Solve
         with Timer("Solve") as t_solve:
@@ -219,7 +231,7 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
         ndofs = W.dim()
         ndofs_u = W.sub(0).dim()
         ndofs_p = W.sub(1).dim()
-        print(level, name, ndofs, ndofs_u, ndofs_p, krylov_iterations, t_solve.elapsed()[0])
+        print(level, name, prefix, ndofs, ndofs_u, ndofs_p, krylov_iterations, t_solve.elapsed()[0])
         results[level] = {
             "ndofs": ndofs,
             "ndofs_u": ndofs_u,

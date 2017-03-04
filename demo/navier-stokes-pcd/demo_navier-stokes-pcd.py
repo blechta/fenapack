@@ -50,8 +50,6 @@ parser.add_argument("--ls", type=str, dest="ls", default="iterative",
                     choices=["direct", "iterative"], help="linear solvers")
 parser.add_argument("--dm", action='store_true', dest="mumps_debug",
                     help="debug MUMPS")
-parser.add_argument("--twice", action='store_true', dest="run_twice",
-                    help="run the solve twice (for testing)")
 args = parser.parse_args(sys.argv[1:])
 
 # Load mesh from file and refine uniformly
@@ -147,7 +145,7 @@ if args.pcd_variant == "BRM2":
 problem = PCDProblem(F, [bc0, bc1], J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
 
 # Set up linear solver (GMRES with right preconditioning using Schur fact)
-linear_solver = PCDKrylovSolver(W)
+linear_solver = PCDKrylovSolver(comm=mesh.mpi_comm())
 linear_solver.parameters["relative_tolerance"] = 1e-6
 PETScOptions.set("ksp_monitor")
 PETScOptions.set("ksp_gmres_restart", 150)
@@ -166,6 +164,7 @@ if args.ls == "iterative":
     PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_type", "chebyshev")
     PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_max_it", 5)
     PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues", "0.5, 2.0")
+    #PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_esteig", "1,0,0,1")  # FIXME: What does it do?
     PETScOptions.set("fieldsplit_p_PCD_Mp_pc_type", "jacobi")
 elif args.ls == "direct" and args.mumps_debug:
     # Debugging MUMPS
@@ -182,8 +181,6 @@ solver.parameters["relative_tolerance"] = 1e-5
 
 # Solve problem
 solver.solve(problem, w.vector())
-if args.run_twice:
-    solver.solve(problem, w.vector())
 
 # Report timings
 list_timings(TimingClear_clear, [TimingType_wall, TimingType_user])
