@@ -205,9 +205,7 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
 
     # Iterate over refinement level
     #for level in range(7):
-    for level in range(5):
-        gc.collect()
-        PETScOptions.clear()
+    for level in range(6):
 
         # Prepare problem and solvers
         with Timer("Prepare") as t_prepare:
@@ -255,6 +253,10 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
     ax2.legend(bbox_to_anchor=(0, -0.05), loc=2, borderaxespad=0,
                fontsize='x-small', ncol=2)
     fig.savefig("scaling_mesh.pdf")
+
+    # Cleanup
+    PETScOptions.clear()
+    gc.collect()
 
 
 @pytest.fixture(scope='module')
