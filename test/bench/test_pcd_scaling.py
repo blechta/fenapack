@@ -207,6 +207,7 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
     #for level in range(7):
     for level in range(5):
         gc.collect()
+        PETScOptions.clear()
 
         # Prepare problem and solvers
         with Timer("Prepare") as t_prepare:
