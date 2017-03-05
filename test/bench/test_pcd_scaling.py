@@ -204,7 +204,7 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
 
     # Iterate over refinement level
     #for level in range(7):
-    for level in range(6):
+    for level in range(5):
 
         # Prepare problem and solvers
         with Timer("Prepare") as t_prepare:
