@@ -20,10 +20,6 @@ import os
 __all__ = ['dofmap_dofs_is', 'SubfieldBC']
 
 
-dofmap_dofs_is_doc = """
-Converts DofMap::dofs() to IS
-"""
-
 dofmap_dofs_is_cpp_code = """
 #ifdef SWIG
 %include "petsc4py/petsc4py.i"
@@ -53,16 +49,19 @@ namespace dolfin {
 }
 """
 
-# Load compiled function dofmap_dofs_is
-module = compile_extension_module(dofmap_dofs_is_cpp_code, cppargs='-g -O2')
-dofmap_dofs_is = module.dofmap_dofs_is
-dofmap_dofs_is.__doc__ += dofmap_dofs_is_doc
-del dofmap_dofs_is_cpp_code, dofmap_dofs_is_doc, module
+# Load and wrap compiled function dofmap_dofs_is
+module_dofs = compile_extension_module(dofmap_dofs_is_cpp_code, cppargs='-g -O2')
+def dofmap_dofs_is(dofmap):
+    """Converts DofMap::dofs() to IS"""
+    iset = module_dofs.dofmap_dofs_is(dofmap)
+    iset.decRef()
+    assert iset.getRefCount() == 1
+    return iset
+dofmap_dofs_is.__doc__ += module_dofs.dofmap_dofs_is.__doc__
 
 
 # Load compiled class SubfieldBC
 path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 code = open(os.path.join(path, "SubfieldBC.h")).read()
-module = compile_extension_module(code, cppargs='-g -O2')
-SubfieldBC = module.SubfieldBC
-del path, code, module
+module_bc = compile_extension_module(code, cppargs='-g -O2')
+SubfieldBC = module_bc.SubfieldBC
