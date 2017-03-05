@@ -6,6 +6,7 @@ import pytest
 
 import os
 import uuid
+import gc
 
 from fenapack import PCDKrylovSolver
 from fenapack import PCDNewtonSolver
@@ -205,6 +206,7 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
     # Iterate over refinement level
     #for level in range(7):
     for level in range(5):
+    gc.collect()
 
         # Prepare problem and solvers
         with Timer("Prepare") as t_prepare:
