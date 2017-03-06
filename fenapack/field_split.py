@@ -115,8 +115,8 @@ class PCDKSP(PETSc.KSP):
 
         # Get backend implementation of PCDProblem
         # FIXME: Make me parameter
-        deep_submats = False
-        #deep_submats = True
+        #deep_submats = False
+        deep_submats = True
         pcd_interface = PCDInterface(pcd_problem, is0, is1,
                                      deep_submats=deep_submats)
 
