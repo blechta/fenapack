@@ -7,6 +7,7 @@ import pytest
 import os
 import uuid
 import gc
+import itertools
 
 from fenapack import PCDKrylovSolver
 from fenapack import PCDNewtonSolver
@@ -155,7 +156,6 @@ def create_solver(comm, pcd_variant, ls, mumps_debug=False):
     linear_solver = PCDKrylovSolver(comm=comm)
     linear_solver.set_options_prefix(prefix)
     linear_solver.parameters["relative_tolerance"] = 1e-6
-    #PETScOptions.set("ksp_monitor")
     PETScOptions.set(prefix+"ksp_gmres_restart", 150)
 
     # Set up subsolvers
@@ -197,11 +197,8 @@ def create_solver(comm, pcd_variant, ls, mumps_debug=False):
 @pytest.mark.parametrize("nls",         ["picard", "newton"])
 @pytest.mark.parametrize("pcd_variant", ["BRM1", "BRM2"])
 @pytest.mark.parametrize("ls",          ["direct", "iterative"])
-def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
+def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, postprocessor):
     set_log_level(WARNING)
-
-    name = "nu_{}-alpha_{}-{}-{}-{}".format(nu, alpha, nls, pcd_variant, ls)
-    results = {}
 
     # Iterate over refinement level
     #for level in range(7):
@@ -227,32 +224,33 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
         assert converged
         krylov_iterations = solver.krylov_iterations()
 
-        # Postprocess data
+        # Prepare results
         ndofs = W.dim()
         ndofs_u = W.sub(0).dim()
         ndofs_p = W.sub(1).dim()
+        name = "nu_{}-alpha_{}-{}-{}-{}".format(nu, alpha, nls, pcd_variant, ls)
         print(level, name, prefix, ndofs, ndofs_u, ndofs_p, krylov_iterations, t_solve.elapsed()[0])
-        results[level] = {
+        result = {
+            "nu": nu,
+            "alpha": alpha,
+            "nls": nls,
+            "pcd_variant": pcd_variant,
+            "ls": ls,
+            #"level": level,
             "ndofs": ndofs,
-            "ndofs_u": ndofs_u,
-            "ndofs_p": ndofs_p,
-            "t_prepare": t_prepare.elapsed()[0],
+            #"ndofs_u": ndofs_u,
+            #"ndofs_p": ndofs_p,
+            #"t_prepare": t_prepare.elapsed()[0],
             "t_solve": t_solve.elapsed()[0],
-            "newton_iterations": newton_iterations,
+            #"newton_iterations": newton_iterations,
             "krylov_iterations": krylov_iterations,
         }
 
-    # Plot the case to common figure
-    ndofs, num_iterations, t_solve = zip(*(
-        (r["ndofs"], r["krylov_iterations"], r["t_solve"])
-        for r in results.values()
-    ))
-    fig, (ax1, ax2) = figure
-    ax1.plot(ndofs, num_iterations, '+--', label=name)
-    ax2.plot(ndofs, t_solve, '+--', label=name)
-    ax2.legend(bbox_to_anchor=(0, -0.05), loc=2, borderaxespad=0,
-               fontsize='x-small', ncol=2)
-    fig.savefig("scaling_mesh.pdf")
+        # Send to postprocessor
+        postprocessor.add_result(result)
+
+    # Flush plots as we now have data for all ndofs values
+    postprocessor.flush_plots()
 
     # Cleanup
     PETScOptions.clear()
@@ -260,20 +258,91 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, figure):
 
 
 @pytest.fixture(scope='module')
-def figure():
-    fig = pyplot.figure()
-    gs = gridspec.GridSpec(2, 1, height_ratios=[2, 2, 1], hspace=0.05)
-    ax2 = fig.add_subplot(gs[1])
-    ax1 = fig.add_subplot(gs[0], sharex=ax2)
-    ax1.xaxis.set_label_position('top')
-    ax1.xaxis.set_tick_params(labeltop='on', labelbottom='off')
-    pyplot.setp(ax2.get_xticklabels(), visible=False)
-    ax1.set_xscale('log')
-    ax2.set_xscale('log')
-    ax2.set_yscale('log')
-    ax1.set_xlabel('Number dofs')
-    ax1.set_ylabel('Number GMRES iterations')
-    ax2.set_ylabel('CPU time')
-    ax1.set_ylim(0, None, auto=True)
-    ax2.set_ylim(0, None, auto=True)
-    return fig, (ax1, ax2)
+def postprocessor():
+    proc = Postprocessor()
+    proc.add_plot((("nu", 0.02), ))
+    proc.add_plot((("nu", 0.02), ("ls", "direct")))
+    proc.add_plot((("nu", 0.02), ("ls", "iterative")))
+    return proc
+
+
+class Postprocessor(object):
+    def __init__(self):
+        self.plots = {}
+        self.results = []
+
+        # So far hardcoded values
+        self.x_var = "ndofs"
+        self.y_var0 = "krylov_iterations"
+        self.y_var1 = "t_solve"
+
+    def add_plot(self, fixed_variables=None):
+        fixed_variables = fixed_variables or ()
+        assert isinstance(fixed_variables, tuple)
+        assert all(len(var)==2 and isinstance(var[0], str)
+                   for var in fixed_variables)
+        self.plots[fixed_variables] = self._create_figure()
+
+    def add_result(self, result):
+        self.results.append(result)
+
+    def flush_plots(self):
+        coord_vars = (self.x_var, self.y_var0, self.y_var1)
+
+        for fixed_vars, fig in self.plots.iteritems():
+            data = {}
+            for result in self.results:
+                if not all(result[name] == value for name, value in fixed_vars):
+                    continue
+                free_vars = tuple((var, val) for var, val in result.iteritems()
+                                  if var not in coord_vars
+                                  and var not in zip(*fixed_vars)[0])
+                datapoints = data.setdefault(free_vars, {})
+                xs = datapoints.setdefault("xs", [])
+                ys0 = datapoints.setdefault("ys0", [])
+                ys1 = datapoints.setdefault("ys1", [])
+                xs.append(result[self.x_var])
+                ys0.append(result[self.y_var0])
+                ys1.append(result[self.y_var1])
+            for free_vars, datapoints in data.iteritems():
+                xs = datapoints["xs"]
+                ys0 = datapoints["ys0"]
+                ys1 = datapoints["ys1"]
+                self._plot(fig, xs, ys0, ys1, free_vars)
+            self._save_plot(fig, fixed_vars)
+
+        self.results = []
+
+    @staticmethod
+    def _plot(fig, xs, ys0, ys1, free_vars):
+        fig, (ax1, ax2) = fig
+        label = "_".join(map(str, itertools.chain(*free_vars)))
+        ax1.plot(xs, ys0, '+--', label=label)
+        ax2.plot(xs, ys1, '+--', label=label)
+        ax2.legend(bbox_to_anchor=(0, -0.05), loc=2, borderaxespad=0,
+                   fontsize='x-small', ncol=2)
+
+    @staticmethod
+    def _save_plot(fig, fixed_vars):
+        fig, (ax1, ax2) = fig
+        filename = "_".join(map(str, itertools.chain(*fixed_vars)))
+        fig.savefig("fig_" + filename + ".pdf")
+
+    @staticmethod
+    def _create_figure():
+        fig = pyplot.figure()
+        gs = gridspec.GridSpec(2, 1, height_ratios=[2, 2, 1], hspace=0.05)
+        ax2 = fig.add_subplot(gs[1])
+        ax1 = fig.add_subplot(gs[0], sharex=ax2)
+        ax1.xaxis.set_label_position('top')
+        ax1.xaxis.set_tick_params(labeltop='on', labelbottom='off')
+        pyplot.setp(ax2.get_xticklabels(), visible=False)
+        ax1.set_xscale('log')
+        ax2.set_xscale('log')
+        ax2.set_yscale('log')
+        ax1.set_xlabel('Number dofs')
+        ax1.set_ylabel('Number GMRES iterations')
+        ax2.set_ylabel('CPU time')
+        ax1.set_ylim(0, None, auto=True)
+        ax2.set_ylim(0, None, auto=True)
+        return fig, (ax1, ax2)
