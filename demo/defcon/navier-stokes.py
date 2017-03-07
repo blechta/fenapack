@@ -203,8 +203,11 @@ class NavierStokesProblem(BifurcationProblem):
         solver.snes.setFromOptions()
 
         # Initilize PCD (only possible with assembled operators)
-        _ = as_backend_type(Function(Z).vector()).vec()  # FIXME: Remove this hack!
-        solver.jacobian(solver.snes, _, *solver.snes.ksp.getOperators())
+        # NOTE: It is important that we call jacobian() with x, not a dummy
+        #       vector, so that x is updated correctly for continuation
+        x = as_backend_type(problem.u.vector()).vec()
+        # FIXME: Make sure this works when J_pc is not used
+        solver.jacobian(solver.snes, x, *solver.snes.ksp.getOperators())
         ksp.init_pcd(self._pcd_problem)
 
         return solver
