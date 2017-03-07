@@ -1,26 +1,34 @@
 # -*- coding: utf-8 -*-
 from defcon import *
 from dolfin import *
-from petsc4py import PETSc
 from matplotlib import pyplot
 
 from fenapack import PCDKSP
 from fenapack import PCDProblem
 from fenapack import StabilizationParameterSD
 
-
-# Parameters
-inner_solvers = "direct"
-#inner_solvers = "iterative"
-#pcd_variant = "BRM1"
-pcd_variant = "BRM2"
-#linearization = "picard"
-linearization = "newton"
+import sys
+import argparse
 
 
 class NavierStokesProblem(BifurcationProblem):
+    def __init__(self):
+        # FIXME: Hack for defcon gui
+        argv = [] if __name__ == "prob" else sys.argv[1:]
+
+        # Parse input arguments
+        parser = argparse.ArgumentParser(description=__doc__, formatter_class=
+                                         argparse.ArgumentDefaultsHelpFormatter)
+        parser.add_argument("--pcd", type=str, dest="pcd", default="BRM2",
+                            choices=["none", "BRM1", "BRM2"], help="PCD variant")
+        parser.add_argument("--nls", type=str, dest="nls", default="newton",
+                            choices=["picard", "newton"], help="nonlinear solver")
+        parser.add_argument("--ls", type=str, dest="pcdls", default="direct",
+                            choices=["direct", "iterative"], help="PCD linear solvers")
+        self.args = parser.parse_args(argv)
+
     def mesh(self, comm):
-        mesh = Mesh(comm, "../../data/sudden_expansion.xml.gz")
+        mesh = Mesh(comm, "mesh/mesh.xml.gz")
         return mesh
 
     def function_space(self, mesh):
@@ -57,23 +65,23 @@ class NavierStokesProblem(BifurcationProblem):
         colours = self._colours
 
         # Artificial BC for PCD preconditioner
-        if pcd_variant == "BRM1":
+        if self.args.pcd == "BRM1":
             bc_pcd = DirichletBC(z.function_space().sub(1), 0.0, colours, 1)
-        elif pcd_variant == "BRM2":
+        elif self.args.pcd == "BRM2":
             bc_pcd = DirichletBC(z.function_space().sub(1), 0.0, colours, 2)
 
         # Jacobian
-        if linearization == "picard":
+        if self.args.nls == "picard":
             J = (
                   1.0/Re * inner(grad(u_), grad(v))*dx
                 + inner(grad(u_)*u, v)*dx
                 - p_*div(v)*dx
                 - q*div(u_)*dx
             )
-        elif linearization == "newton":
+        elif self.args.nls == "newton":
             J = derivative(F, z)
 
-        if inner_solvers == "iterative":
+        if self.args.pcdls == "iterative":
             # Add stabilization for AMG 00-block
             iRe = Expression("1./Re", Re=Re, degree=0, mpi_comm=mesh.mpi_comm())
             delta = StabilizationParameterSD(z.sub(0), iRe)
@@ -85,7 +93,7 @@ class NavierStokesProblem(BifurcationProblem):
         mp = Re*p_*q*dx
         kp = Re*dot(grad(p_), u)*q*dx
         ap = inner(grad(p_), grad(q))*dx
-        if pcd_variant == "BRM2":
+        if self.args.pcd == "BRM2":
             n = FacetNormal(mesh)
             ds = Measure("ds", subdomain_data=colours)
             kp -= Re*dot(u, n)*p_*q*ds(1)
@@ -119,7 +127,7 @@ class NavierStokesProblem(BifurcationProblem):
 
         bcs = [bc_inflow, bc_wall]
 
-        # Store markers for lates use
+        # Store markers for later use
         self._colours = colours
 
         return bcs
@@ -151,34 +159,49 @@ class NavierStokesProblem(BifurcationProblem):
 
     def solver_parameters(self, params, klass):
         opts = {
-            "snes_max_it": 50,
-            "snes_atol": 1.0e-9,
-            "snes_rtol": 0.0,
             "snes_monitor": None,
             "snes_converged_reason": None,
-            "ksp_converged_reason": None,
-            "ksp_monitor": None,
-            "ksp_gmres_restart": 64,
-            "ksp_rtol": 1.0e-5,
-            "ksp_atol": 0.0,
-            "fieldsplit_p_pc_python_type": "fenapack.PCDPC_" + pcd_variant,
+            "snes_max_it": 8,
+            "snes_atol": 1.0e-9,
+            "snes_rtol": 0.0,
         }
 
-        if inner_solvers == "iterative":
+        if self.args.pcd == "none":
+            # Completely direct solver, no PCD
             opts.update({
-                "fieldsplit_u_ksp_type": "richardson",
-                "fieldsplit_u_ksp_max_it": 1,
-                "fieldsplit_u_pc_type": "hypre",
-                "fieldsplit_u_pc_hypre_type": "boomeramg",
-                "fieldsplit_p_PCD_Ap_ksp_type": "richardson",
-                "fieldsplit_p_PCD_Ap_ksp_max_it": 2,
-                "fieldsplit_p_PCD_Ap_pc_type": "hypre",
-                "fieldsplit_p_PCD_Ap_pc_hypre_type": "boomeramg",
-                "fieldsplit_p_PCD_Mp_ksp_type": "chebyshev",
-                "fieldsplit_p_PCD_Mp_ksp_max_it": 5,
-                "fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues": "0.5, 2.0",
-                "fieldsplit_p_PCD_Mp_pc_type": "jacobi",
+                "ksp_type": "preonly",
+                "pc_type": "lu",
+                "pc_factor_mat_solver_package": "mumps",
             })
+        else:
+            # GMRES with PCD
+            opts.update({
+                "ksp_monitor": None,
+                "ksp_converged_reason": None,
+                "ksp_max_it": 128,
+                "ksp_rtol": 1.0e-5,
+                "ksp_atol": 0.0,
+                "snes_max_linear_solve_fail": 4,
+                "ksp_gmres_restart": 128,
+                "fieldsplit_p_pc_python_type": "fenapack.PCDPC_"+self.args.pcd,
+            })
+            if self.args.pcdls == "iterative":
+                # Iterative inner PCD solves
+                opts.update({
+                    "fieldsplit_u_ksp_type": "richardson",
+                    "fieldsplit_u_ksp_max_it": 1,
+                    "fieldsplit_u_pc_type": "hypre",
+                    "fieldsplit_u_pc_hypre_type": "boomeramg",
+                    "fieldsplit_p_PCD_Ap_ksp_type": "richardson",
+                    "fieldsplit_p_PCD_Ap_ksp_max_it": 2,
+                    "fieldsplit_p_PCD_Ap_pc_type": "hypre",
+                    "fieldsplit_p_PCD_Ap_pc_hypre_type": "boomeramg",
+                    "fieldsplit_p_PCD_Mp_ksp_type": "chebyshev",
+                    "fieldsplit_p_PCD_Mp_ksp_max_it": 5,
+                    # FIXME: Only valid in 2D (see SEW book)?
+                    "fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues": "0.5, 2.0",
+                    "fieldsplit_p_PCD_Mp_pc_type": "jacobi",
+                })
 
         return opts
 
@@ -186,16 +209,19 @@ class NavierStokesProblem(BifurcationProblem):
         return self._J
 
     def solver(self, problem, solver_params, prefix="", **kwargs):
-        # Create linear solver
-        Z = problem.u.function_space()
-        ksp = PCDKSP(comm=Z.mesh().mpi_comm())
-
         # Create nonlinear solver
         solver = SNUFLSolver(problem, prefix=prefix,
                              solver_parameters=solver_params,
                              **kwargs)
 
-        # Switch ksp (reuse operators)
+        # This is enough for completely direct solve without PCD
+        if self.args.pcd == "none":
+            return solver
+
+        # Create GMRES KSP with PCD
+        ksp = PCDKSP(comm=problem.u.function_space().mesh().mpi_comm())
+
+        # Switch ksp and reuse operators
         oldksp = solver.snes.ksp
         ksp.setOperators(*oldksp.getOperators())
         ksp.setOptionsPrefix(oldksp.getOptionsPrefix())
@@ -214,22 +240,14 @@ class NavierStokesProblem(BifurcationProblem):
 
 
 if __name__ == "__main__":
-    # Debugging options
-    #set_log_level(INFO)
-    set_log_level(PROGRESS)
-    #set_log_level(TRACE)
-    SubSystemsManager.init_petsc()
-    PETSc.Sys.pushErrorHandler("traceback")
-    PETScOptions.set("options_left")
-
     dc = DeflatedContinuation(problem=NavierStokesProblem(), teamsize=1, verbose=True)
-    dc.run(values={"Re": [1.0]})
     #dc.run(values={"Re": linspace(10.0, 100.0, 181)})
+    dc.run(values={"Re": arange(18.0, 20.5, 0.5)})
 
     # FIXME: This is not what we want possibly; an average over WORLD,
     #        thus biased by master thread
     list_timings(TimingClear_keep, [TimingType_wall, TimingType_user])
 
-    #dc.bifurcation_diagram("sqL2")
-    #pyplt.title(r"Bifurcation diagram for sudden expansion in a channel")
-    #pyplt.savefig("bifurcation.pdf")
+    dc.bifurcation_diagram("sqL2")
+    pyplot.title(r"Bifurcation diagram for sudden expansion in a channel")
+    pyplot.savefig("bifurcation.pdf")
