@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+
+# Let PETSc print memory usage at the end
+import petsc4py
+petsc4py.init(("python", "-malloc_info"))
+
 from defcon import *
 from dolfin import *
 from matplotlib import pyplot
