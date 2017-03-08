@@ -179,6 +179,7 @@ class NavierStokesProblem(BifurcationProblem):
             "snes_rtol": 0.0,
         }
 
+
         if self.args.pcd == "none":
             # Completely direct solver, no PCD
             opts.update({
@@ -204,6 +205,7 @@ class NavierStokesProblem(BifurcationProblem):
             if self.args.pcdls == "iterative":
                 # Iterative inner PCD solves
                 opts.update({
+                    "snes_max_it": 16,  # FIXME: Can we improve this?
                     "fieldsplit_u_ksp_type": "richardson",
                     "fieldsplit_u_ksp_max_it": 1,
                     "fieldsplit_u_pc_type": "hypre",
