@@ -60,16 +60,6 @@ class NavierStokesProblem(BifurcationProblem):
         # Trial functions
         u_, p_ = TrialFunctions(z.function_space())
 
-        # Fetch problem BCs and facet markers
-        bcs = self.boundary_conditions(z.function_space(), self.parameters())
-        colours = self._colours
-
-        # Artificial BC for PCD preconditioner
-        if self.args.pcd == "BRM1":
-            bc_pcd = DirichletBC(z.function_space().sub(1), 0.0, colours, 1)
-        elif self.args.pcd == "BRM2":
-            bc_pcd = DirichletBC(z.function_space().sub(1), 0.0, colours, 2)
-
         # Jacobian
         if self.args.nls == "picard":
             J = (
@@ -81,13 +71,25 @@ class NavierStokesProblem(BifurcationProblem):
         elif self.args.nls == "newton":
             J = derivative(F, z)
 
+        # Store for later use
+        self._J = J
+
+        # If not using PCD we are done
+        if self.args.pcd == "none":
+            return F
+
         if self.args.pcdls == "iterative":
             # Add stabilization for AMG 00-block
             iRe = Expression("1./Re", Re=Re, degree=0, mpi_comm=mesh.mpi_comm())
             delta = StabilizationParameterSD(z.sub(0), iRe)
             J_pc = J + delta*inner(grad(u_)*u, grad(v)*u)*dx
+            J_pc = None
         else:
             J_pc = None
+
+        # Fetch problem BCs and facet markers
+        bcs = self.boundary_conditions(z.function_space(), self.parameters())
+        colours = self._colours
 
         # PCD operators
         mp = Re*p_*q*dx
@@ -99,8 +101,13 @@ class NavierStokesProblem(BifurcationProblem):
             kp -= Re*dot(u, n)*p_*q*ds(1)
             #kp -= Re*dot(u, n)*p_*q*ds(0)  # TODO: Is this beneficial?
 
+        # Artificial BC for PCD preconditioner
+        if self.args.pcd == "BRM1":
+            bc_pcd = DirichletBC(z.function_space().sub(1), 0.0, colours, 1)
+        elif self.args.pcd == "BRM2":
+            bc_pcd = DirichletBC(z.function_space().sub(1), 0.0, colours, 2)
+
         # Store what needed for later
-        self._J = J
         self._pcd_problem = PCDProblem(F, bcs, J, J_pc,
                                        ap=ap, kp=kp, mp=mp,
                                        bcs_pcd=bc_pcd)
