@@ -30,6 +30,7 @@ class NavierStokesProblem(BifurcationProblem):
                             choices=["picard", "newton"], help="nonlinear solver")
         parser.add_argument("--ls", type=str, dest="pcdls", default="direct",
                             choices=["direct", "iterative"], help="PCD linear solvers")
+        parser.add_argument("--ksp_monitor", action="store_true")
         self.args = parser.parse_args(argv)
 
     def mesh(self, comm):
@@ -188,7 +189,6 @@ class NavierStokesProblem(BifurcationProblem):
         else:
             # GMRES with PCD
             opts.update({
-                "ksp_monitor": None,
                 "ksp_converged_reason": None,
                 "ksp_max_it": 128,
                 "ksp_rtol": 1.0e-5,
@@ -197,6 +197,10 @@ class NavierStokesProblem(BifurcationProblem):
                 "ksp_gmres_restart": 128,
                 "fieldsplit_p_pc_python_type": "fenapack.PCDPC_"+self.args.pcd,
             })
+
+            if self.args.ksp_monitor:
+                opts.update({"ksp_monitor": None})
+
             if self.args.pcdls == "iterative":
                 # Iterative inner PCD solves
                 opts.update({
