@@ -117,7 +117,10 @@ def main():
     # NOTE: Demo must be listed here iff unimplemented otherwse the test will
     #       fail. This is meant to protect against usual bad named demos not
     #       executed for ages in regression tests.
-    not_implemented = [os.path.join(demodir, "defcon", "navier-stokes.py")]
+    not_implemented = [
+        os.path.join(demodir, "defcon", "navier-stokes.py"),
+        os.path.join(demodir, "defcon", "mesh", "genmesh.py"),
+    ]
 
     # Demos to run
     cppdemos = []
