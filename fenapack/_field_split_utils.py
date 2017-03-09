@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2016 Jan Blechta
+# Copyright (C) 2015-2017 Jan Blechta
 #
 # This file is part of FENaPack.
 #
@@ -13,6 +13,8 @@
 # GNU Lesser General Public License for more details.
 #
 # You should have received a copy of the GNU Lesser General Public License
+
+"""Compiled extensions for fieldsplit modules"""
 
 from dolfin import compile_extension_module
 import os
@@ -52,7 +54,14 @@ namespace dolfin {
 # Load and wrap compiled function dofmap_dofs_is
 module_dofs = compile_extension_module(dofmap_dofs_is_cpp_code, cppargs='-g -O2')
 def dofmap_dofs_is(dofmap):
-    """Converts DofMap::dofs() to IS"""
+    """Converts DofMap::dofs() to IS.
+
+    This function is intended to circumvent NumPy which would be
+    involved in code like::
+
+        iset = PETSc.IS().createGeneral(dofmap.dofs(),
+                                        comm=dofmap.index_map().mpi_comm())
+    """
     iset = module_dofs.dofmap_dofs_is(dofmap)
     iset.decRef()
     assert iset.getRefCount() == 1

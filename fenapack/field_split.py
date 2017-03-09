@@ -15,6 +15,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
+"""This module provides subclasses of DOLFIN and petsc4py
+Krylov solvers implementing PCD fieldsplit preconditioned
+GMRES"""
+
 from __future__ import print_function
 
 from dolfin import Timer, PETScKrylovSolver
@@ -29,7 +33,9 @@ from fenapack.utils import allow_only_one_call
 
 class PCDKSP(PETSc.KSP):
     """GMRES with right fieldsplit preconditioning using upper
-    Schur factorization and PCD Schur complement approximation"""
+    Schur factorization and PCD Schur complement approximation.
+
+    This is a subclass of ``petsc4py.KSP``."""
 
     # NOTE: We are not able to overload PETSc.KSP methods in this
     # class. That would only be possible with KSPPYTHON type but
@@ -141,7 +147,9 @@ class PCDKSP(PETSc.KSP):
 
 class PCDKrylovSolver(PETScKrylovSolver):
     """GMRES with right fieldsplit preconditioning using upper
-    Schur factorization and PCD Schur complement approximation"""
+    Schur factorization and PCD Schur complement approximation.
+
+    This is a subclass of ``dolfin.PETScKrylovSolver``."""
 
     def __init__(self, comm=None):
         """Initialize Krylov solver on given MPI comm"""
@@ -164,5 +172,11 @@ class PCDKrylovSolver(PETScKrylovSolver):
         return self._ksp
 
 
+    ksp.__doc__ = PETScKrylovSolver.ksp.__doc__
+
+
     def set_options_prefix(self, prefix):
         self._ksp.setOptionsPrefix(prefix)
+
+
+    set_options_prefix.__doc__ = PETScKrylovSolver.set_options_prefix.__doc__
