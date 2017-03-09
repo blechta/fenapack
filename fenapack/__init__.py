@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2014-2016 Jan Blechta and Martin Řehoř
+# Copyright (C) 2014-2017 Jan Blechta and Martin Řehoř
 #
 # This file is part of FENaPack.
 #

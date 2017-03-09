@@ -15,12 +15,24 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
+"""This module provides subclasses of DOLFIN interface for
+solving non-linear problems suitable for use with fieldsplit
+preconditioned Krylov methods
+"""
+
 from dolfin import NewtonSolver, PETScFactory, NonlinearProblem
 from dolfin import SystemAssembler, assemble
 
 class PCDNewtonSolver(NewtonSolver):
+    """Newton solver suitable for use with
+    :py:class:`PCDKrylovSolver`"""
 
     def __init__(self, solver):
+        """Initialize for a given PCD Krylov solver.
+
+        :type solver: :py:class:`PCDKrylovSolver`
+        """
+
         # Initialize DOLFIN Newton solver
         comm = solver.mpi_comm()
         factory = PETScFactory.instance()

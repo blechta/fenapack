@@ -1,3 +1,23 @@
+# Copyright (C) 2017 Jan Blechta
+#
+# This file is part of FENaPack.
+#
+# FENaPack is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FENaPack is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+
+"""Tools for extraction and management of fieldsplit
+submatrices, subvectors, subbcs, subksps intended to
+be hidden from user interface"""
+
 from dolfin import PETScMatrix, Timer, DirichletBC
 from petsc4py import PETSc
 
