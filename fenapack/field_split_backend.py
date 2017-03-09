@@ -191,13 +191,27 @@ class PCDInterface(object):
             bc.apply(vec)
 
 
-    @staticmethod
-    def _get_deep_submat(dolfin_mat, iset, submat=None):
-        return dolfin_mat.mat().getSubMatrix(iset, iset, submat=submat)
+    if PETSc.Sys.getVersion()[0:2] <= (3, 7) and PETSc.Sys.getVersionInfo()['release']:
+
+        @staticmethod
+        def _get_deep_submat(dolfin_mat, iset, submat=None):
+            return dolfin_mat.mat().getSubMatrix(iset, iset, submat=submat)
+
+        @staticmethod
+        def _get_shallow_submat(dolfin_mat, iset, submat=None):
+            if submat is None:
+                submat = PETSc.Mat().create(iset.comm)
+            return submat.createSubMatrix(dolfin_mat.mat(), iset, iset)
 
 
-    @staticmethod
-    def _get_shallow_submat(dolfin_mat, iset, submat=None):
-        if submat is None:
-            submat = PETSc.Mat().create(iset.comm)
-        return submat.createSubMatrix(dolfin_mat.mat(), iset, iset)
+    else:
+
+        @staticmethod
+        def _get_deep_submat(dolfin_mat, iset, submat=None):
+            return dolfin_mat.mat().createSubMatrix(iset, iset, submat=submat)
+
+        @staticmethod
+        def _get_shallow_submat(dolfin_mat, iset, submat=None):
+            if submat is None:
+                submat = PETSc.Mat().create(iset.comm)
+            return submat.createSubMatrixVirtual(dolfin_mat.mat(), iset, iset)
