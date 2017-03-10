@@ -43,7 +43,7 @@ parser.add_argument("-l", type=int, dest="level", default=4,
 parser.add_argument("--nu", type=float, dest="viscosity", default=0.02,
                     help="kinematic viscosity")
 parser.add_argument("--pcd", type=str, dest="pcd_variant", default="BRM2",
-                    choices=["BRM1", "BRM2"], help="PCD variant")
+                    choices=["BRM1", "BRM2", "BRM3"], help="PCD variant")
 parser.add_argument("--nls", type=str, dest="nls", default="picard",
                     choices=["picard", "newton"], help="nonlinear solver")
 parser.add_argument("--ls", type=str, dest="ls", default="iterative",
@@ -88,7 +88,7 @@ bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 # Artificial BC for PCD preconditioner
 if args.pcd_variant == "BRM1":
     bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 1)
-elif args.pcd_variant == "BRM2":
+elif args.pcd_variant in ["BRM2", "BRM3"]:
     bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 2)
 
 # Provide some info about the current problem
@@ -133,13 +133,19 @@ elif args.ls == "direct":
 
 # PCD operators
 mp = Constant(1.0/nu)*p*q*dx
-kp = Constant(1.0/nu)*dot(grad(p), u_)*q*dx
 ap = inner(grad(p), grad(q))*dx
-if args.pcd_variant == "BRM2":
+if args.pcd_variant == "BRM1":
+    kp = Constant(1.0/nu)*dot(grad(p), u_)*q*dx
+elif args.pcd_variant == "BRM2":
+    kp = Constant(1.0/nu)*dot(grad(p), u_)*q*dx
     n = FacetNormal(mesh)
     ds = Measure("ds", subdomain_data=boundary_markers)
     kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(1)
     #kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(0)  # TODO: Is this beneficial?
+elif args.pcd_variant == "BRM3":
+    #kp = Constant(1.0/nu)*dot(grad(p), u_)*q*dx
+    kp = Constant(1.0/nu)*div(p*u_)*q*dx
+    #kp = Constant(1.0/nu)*(0.5*dot(grad(p), u_) + 0.5*div(p*u_))*q*dx
 
 # Collect forms to define nonlinear problem
 problem = PCDProblem(F, [bc0, bc1], J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)

@@ -167,3 +167,22 @@ class PCDPC_BRM2(BasePCDPC):
         y.axpy(1.0, z0)           # y = y + z0
         # FIXME: How is with the sign bussines?
         y.scale(-1.0)             # y = -y
+
+
+
+class PCDPC_BRM3(BasePCDPC):
+
+    @timed("FENaPack: PCDPC_BRM3 apply")
+    def apply(self, pc, x, y):
+        # Fetch work vector
+        z, = self.get_work_vecs(x, 1)
+
+        # Apply PCD
+        x.copy(result=z)        # z = x
+        self.bcs_applier(z)     # apply bcs to z
+        self.ksp_Ap.solve(z, y) # y = A_p^{-1} z
+        self.mat_Kp.mult(y, z)  # z = K_p y
+        z.axpy(-1.0, x)         # z = z - x
+        self.ksp_Mp.solve(z, y) # y = M_p^{-1} z
+        # FIXME: How is with the sign bussines?
+        #y.scale(-1.0)           # y = -y

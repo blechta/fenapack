@@ -34,5 +34,5 @@ del SubSystemsManager, PETSc
 # Import public API
 from fenapack.field_split import PCDKSP, PCDKrylovSolver
 from fenapack.nonlinear_solvers import PCDNewtonSolver, PCDProblem
-from fenapack.preconditioners import PCDPC_BRM1, PCDPC_BRM2
+from fenapack.preconditioners import PCDPC_BRM1, PCDPC_BRM2, PCDPC_BRM3
 from fenapack.stabilization import StabilizationParameterSD
