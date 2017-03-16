@@ -3,6 +3,7 @@ from __future__ import print_function
 from dolfin import *
 from matplotlib import pyplot, gridspec
 import pytest
+import six
 
 import os
 import uuid
@@ -289,14 +290,15 @@ class Postprocessor(object):
     def flush_plots(self):
         coord_vars = (self.x_var, self.y_var0, self.y_var1)
 
-        for fixed_vars, fig in self.plots.iteritems():
+        for fixed_vars, fig in six.iteritems(self.plots):
+            fixed_var_names = next(six.moves.zip(*fixed_vars))
             data = {}
             for result in self.results:
                 if not all(result[name] == value for name, value in fixed_vars):
                     continue
-                free_vars = tuple((var, val) for var, val in result.iteritems()
+                free_vars = tuple((var, val) for var, val in six.iteritems(result)
                                   if var not in coord_vars
-                                  and var not in zip(*fixed_vars)[0])
+                                  and var not in fixed_var_names)
                 datapoints = data.setdefault(free_vars, {})
                 xs = datapoints.setdefault("xs", [])
                 ys0 = datapoints.setdefault("ys0", [])
@@ -304,7 +306,7 @@ class Postprocessor(object):
                 xs.append(result[self.x_var])
                 ys0.append(result[self.y_var0])
                 ys1.append(result[self.y_var1])
-            for free_vars, datapoints in data.iteritems():
+            for free_vars, datapoints in six.iteritems(data):
                 xs = datapoints["xs"]
                 ys0 = datapoints["ys0"]
                 ys1 = datapoints["ys1"]
