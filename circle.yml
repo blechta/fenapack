@@ -14,15 +14,15 @@ jobs:
       - run:
           name: Environment and FEniCS version info
           command: |
-              echo $USER $HOME $PWD $PATH $LD_LIBRARY_PATH $CMAKE_PREFIX_PATH
-              python -c'import ffc; print(ffc.git_commit_hash(), ffc.ufc_signature())'
-              python -c'import dolfin; print(dolfin.git_commit_hash())'
+            echo $USER $HOME $PWD $PATH $LD_LIBRARY_PATH $CMAKE_PREFIX_PATH
+            python -c'import ffc; print(ffc.git_commit_hash(), ffc.ufc_signature())'
+            python -c'import dolfin; print(dolfin.git_commit_hash())'
 
       - run:
           name: Install FENaPack
           command: |
-              ./download-meshes
-              pip2 install -v --user .
+            ./download-meshes
+            pip2 install -v --user .
 
       - run:
           name: Import FENaPack first time (JIT)
@@ -30,25 +30,30 @@ jobs:
 
       - run:
           name: Unit tests
-          command: py.test test/unit -svl --junitxml /tmp/test-results/report.xml
+          command: py.test test/unit -svl --junitxml /tmp/circle/unit.xml
 
       - run:
           name: Unit tests MPI
-          command: mpirun -n 2 py.test test/unit -svl
+          command: mpirun -n 2 py.test test/unit -svl --junitxml /tmp/circle/unit-mpi.xml
 
       - run:
           name: Bench
-          command: py.test test/bench -svl
+          command: |
+            set +e
+            py.test test/bench -svl --junitxml /tmp/circle/bench.xml
+            rc=$?
+            mv *.pdf /tmp/circle
+            exit $rc
 
       - run:
           name: Regression tests
           command: |
-              cd test/regression
-              NP=2 python -u test.py
+            cd test/regression
+            NP=2 python -u test.py
 
       - store_artifacts:
-          path: /tmp/artifacts
-          prefix: build
+          path: /tmp/circle
+          destination: build
 
       - store_test_results:
-          path: /tmp/test-results
+          path: /tmp/circle
