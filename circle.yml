@@ -35,7 +35,7 @@ jobs:
       - run:
           name: Unit tests MPI
           command: >
-            mpirun -n 2 bash -c '
+            mpirun -n 3 bash -c '
             py.test test/unit -svl
             --junitxml /tmp/circle/unit-mpi-${OMPI_COMM_WORLD_RANK:-$PMI_RANK}.xml
             '
@@ -53,7 +53,7 @@ jobs:
           name: Regression tests
           command: |
             cd test/regression
-            NP=2 python -u test.py
+            NP=3 python -u test.py
 
       - store_artifacts:
           path: /tmp/circle
