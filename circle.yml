@@ -1,36 +1,40 @@
-machine:
-  services:
-    - docker
+version: 2
+jobs:
+  build:
+    working_directory: /tmp
+    docker:
+      - image: quay.io/fenicsproject/dev
+    steps:
+      - checkout:
+          path: ~/fenapack
 
-dependencies:
-  override:
-    - ./download-meshes
+      - run:
+          name: FEniCS version info
+          command: python -c'import ffc, dolfin; print(ffc.git_commit_hash(), ffc.ufc_signature(), dolfin.git_commit_hash())'
 
-test:
-  override:
-    - >
-        docker run
-        -v $(pwd):/home/fenics/fenapack
-        -w /home/fenics/fenapack
-        quay.io/fenicsproject/dev
-        "
-        python -c'import ffc, dolfin; print(ffc.git_commit_hash(), ffc.ufc_signature(), dolfin.git_commit_hash())';
-        export PYTHONPATH=\$PWD:\$PYTHONPATH;
+      - run:
+          name: Unit tests
+          working_directory: ~/fenapack/test/unit
+          command: py.test -svl --junitxml /tmp/test-results/report.xml
 
-        py.test test/unit -sv;
-        ((rc+=\$?));
+      - run:
+          name: Unit tests MPI
+          working_directory: ~/fenapack/test/unit
+          command: mpirun -n 2 py.test -svl
 
-        mpirun -n 2 py.test test/unit -sv;
-        ((rc+=\$?));
+      - run:
+          name: Bench
+          working_directory: ~/fenapack/test/bench
+          command: py.test -svl
 
-        py.test test/bench -sv;
-        ((rc+=\$?));
+      - run:
+          name: Regression tests
+          working_directory: ~/fenapack/test/regression
+          command: NP=2 python -u test.py
 
-        cd test/regression;
-        NP=2 python -u test.py;
-        ((rc+=\$?));
+      - store_artifacts:
+          path: /tmp/artifacts
+          prefix: build
 
-        exit \$rc
-        "
-  post:
-    - mv *.pdf $CIRCLE_ARTIFACTS
+      - store_test_results:
+          path: /tmp/test-results
