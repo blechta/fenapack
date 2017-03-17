@@ -34,7 +34,11 @@ jobs:
 
       - run:
           name: Unit tests MPI
-          command: mpirun -n 2 py.test test/unit -svl --junitxml /tmp/circle/unit-mpi.xml
+          command: >
+            mpirun -n 2 bash -c '
+            py.test test/unit -svl
+            --junitxml /tmp/circle/unit-mpi-${OMPI_COMM_WORLD_RANK:-$PMI_RANK}.xml
+            '
 
       - run:
           name: Bench
