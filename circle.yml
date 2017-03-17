@@ -1,50 +1,50 @@
 version: 2
 jobs:
   build:
-    working_directory: /tmp
     docker:
       - image: quay.io/fenicsproject/dev
-        command: |
-          export HOME=/home/fenics
-          export FENICS_PREFIX=$HOME/local
-          export FENICS_PYTHON_MAJOR_VERSION=2
-          export FENICS_PYTHON_MINOR_VERSION=7
-          source /home/fenics/fenics.env.conf
+        user: fenics
+        environment:
+          LD_LIBRARY_PATH: /home/fenics/local/lib
+          CMAKE_PREFIX_PATH: /home/fenics/local
+    working_directory: /home/fenics/fenapack
     steps:
-      - run:
-          name: Setup FEniCS environment
-
-      - checkout:
-          path: ~/fenapack
+      - checkout
 
       - run:
-          name: FEniCS version info
-          command: python -c'import ffc, dolfin; print(ffc.git_commit_hash(), ffc.ufc_signature(), dolfin.git_commit_hash())'
+          name: Environment and FEniCS version info
+          command: |
+              echo $USER $HOME $PWD $PATH $LD_LIBRARY_PATH $CMAKE_PREFIX_PATH
+              python -c'import ffc; print(ffc.git_commit_hash(), ffc.ufc_signature())'
+              python -c'import dolfin; print(dolfin.git_commit_hash())'
 
       - run:
           name: Install FENaPack
-          working_directory: ~/fenapack/
-          command: pip install -v .
+          command: |
+              ./download-meshes
+              pip2 install -v --user .
+
+      - run:
+          name: Import FENaPack first time (JIT)
+          command: python -c"import fenapack"
 
       - run:
           name: Unit tests
-          working_directory: ~/fenapack/test/unit
-          command: py.test -svl --junitxml /tmp/test-results/report.xml
+          command: py.test test/unit -svl --junitxml /tmp/test-results/report.xml
 
       - run:
           name: Unit tests MPI
-          working_directory: ~/fenapack/test/unit
-          command: mpirun -n 2 py.test -svl
+          command: mpirun -n 2 py.test test/unit -svl
 
       - run:
           name: Bench
-          working_directory: ~/fenapack/test/bench
-          command: py.test -svl
+          command: py.test test/bench -svl
 
       - run:
           name: Regression tests
-          working_directory: ~/fenapack/test/regression
-          command: NP=2 python -u test.py
+          command: |
+              cd test/regression
+              NP=2 python -u test.py
 
       - store_artifacts:
           path: /tmp/artifacts
