@@ -4,6 +4,7 @@ jobs:
     working_directory: /tmp
     docker:
       - image: quay.io/fenicsproject/dev
+      - command: /bin/echo "Force CircleCI to use the image entry point"
     steps:
       - checkout:
           path: ~/fenapack
@@ -11,6 +12,11 @@ jobs:
       - run:
           name: FEniCS version info
           command: python -c'import ffc, dolfin; print(ffc.git_commit_hash(), ffc.ufc_signature(), dolfin.git_commit_hash())'
+
+      - run:
+          name: Install FENaPack
+          working_directory: ~/fenapack/
+          command: pip install -v .
 
       - run:
           name: Unit tests
