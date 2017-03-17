@@ -4,8 +4,16 @@ jobs:
     working_directory: /tmp
     docker:
       - image: quay.io/fenicsproject/dev
-        command: /bin/echo "Force CircleCI to use the image entry point"
     steps:
+      - run:
+          name: Setup FEniCS environment
+          command: |
+            export HOME=/home/fenics
+            export FENICS_PREFIX=$HOME/local
+            export FENICS_PYTHON_MAJOR_VERSION=2
+            export FENICS_PYTHON_MINOR_VERSION=7
+            source /home/fenics/fenics.env.conf
+
       - checkout:
           path: ~/fenapack
 
