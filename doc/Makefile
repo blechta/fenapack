@@ -48,7 +48,7 @@ apidoc:
 	./generate-apidoc
 
 verify-snippets:
-	python verify_demo_code_snippets.py
+	python verify_demo_code_snippets.py || true
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
