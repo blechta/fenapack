@@ -333,7 +333,7 @@ class Postprocessor(object):
     @staticmethod
     def _create_figure():
         fig = pyplot.figure()
-        gs = gridspec.GridSpec(2, 1, height_ratios=[2, 2, 1], hspace=0.05)
+        gs = gridspec.GridSpec(3, 1, height_ratios=[2, 2, 1], hspace=0.05)
         ax2 = fig.add_subplot(gs[1])
         ax1 = fig.add_subplot(gs[0], sharex=ax2)
         ax1.xaxis.set_label_position('top')
