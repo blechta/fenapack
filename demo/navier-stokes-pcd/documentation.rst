@@ -10,7 +10,7 @@ which contains both the variational forms and the solver.
 Underlying mathematics
 ----------------------
 
-See BRM variant in :ref:`math_background`.
+See :ref:`math_background`.
 
 
 Implementation
@@ -19,16 +19,18 @@ Implementation
 **Only features beyond standard FEniCS usage will be explained
 in this document.**
 
-Here comes an artificial boundary condition for PCD operators. This
-is the version used for :any:`BRM variant of PCD
-<fenapack.preconditioners.PCDPC_BRM>`, i.e. zero Dirichlet value for Laplacian
-solve on inlet. Note that it is defined on pressure subspace of the mixed space
-``W``.
+Here comes an artificial boundary condition for PCD operators. Zero Dirichlet
+condition for Laplacian solve is applied either on inlet or outlet, depending
+on the variant of PCD. Note that it is defined on pressure subspace of the
+mixed space ``W``.
 
 .. code-block:: python
 
     # Artificial BC for PCD preconditioner
-    bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 1)
+    if args.pcd_variant == "BRM1":
+        bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 1)
+    elif args.pcd_variant == "BRM2":
+        bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 2)
 
 Then comes standard formulation of the nonlinear equation
 
@@ -39,7 +41,6 @@ Then comes standard formulation of the nonlinear equation
     v, q = TestFunctions(W)
     w = Function(W)
     u_, p_ = split(w)
-    n = FacetNormal(mesh)
     nu = Constant(args.viscosity)
 
     # Nonlinear equation
@@ -50,27 +51,35 @@ Then comes standard formulation of the nonlinear equation
         - q*div(u_)
     )*dx
 
-We will also mock Newton solver into Picard iteration by passing
-Oseen linearization as Jacobian ``J``
+We will provide a possibility to mock Newton solver into Picard iteration by
+passing Oseen linearization as Jacobian ``J``
 
 .. code-block:: python
 
-    # Picard linearization (one could use full Newton)
-    J = (
-          nu*inner(grad(u), grad(v))
-        + inner(dot(grad(u), u_), v)
-        - p*div(v)
-        - q*div(u)
-    )*dx
+    # Jacobian
+    if args.nls == "picard":
+        J = (
+              nu*inner(grad(u), grad(v))
+            + inner(dot(grad(u), u_), v)
+            - p*div(v)
+            - q*div(u)
+        )*dx
+    elif args.nls == "newton":
+        J = derivative(F, w)
 
 "Preconditioner" Jacobian ``J_pc`` features added streamline diffusion
-to stabilize algebraic multigrid applied to 00-block
+to stabilize 00-block if algebraic multigrid is used. Otherwise we can
+pass ``None`` as a precoditioner Jacobian to use the system matrix for
+preparing the preconditioner.
 
 .. code-block:: python
 
     # Add stabilization for AMG 00-block
-    delta = StabilizationParameterSD(w.sub(0), nu)
-    J_pc = J + delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
+    if args.ls == "iterative":
+        delta = StabilizationParameterSD(w.sub(0), nu)
+        J_pc = J + delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
+    elif args.ls == "direct":
+        J_pc = None
 
 :math:`L^2` scalar product ("mass matrix") ``mp``, convection operator ``kp``,
 and Laplacian ``ap`` to be used by :any:`PCD BRM preconditioner
@@ -85,78 +94,87 @@ assembling the operators on demand.
     mp = Constant(1.0/nu)*p*q*dx
     kp = Constant(1.0/nu)*dot(grad(p), u_)*q*dx
     ap = inner(grad(p), grad(q))*dx
+    if args.pcd_variant == "BRM2":
+        n = FacetNormal(mesh)
+        ds = Measure("ds", subdomain_data=boundary_markers)
+        kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(1)
 
     # Collect forms to define nonlinear problem
     problem = PCDProblem(F, [bc0, bc1], J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
 
-Now we setup GMRES solver with right-preconditioned Schur complement method
-with upper factorization and user preconditioner.
+Now we create GMRES preconditioned with PCD, set the tolerance, enable
+monitoring of residual during Krylov iterarations, and set the maximal
+dimension of Krylov subspaces.
 
 .. code-block:: python
 
-    # Set up linear field split solver
-    linear_solver = FieldSplitSolver(W, "gmres")
-    linear_solver.parameters["monitor_convergence"] = True
+    # Set up linear solver (GMRES with right preconditioning using Schur fact)
+    linear_solver = PCDKrylovSolver(comm=mesh.mpi_comm())
     linear_solver.parameters["relative_tolerance"] = 1e-6
-    linear_solver.parameters["nonzero_initial_guess"] = False
-    linear_solver.parameters["preconditioner"]["side"] = "right"
-    linear_solver.parameters["preconditioner"]["fieldsplit"]["type"] = "schur"
-    linear_solver.parameters["preconditioner"]["fieldsplit"]["schur"]["fact_type"] = "upper"
-    linear_solver.parameters["preconditioner"]["fieldsplit"]["schur"]["precondition"] = "user"
+    PETScOptions.set("ksp_monitor")
+    PETScOptions.set("ksp_gmres_restart", 150)
 
-We fetch :py:class:`petsc4py.PETSc.Options` databases for setting 00- and
-11-block subsolvers
+Next we choose a variant of PCD according to a parameter value
 
 .. code-block:: python
 
     # Set up subsolvers
-    OptDB_00, OptDB_11 = linear_solver.get_subopts()
+    PETScOptions.set("fieldsplit_p_pc_python_type", "fenapack.PCDPC_" + args.pcd_variant)
 
-00-block is solver using algebraic multigrid
-
-.. code-block:: python
-
-    OptDB_00["ksp_type"] = "richardson"
-    OptDB_00["ksp_max_it"] = 1
-    OptDB_00["pc_type"] = "hypre"
-    OptDB_00["pc_hypre_type"] = "boomeramg"
-
-PETSc is told to use :py:class:`fenapack.preconditioners.PCDPC_BRM` class
-implementing :py:class:`petsc4py.PETSc.PC` interface as a Schur complement
-preconditioner
+00-block solve and PCD Laplacian solve can be performed using algebraic
+multigrid
 
 .. code-block:: python
 
-    OptDB_11["ksp_type"] = "preonly"
-    OptDB_11["pc_type"] = "python"
-    OptDB_11["pc_python_type"] = "fenapack.PCDPC_BRM"
+    if args.ls == "iterative":
+        PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
+        PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
+        PETScOptions.set("fieldsplit_u_pc_type", "hypre")
+        PETScOptions.set("fieldsplit_u_pc_hypre_type", "boomeramg")
+        PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_type", "richardson")
+        PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_max_it", 2)
+        PETScOptions.set("fieldsplit_p_PCD_Ap_pc_type", "hypre")
+        PETScOptions.set("fieldsplit_p_PCD_Ap_pc_hypre_type", "boomeramg")
 
-Laplacian solve of PCD is performed using algebraic multigrid
+PCD mass matrix solve can be efficiently performed using Chebyshev iteration
+preconditioned by Jacobi method. The eigenvalue estimates come from [1]_,
+Lemma 4.3. **Don't forget to change them appropriately when changing
+dimension/element. Neglecting this can lead to substantially worse
+convergence rates.**
 
 .. code-block:: python
 
-    OptDB_11["PCD_Ap_ksp_type"] = "richardson"
-    OptDB_11["PCD_Ap_ksp_max_it"] = 2
-    OptDB_11["PCD_Ap_pc_type"] = "hypre"
-    OptDB_11["PCD_Ap_pc_hypre_type"] = "boomeramg"
+        PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_type", "chebyshev")
+        PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_max_it", 5)
+        PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues", "0.5, 2.0")
+        PETScOptions.set("fieldsplit_p_PCD_Mp_pc_type", "jacobi")
 
-Mass-matrix solve is done using fixed number of Chebyshev iterations with
-Jacobi preconditioner. For eigenvalue estimates used for Chebyshev see [1]_,
-Lemma 4.3.
+The direct solver is used by default if the aforementioned blocks
+are not executed. FEnaPack tries to pick MUMPS by default and following
+parameter enables very verbose output.
 
 .. code-block:: python
 
-    OptDB_11["PCD_Mp_ksp_type"] = "chebyshev"
-    OptDB_11["PCD_Mp_ksp_max_it"] = 5
-    OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
-    OptDB_11["PCD_Mp_pc_type"] = "jacobi"
+    elif args.ls == "direct" and args.mumps_debug:
+        # Debugging MUMPS
+        PETScOptions.set("fieldsplit_u_mat_mumps_icntl_4", 2)
+        PETScOptions.set("fieldsplit_p_PCD_Ap_mat_mumps_icntl_4", 2)
+        PETScOptions.set("fieldsplit_p_PCD_Mp_mat_mumps_icntl_4", 2)
 
-Finally we invoke Newton solver (although doing Picard iteration)
+Let the linear solver use the options
+
+.. code-block:: python
+
+    # Apply options
+    linear_solver.set_from_options()
+
+Finally we invoke a Newton solver modification suitable to be used used
+with PCD solver.
 
 .. code-block:: python
 
     # Set up nonlinear solver
-    solver = NewtonSolver(linear_solver)
+    solver = PCDNewtonSolver(linear_solver)
     solver.parameters["relative_tolerance"] = 1e-5
 
     # Solve problem
