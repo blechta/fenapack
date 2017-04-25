@@ -30,13 +30,13 @@ jobs:
 
       - run:
           name: Unit tests
-          command: py.test-2 test/unit -svl --junitxml /tmp/circle/unit.xml
+          command: py.test-2.7 test/unit -svl --junitxml /tmp/circle/unit.xml
 
       - run:
           name: Unit tests MPI
           command: >
             mpirun -n 3 bash -c '
-            py.test-2 test/unit -svl
+            py.test-2.7 test/unit -svl
             --junitxml /tmp/circle/unit-mpi-${OMPI_COMM_WORLD_RANK:-$PMI_RANK}.xml
             '
 
@@ -44,7 +44,7 @@ jobs:
           name: Bench
           command: |
             set +e
-            py.test-2 test/bench -svl --junitxml /tmp/circle/bench.xml
+            py.test-2.7 test/bench -svl --junitxml /tmp/circle/bench.xml
             rc=$?
             mv *.pdf /tmp/circle
             exit $rc
