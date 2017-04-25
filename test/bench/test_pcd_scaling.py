@@ -319,8 +319,8 @@ class Postprocessor(object):
     def _plot(fig, xs, ys0, ys1, free_vars):
         fig, (ax1, ax2) = fig
         label = "_".join(map(str, itertools.chain(*free_vars)))
-        ax1.plot(xs, ys0, '+--', label=label)
-        ax2.plot(xs, ys1, '+--', label=label)
+        ax1.plot(xs, ys0, '+--', linewidth=0.2, label=label)
+        ax2.plot(xs, ys1, '+--', linewidth=0.2, label=label)
         ax2.legend(bbox_to_anchor=(0, -0.05), loc=2, borderaxespad=0,
                    fontsize='x-small', ncol=2)
 
