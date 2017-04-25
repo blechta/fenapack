@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: quay.io/fenicsproject/dev
+      - image: quay.io/fenicsproject/dev:py2
         user: fenics
         environment:
           LD_LIBRARY_PATH: /home/fenics/local/lib
@@ -15,28 +15,28 @@ jobs:
           name: Environment and FEniCS version info
           command: |
             echo $USER $HOME $PWD $PATH $LD_LIBRARY_PATH $CMAKE_PREFIX_PATH
-            python3 -c'import ffc; print(ffc.git_commit_hash(), ffc.ufc_signature())'
-            python3 -c'import dolfin; print(dolfin.git_commit_hash())'
+            python2 -c'import ffc; print(ffc.git_commit_hash(), ffc.ufc_signature())'
+            python2 -c'import dolfin; print(dolfin.git_commit_hash())'
 
       - run:
           name: Install FENaPack
           command: |
             ./download-meshes
-            pip3 install -v --user .
+            pip2 install -v --user .
 
       - run:
           name: Import FENaPack first time (JIT)
-          command: python3 -c"import fenapack"
+          command: python2 -c"import fenapack"
 
       - run:
           name: Unit tests
-          command: py.test-3 test/unit -svl --junitxml /tmp/circle/unit.xml
+          command: py.test-2 test/unit -svl --junitxml /tmp/circle/unit.xml
 
       - run:
           name: Unit tests MPI
           command: >
             mpirun -n 3 bash -c '
-            py.test-3 test/unit -svl
+            py.test-2 test/unit -svl
             --junitxml /tmp/circle/unit-mpi-${OMPI_COMM_WORLD_RANK:-$PMI_RANK}.xml
             '
 
@@ -44,7 +44,7 @@ jobs:
           name: Bench
           command: |
             set +e
-            py.test-3 test/bench -svl --junitxml /tmp/circle/bench.xml
+            py.test-2 test/bench -svl --junitxml /tmp/circle/bench.xml
             rc=$?
             mv *.pdf /tmp/circle
             exit $rc
@@ -53,7 +53,7 @@ jobs:
           name: Regression tests
           command: |
             cd test/regression
-            NP=3 python3 -u test.py
+            NP=3 python2 -u test.py
 
       - store_artifacts:
           path: /tmp/circle
