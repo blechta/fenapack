@@ -7,3 +7,11 @@ To generate API doc, build HTML and commit it to gh-pages branch::
 
 FIXME: The drawback is that all untracked/ignored files are lost
 during this procedure. So be careful!
+
+
+Documentation style. Follow reST style, see:
+
+  http://stackoverflow.com/a/24385103/1796717
+  https://github.com/dadadel/pyment/blob/master/doc/pyment.rst#managed-docstrings-examples
+
+Use https://github.com/dadadel/pyment for conversion.
