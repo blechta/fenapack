@@ -193,6 +193,6 @@ class PCDProblem(NonlinearProblem):
     def pcd_bcs(self):
         try:
             assert self._bcs_pcd is not None
-            return self._bcs_pcd
         except (AttributeError, AssertionError):
-            raise AttributeError("PCD BCs requested by not available")
+            raise AttributeError("BCs requested by PCD not available")
+        return self._bcs_pcd
