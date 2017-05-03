@@ -39,6 +39,7 @@ gh-pages: | apidoc html
 	git branch -t gh-pages origin/gh-pages || true
 	git symbolic-ref HEAD refs/heads/gh-pages
 	git reset
+	git checkout ../circle.yml
 	cd ../ && git add *
 	git commit -m"Generate doc"
 
