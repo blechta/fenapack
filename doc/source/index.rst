@@ -99,9 +99,6 @@ additional Robin term in convection matrix :math:`\mathbb{K}_p` roughly
 as stated in [1]_, section 9.2.2. See also :doc:`demos/navier-stokes-pcd`
 and :py:class:`fenapack.preconditioners.PCDPC_BRM2`.
 
-.. [3] Silvester D., Elman H., Ramage A.,
-       *IFISS. Incompressible Flow & Iterative Solver Software.*
-       http://www.maths.manchester.ac.uk/~djs/ifiss/
 
 Documented demos
 ================
