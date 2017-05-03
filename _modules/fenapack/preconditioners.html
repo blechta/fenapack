@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>fenapack.preconditioners &mdash; FENaPack 2017.1.0.dev0 documentation</title>
+    <title>fenapack.preconditioners &#8212; FENaPack 2017.1.0.dev0 documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -17,15 +17,16 @@
         VERSION:     '2017.1.0.dev0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="FENaPack 2017.1.0.dev0 documentation" href="../../index.html" />
-    <link rel="up" title="Module code" href="../index.html" /> 
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -37,8 +38,8 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">FENaPack 2017.1.0.dev0 documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">FENaPack 2017.1.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -48,7 +49,7 @@
           <div class="body" role="main">
             
   <h1>Source code for fenapack.preconditioners</h1><div class="highlight"><pre>
-<span class="c1"># Copyright (C) 2014-2016 Jan Blechta and Martin Rehor</span>
+<span></span><span class="c1"># Copyright (C) 2014-2017 Jan Blechta and Martin Rehor</span>
 <span class="c1">#</span>
 <span class="c1"># This file is part of FENaPack.</span>
 <span class="c1">#</span>
@@ -65,253 +66,78 @@
 <span class="c1"># You should have received a copy of the GNU Lesser General Public License</span>
 <span class="c1"># along with FENaPack.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
 
-<span class="kn">import</span> <span class="nn">dolfin</span>
-<span class="kn">from</span> <span class="nn">petsc4py</span> <span class="kn">import</span> <span class="n">PETSc</span>
+<span class="kn">from</span> <span class="nn">dolfin</span> <span class="k">import</span> <span class="n">timed</span>
+<span class="kn">from</span> <span class="nn">petsc4py</span> <span class="k">import</span> <span class="n">PETSc</span>
 
-<span class="kn">from</span> <span class="nn">fenapack._field_split_utils</span> <span class="kn">import</span> <span class="n">SubfieldBC</span>
-
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PCDPC_SEW&#39;</span><span class="p">,</span> <span class="s1">&#39;UnsteadyPCDPC_SEW&#39;</span><span class="p">,</span> <span class="s1">&#39;PCDPC_BRM&#39;</span><span class="p">]</span>
+<span class="kn">from</span> <span class="nn">fenapack.utils</span> <span class="k">import</span> <span class="n">get_default_factor_solver_package</span>
 
 
-<span class="k">class</span> <span class="nc">BasePCDPC</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="BasePCDPC"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.BasePCDPC">[docs]</a><span class="k">class</span> <span class="nc">BasePCDPC</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Base python context for pressure convection diffusion (PCD)</span>
 <span class="sd">    preconditioners.&quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_default_ksp</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_default_ksp</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ksp_Ap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_default_ksp</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ksp_Mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_default_ksp</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
 
-
-    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;This is abstract class&quot;</span><span class="p">)</span>
+        <span class="n">options_prefix</span> <span class="o">=</span> <span class="n">pc</span><span class="o">.</span><span class="n">getOptionsPrefix</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ksp_Ap</span><span class="o">.</span><span class="n">setOptionsPrefix</span><span class="p">(</span><span class="n">options_prefix</span> <span class="o">+</span> <span class="s2">&quot;PCD_Ap_&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ksp_Mp</span><span class="o">.</span><span class="n">setOptionsPrefix</span><span class="p">(</span><span class="n">options_prefix</span> <span class="o">+</span> <span class="s2">&quot;PCD_Mp_&quot;</span><span class="p">)</span>
 
 
     <span class="k">def</span> <span class="nf">setFromOptions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">):</span>
-        <span class="n">options_prefix</span> <span class="o">=</span> <span class="n">pc</span><span class="o">.</span><span class="n">getOptionsPrefix</span><span class="p">()</span>
-
-        <span class="c1"># Update Ap</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">setOptionsPrefix</span><span class="p">(</span><span class="n">options_prefix</span><span class="o">+</span><span class="s2">&quot;PCD_Ap_&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">setFromOptions</span><span class="p">()</span>
-
-        <span class="c1"># Update Mp</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span><span class="o">.</span><span class="n">setOptionsPrefix</span><span class="p">(</span><span class="n">options_prefix</span><span class="o">+</span><span class="s2">&quot;PCD_Mp_&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span><span class="o">.</span><span class="n">setFromOptions</span><span class="p">()</span>
-
-
-    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="o">**</span><span class="n">shur_approx</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;The index sets is0, is1 define particular blocks in a field-splitted</span>
-<span class="sd">        matrix.</span>
-
-<span class="sd">        From A and P one can extract their particular blocks and use them to</span>
-<span class="sd">        build the approximate Schur complement.</span>
-
-<span class="sd">        **Overloaded versions**</span>
-
-<span class="sd">          Other components used to build the approximate Schur complement</span>
-<span class="sd">          matrix can be provided as optional keyword arguments. These</span>
-<span class="sd">          components differ depending on the strategy used for PCD</span>
-<span class="sd">          preconditioning.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;This is abstract class&quot;</span><span class="p">)</span>
-
-
-    <span class="k">def</span> <span class="nf">_raise_attribute_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
-            <span class="s2">&quot;Attribute &#39;_</span><span class="si">%s</span><span class="s2">&#39; must be set using &#39;</span><span class="si">%s</span><span class="s2">.set_operators()&#39;&quot;</span>
-            <span class="o">%</span> <span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ksp_Ap</span><span class="o">.</span><span class="n">setFromOptions</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ksp_Mp</span><span class="o">.</span><span class="n">setFromOptions</span><span class="p">()</span>
 
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_prepare_default_ksp</span><span class="p">():</span>
-        <span class="n">ksp</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<div class="viewcode-block" id="BasePCDPC.create_default_ksp"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.BasePCDPC.create_default_ksp">[docs]</a>    <span class="k">def</span> <span class="nf">create_default_ksp</span><span class="p">(</span><span class="n">comm</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return Cholesky factorization KSP&quot;&quot;&quot;</span>
+        <span class="n">ksp</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
         <span class="n">ksp</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">PREONLY</span><span class="p">)</span>
-        <span class="n">pc</span> <span class="o">=</span> <span class="n">ksp</span><span class="o">.</span><span class="n">getPC</span><span class="p">()</span>
-        <span class="n">pc</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">PC</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">LU</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">ksp</span>
+        <span class="n">ksp</span><span class="o">.</span><span class="n">pc</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">PC</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">CHOLESKY</span><span class="p">)</span>
+        <span class="n">ksp</span><span class="o">.</span><span class="n">pc</span><span class="o">.</span><span class="n">setFactorSolverPackage</span><span class="p">(</span><span class="n">get_default_factor_solver_package</span><span class="p">(</span><span class="n">comm</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">ksp</span></div>
 
 
-    <span class="k">def</span> <span class="nf">_z</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return cached duplicate of PETSc Vec v.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="BasePCDPC.get_work_vecs"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.BasePCDPC.get_work_vecs">[docs]</a>    <span class="k">def</span> <span class="nf">get_work_vecs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return ``num`` of work vecs initially duplicated from v&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_z_vec</span>
+            <span class="n">vecs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_work_vecs</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">vecs</span><span class="p">)</span> <span class="o">==</span> <span class="n">num</span>
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_z_vec</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">duplicate</span><span class="p">()</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_z_vec</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_work_vecs</span> <span class="o">=</span> <span class="n">vecs</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">duplicate</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Changing number of work vecs not allowed&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">vecs</span></div>
+
+
+<div class="viewcode-block" id="BasePCDPC.init_pcd"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.BasePCDPC.init_pcd">[docs]</a>    <span class="k">def</span> <span class="nf">init_pcd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pcd_interface</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize by PCDInterface instance&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;interface&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Reinitialization of PCDPC not allowed&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="n">pcd_interface</span></div>
+
+
+    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">):</span>
+
+        <span class="c1"># Prepare mass matrix and Laplacian solvers</span>
+        <span class="c1"># NOTE: Called function ensures that assembly, submat extraction and</span>
+        <span class="c1">#       ksp setup is done only once during preconditioner lifetime.</span>
+        <span class="c1"># FIXME: Maybe move Mp and Ap setup to init and remove logic in backend.</span>
+        <span class="c1">#        This will make it obvious that this is done once.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">setup_ksp_Mp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ksp_Mp</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">setup_ksp_Ap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ksp_Ap</span><span class="p">)</span>
+
+        <span class="c1"># Prepare convection matrix</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mat_Kp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">setup_mat_Kp</span><span class="p">(</span><span class="n">mat</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;mat_Kp&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mat_Kp</span><span class="o">.</span><span class="n">setOptionsPrefix</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">getOptionsPrefix</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;PCD_Kp_&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Fetch bcs apply function</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bcs_applier</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">apply_pcd_bcs</span></div>
 
 
 
-<div class="viewcode-block" id="PCDPC_SEW"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_SEW">[docs]</a><span class="k">class</span> <span class="nc">PCDPC_SEW</span><span class="p">(</span><span class="n">BasePCDPC</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;This class implements steady variant of PCD described in [1]_.</span>
-
-<span class="sd">    .. [1] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast</span>
-<span class="sd">           Iterative Solvers: With Application in Incompressible Fluid Dynamics*.</span>
-<span class="sd">           Oxford University Press 2005. 2nd edition 2014.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-<div class="viewcode-block" id="PCDPC_SEW.apply"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_SEW.apply">[docs]</a>    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;This method implements the action of the inverse of the approximate</span>
-<span class="sd">        Schur complement :math:`\hat{S} = -M_p F_p^{-1} A_p`, that is</span>
-
-<span class="sd">        .. math::</span>
-
-<span class="sd">            y = \hat{S}^{-1} x = -A_p^{-1} F_p M_p^{-1} x.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s2">&quot;FENaPack: PCDPC_SEW apply&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Fetch cached duplicate of x</span>
-        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_z</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-
-        <span class="c1"># Apply PCD</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c1"># y = M_p^{-1} x</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_Fp</span><span class="o">.</span><span class="n">mult</span><span class="p">(</span><span class="o">-</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>     <span class="c1"># z = -F_p y</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c1"># y = A_p^{-1} z</span>
-
-        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
-
-
-<div class="viewcode-block" id="PCDPC_SEW.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_SEW.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
-                      <span class="n">Mp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Ap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Fp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set operators for the approximate Schur complement matrix</span>
-
-<span class="sd">        *Arguments*</span>
-<span class="sd">            is0, is1 (:py:class:`petsc4py.PETSc.IS`)</span>
-<span class="sd">                The index sets defining blocks in the field-splitted matrix.</span>
-<span class="sd">            A (:py:class:`GenericMatrix`)</span>
-<span class="sd">                Dummy system matrix. Not used by this implementation.</span>
-<span class="sd">            P (:py:class:`GenericMatrix`)</span>
-<span class="sd">                Dummy preconditioning matrix. Not used by this implementation.</span>
-
-<span class="sd">        *Keyword arguments*</span>
-<span class="sd">            Mp (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The matrix containing pressure mass matrix as its 11-block.</span>
-<span class="sd">            Ap (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The matrix containing pressure laplacian as its 11-block.</span>
-<span class="sd">            Fp (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The matrix containing pressure convection-diffusion as its</span>
-<span class="sd">                11-block.</span>
-<span class="sd">            bcs (:py:class:`DirichletBC`)</span>
-<span class="sd">                List of boundary conditions that will be &quot;applied&quot; on</span>
-<span class="sd">                :math:`A_p` and :math:`F_p`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s2">&quot;FENaPack: PCDPC_SEW set_operators&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Prepare bcs for adjusting field split matrix</span>
-        <span class="k">if</span> <span class="n">bcs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">bcs</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
-                <span class="n">bcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">bcs</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">SubfieldBC</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="n">is1</span><span class="p">)</span> <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="n">bcs</span><span class="p">]</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_bcs&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s2">&quot;bcs&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Update Ap</span>
-        <span class="k">if</span> <span class="n">Ap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_Ap</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">as_backend_type</span><span class="p">(</span><span class="n">Ap</span><span class="p">)</span><span class="o">.</span><span class="n">mat</span><span class="p">()</span><span class="o">.</span><span class="n">getSubMatrix</span><span class="p">(</span><span class="n">is1</span><span class="p">,</span> <span class="n">is1</span><span class="p">)</span>
-            <span class="c1"># Apply boundary conditions along outflow boundary</span>
-            <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span><span class="p">:</span>
-                <span class="n">bc</span><span class="o">.</span><span class="n">apply_fdm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Ap</span><span class="p">)</span>
-            <span class="c1">#self._Ap.setOption(PETSc.Mat.Option.SPD, True)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">setOperators</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Ap</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_Ap&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s2">&quot;Ap&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Update Fp</span>
-        <span class="k">if</span> <span class="n">Fp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_Fp</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">as_backend_type</span><span class="p">(</span><span class="n">Fp</span><span class="p">)</span><span class="o">.</span><span class="n">mat</span><span class="p">()</span><span class="o">.</span><span class="n">getSubMatrix</span><span class="p">(</span><span class="n">is1</span><span class="p">,</span> <span class="n">is1</span><span class="p">)</span>
-            <span class="c1"># Apply boundary conditions along outflow boundary</span>
-            <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span><span class="p">:</span>
-                <span class="n">bc</span><span class="o">.</span><span class="n">apply_fdm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Fp</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_Fp&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s2">&quot;Fp&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Update Mp</span>
-        <span class="k">if</span> <span class="n">Mp</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_Mp</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">as_backend_type</span><span class="p">(</span><span class="n">Mp</span><span class="p">)</span><span class="o">.</span><span class="n">mat</span><span class="p">()</span><span class="o">.</span><span class="n">getSubMatrix</span><span class="p">(</span><span class="n">is1</span><span class="p">,</span> <span class="n">is1</span><span class="p">)</span>
-            <span class="c1">#self._Mp.setOption(PETSc.Mat.Option.SPD, True)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span><span class="o">.</span><span class="n">setOperators</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Mp</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_Mp&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s2">&quot;Mp&quot;</span><span class="p">)</span>
-
-        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div></div>
-
-
-
-<div class="viewcode-block" id="UnsteadyPCDPC_SEW"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.UnsteadyPCDPC_SEW">[docs]</a><span class="k">class</span> <span class="nc">UnsteadyPCDPC_SEW</span><span class="p">(</span><span class="n">PCDPC_SEW</span><span class="p">):</span>
-    <span class="sd">r&quot;&quot;&quot;This class implements variant of PCD described in [1]_ appropriate for</span>
-<span class="sd">    unsteady problems. It derives from :py:class:`PCDPC_SEW` but pressure Laplacian</span>
-<span class="sd">    :math:`A_p` is approximated by :math:`B (\operatorname{diag} M_u)^{-1}</span>
-<span class="sd">    B^\top`, where :math:`M_u` is the velocity mass matrix, :math:`B`</span>
-<span class="sd">    corresponds to 10-block of the system matrix (:math:`\operatorname{div}`</span>
-<span class="sd">    operator) and :math:`B^\top` is its transpose, i.e. 01-block of the system</span>
-<span class="sd">    matrix (:math:`\operatorname{grad}` operator).</span>
-
-<span class="sd">    Note that :math:`B^\top` contains zero rows corresponding to dofs on the</span>
-<span class="sd">    Dirichlet boundary since bcs have been applied on :math:`A`. Moreover,</span>
-<span class="sd">    :math:`B (\operatorname{diag} M_u)^{-1} B^\top` is nonsingular for</span>
-<span class="sd">    inflow-outflow problems, thus we do not need to prescribe any artificial</span>
-<span class="sd">    boundary conditions for pressure.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-<div class="viewcode-block" id="UnsteadyPCDPC_SEW.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.UnsteadyPCDPC_SEW.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
-                      <span class="n">Mp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Mu</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Fp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set operators for the approximate Schur complement matrix</span>
-
-<span class="sd">        *Arguments*</span>
-<span class="sd">            is0, is1 (:py:class:`petsc4py.PETSc.IS`)</span>
-<span class="sd">                The index sets defining blocks in the field splitted matrix.</span>
-<span class="sd">            A (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The system matrix.</span>
-<span class="sd">            P (:py:class:`GenericMatrix`)</span>
-<span class="sd">                Dummy preconditioning matrix. Not used by this implementation.</span>
-
-<span class="sd">        *Keyword arguments*</span>
-<span class="sd">            Mp (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The matrix containing pressure mass matrix as its 11-block.</span>
-<span class="sd">            Mu (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The matrix containing velocity mass matrix as its 00-block.</span>
-<span class="sd">            Fp (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The matrix containing pressure convection-diffusion as its</span>
-<span class="sd">                11-block.</span>
-<span class="sd">            bcs (:py:class:`DirichletBC`)</span>
-<span class="sd">                List of boundary conditions that will be &quot;applied&quot; on</span>
-<span class="sd">                :math:`F_p`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s2">&quot;FENaPack: UnsteadyPCDPC_SEW set_operators&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Assemble Ap using A and Mu</span>
-        <span class="k">if</span> <span class="n">Mu</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="c1"># Get velocity mass matrix as PETSc Mat object</span>
-            <span class="n">Mu</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">as_backend_type</span><span class="p">(</span><span class="n">Mu</span><span class="p">)</span><span class="o">.</span><span class="n">mat</span><span class="p">()</span><span class="o">.</span><span class="n">getSubMatrix</span><span class="p">(</span><span class="n">is0</span><span class="p">,</span> <span class="n">is0</span><span class="p">)</span>
-
-            <span class="c1"># Get diagonal of the velocity mass matrix</span>
-            <span class="n">diagMu</span> <span class="o">=</span> <span class="n">Mu</span><span class="o">.</span><span class="n">getDiagonal</span><span class="p">()</span>
-
-            <span class="c1"># Make inverse of diag(Mu)</span>
-            <span class="n">diagMu</span><span class="o">.</span><span class="n">reciprocal</span><span class="p">()</span> <span class="c1"># diag(Mu)^{-1}</span>
-
-            <span class="c1"># Make square root of the diagonal and use it for scaling</span>
-            <span class="n">diagMu</span><span class="o">.</span><span class="n">sqrtabs</span><span class="p">()</span> <span class="c1"># \sqrt{diag(Mu)^{-1}}</span>
-
-            <span class="c1"># Extract 01-block, i.e. &quot;grad&quot;, from the matrix operator A</span>
-            <span class="n">Bt</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">as_backend_type</span><span class="p">(</span><span class="n">A</span><span class="p">)</span><span class="o">.</span><span class="n">mat</span><span class="p">()</span><span class="o">.</span><span class="n">getSubMatrix</span><span class="p">(</span><span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">)</span>
-            <span class="n">Bt</span><span class="o">.</span><span class="n">diagonalScale</span><span class="p">(</span><span class="n">L</span><span class="o">=</span><span class="n">diagMu</span><span class="p">)</span> <span class="c1"># scale rows of Bt</span>
-
-            <span class="c1"># Get Ap</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_Ap</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">transposeMatMult</span><span class="p">(</span><span class="n">Bt</span><span class="p">)</span> <span class="c1"># Ap = Bt^T*Bt</span>
-
-            <span class="c1"># Set up special options</span>
-            <span class="c1">#self._Ap.setOption(PETSc.Mat.Option.SPD, True)</span>
-
-            <span class="c1"># Store matrix in the corresponding ksp</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">setOperators</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Ap</span><span class="p">)</span>
-
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_Ap&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s2">&quot;Ap&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Update remaining operators in the same way as in the parent class</span>
-        <span class="n">PCDPC_SEW</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">Mp</span><span class="o">=</span><span class="n">Mp</span><span class="p">,</span> <span class="n">Fp</span><span class="o">=</span><span class="n">Fp</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="n">bcs</span><span class="p">)</span>
-
-        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div></div>
-
-
-
-<div class="viewcode-block" id="PCDPC_BRM"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM">[docs]</a><span class="k">class</span> <span class="nc">PCDPC_BRM</span><span class="p">(</span><span class="n">BasePCDPC</span><span class="p">):</span>
+<div class="viewcode-block" id="PCDPC_BRM1"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM1">[docs]</a><span class="k">class</span> <span class="nc">PCDPC_BRM1</span><span class="p">(</span><span class="n">BasePCDPC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;This class implements a modification of PCD variant similar to one by</span>
 <span class="sd">    [2]_.</span>
 
@@ -319,8 +145,10 @@
 <span class="sd">           preconditioners for the discrete Oseen problem*.</span>
 <span class="sd">           SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-<div class="viewcode-block" id="PCDPC_BRM.apply"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM.apply">[docs]</a>    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-        <span class="sd">r&quot;&quot;&quot;This method implements the action of the inverse of the approximate</span>
+
+    <span class="nd">@timed</span><span class="p">(</span><span class="s2">&quot;FENaPack: PCDPC_BRM1 apply&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="PCDPC_BRM1.apply"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM1.apply">[docs]</a>    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;This method implements the action of the inverse of the approximate</span>
 <span class="sd">        Schur complement :math:`-\hat{S}^{-1}`, that is</span>
 
 <span class="sd">        .. math::</span>
@@ -344,86 +172,52 @@
 <span class="sd">        Good strategy is to use :math:`M_p` and :math:`K_p` both scaled by</span>
 <span class="sd">        :math:`\nu^{-1}`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s2">&quot;FENaPack: PCDPC_BRM apply&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Fetch cached duplicate of x</span>
-        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_z</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">result</span><span class="o">=</span><span class="n">z</span><span class="p">)</span>
-
-        <span class="c1"># Apply subfield boundary conditions to rhs</span>
-        <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfield_bcs</span><span class="p">:</span>
-            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="c1"># Fetch work vector</span>
+        <span class="n">z</span><span class="p">,</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_work_vecs</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
         <span class="c1"># Apply PCD</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c1"># y = A_p^{-1} z</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_Kp</span><span class="o">.</span><span class="n">mult</span><span class="p">(</span><span class="o">-</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>     <span class="c1"># z = -K_p y</span>
-        <span class="n">z</span><span class="o">.</span><span class="n">axpy</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>          <span class="c1"># z = z - x</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c1"># y = M_p^{-1} z</span>
+        <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">result</span><span class="o">=</span><span class="n">z</span><span class="p">)</span>        <span class="c1"># z = x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bcs_applier</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>     <span class="c1"># apply bcs to z</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ksp_Ap</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c1"># y = A_p^{-1} z</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mat_Kp</span><span class="o">.</span><span class="n">mult</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>  <span class="c1"># z = K_p y</span>
+        <span class="n">z</span><span class="o">.</span><span class="n">axpy</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>          <span class="c1"># z = z + x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ksp_Mp</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c1"># y = M_p^{-1} z</span>
+        <span class="c1"># FIXME: How is with the sign bussines?</span>
+        <span class="n">y</span><span class="o">.</span><span class="n">scale</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>           <span class="c1"># y = -y</span></div></div>
 
-        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="PCDPC_BRM.set_operators"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM.set_operators">[docs]</a>    <span class="k">def</span> <span class="nf">set_operators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is0</span><span class="p">,</span> <span class="n">is1</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span>
-                      <span class="n">Mp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Ap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Kp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set operators for the approximate Schur complement matrix</span>
+<div class="viewcode-block" id="PCDPC_BRM2"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM2">[docs]</a><span class="k">class</span> <span class="nc">PCDPC_BRM2</span><span class="p">(</span><span class="n">BasePCDPC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This class implements a modification steady variant of PCD</span>
+<span class="sd">    described in [1]_.</span>
 
-<span class="sd">        *Arguments*</span>
-<span class="sd">            is0, is1 (:py:class:`petsc4py.PETSc.IS`)</span>
-<span class="sd">                The index sets defining blocks in the field splitted matrix.</span>
-<span class="sd">            A (:py:class:`GenericMatrix`)</span>
-<span class="sd">                Dummy system matrix. Not used by this implementation.</span>
-<span class="sd">            P (:py:class:`GenericMatrix`)</span>
-<span class="sd">                Dummy preconditioning matrix. Not used by this implementation.</span>
+<span class="sd">    .. [1] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast</span>
+<span class="sd">           Iterative Solvers: With Application in Incompressible Fluid Dynamics*.</span>
+<span class="sd">           Oxford University Press 2005. 2nd edition 2014.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
-<span class="sd">        *Keyword arguments*</span>
-<span class="sd">            Mp (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The matrix containing pressure mass matrix as its 11-block.</span>
-<span class="sd">            Ap (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The matrix containing pressure laplacian as its 11-block.</span>
-<span class="sd">            Kp (:py:class:`GenericMatrix`)</span>
-<span class="sd">                The matrix containing pressure convection plus possibly mass</span>
-<span class="sd">                matrix comming from the time derivative as its 11-block.</span>
-<span class="sd">            bcs (:py:class:`DirichletBC`)</span>
-<span class="sd">                List of boundary conditions that will be applied during</span>
-<span class="sd">                :math:`A_p^{-1} x` solve.</span>
+    <span class="nd">@timed</span><span class="p">(</span><span class="s2">&quot;FENaPack: PCDPC_BRM2 apply&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="PCDPC_BRM2.apply"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM2.apply">[docs]</a>    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="c1"># FIXME: Fix the docstring</span>
+        <span class="sd">&quot;&quot;&quot;This method implements the action of the inverse of the approximate</span>
+<span class="sd">        Schur complement :math:`\hat{S} = -M_p F_p^{-1} A_p`, that is</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">            y = \hat{S}^{-1} x = - (I + A_p^{-1} K_p) M_p^{-1} x.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">timer</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="s2">&quot;FENaPack: PCDPC_BRM set_operators&quot;</span><span class="p">)</span>
+        <span class="c1"># Fetch work vector</span>
+        <span class="n">z0</span><span class="p">,</span> <span class="n">z1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_work_vecs</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
 
-        <span class="c1"># Prepare bcs for adjusting field split vector in PC apply</span>
-        <span class="k">if</span> <span class="n">bcs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">bcs</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
-                <span class="n">bcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">bcs</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span> <span class="o">=</span> <span class="n">bcs</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_subfield_bcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">SubfieldBC</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="n">is1</span><span class="p">)</span> <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="n">bcs</span><span class="p">]</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_bcs&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s2">&quot;bcs&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Update Ap</span>
-        <span class="k">if</span> <span class="n">Ap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="c1"># Apply boundary conditions along inflow boundary</span>
-            <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span><span class="p">:</span>
-                <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">Ap</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_Ap</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">as_backend_type</span><span class="p">(</span><span class="n">Ap</span><span class="p">)</span><span class="o">.</span><span class="n">mat</span><span class="p">()</span><span class="o">.</span><span class="n">getSubMatrix</span><span class="p">(</span><span class="n">is1</span><span class="p">,</span> <span class="n">is1</span><span class="p">)</span>
-            <span class="c1">#self._Ap.setOption(PETSc.Mat.Option.SPD, True)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Ap</span><span class="o">.</span><span class="n">setOperators</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Ap</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_Ap&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s2">&quot;Ap&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Update Kp</span>
-        <span class="k">if</span> <span class="n">Kp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_Kp</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">as_backend_type</span><span class="p">(</span><span class="n">Kp</span><span class="p">)</span><span class="o">.</span><span class="n">mat</span><span class="p">()</span><span class="o">.</span><span class="n">getSubMatrix</span><span class="p">(</span><span class="n">is1</span><span class="p">,</span> <span class="n">is1</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_Kp&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s2">&quot;Kp&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Update Mp</span>
-        <span class="k">if</span> <span class="n">Mp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_Mp</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">as_backend_type</span><span class="p">(</span><span class="n">Mp</span><span class="p">)</span><span class="o">.</span><span class="n">mat</span><span class="p">()</span><span class="o">.</span><span class="n">getSubMatrix</span><span class="p">(</span><span class="n">is1</span><span class="p">,</span> <span class="n">is1</span><span class="p">)</span>
-            <span class="c1">#self._Mp.setOption(PETSc.Mat.Option.SPD, True)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_ksp_Mp</span><span class="o">.</span><span class="n">setOperators</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Mp</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_Mp&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_raise_attribute_error</span><span class="p">(</span><span class="s2">&quot;Mp&quot;</span><span class="p">)</span>
-
-        <span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div></div>
+        <span class="c1"># Apply PCD</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ksp_Mp</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>   <span class="c1"># y = M_p^{-1} x</span>
+        <span class="n">y</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">result</span><span class="o">=</span><span class="n">z0</span><span class="p">)</span>         <span class="c1"># z0 = y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mat_Kp</span><span class="o">.</span><span class="n">mult</span><span class="p">(</span><span class="n">z0</span><span class="p">,</span> <span class="n">z1</span><span class="p">)</span>  <span class="c1"># z1 = K_p z0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bcs_applier</span><span class="p">(</span><span class="n">z1</span><span class="p">)</span>      <span class="c1"># apply bcs to z1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ksp_Ap</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">z1</span><span class="p">,</span> <span class="n">z0</span><span class="p">)</span> <span class="c1"># z0 = A_p^{-1} z1</span>
+        <span class="n">y</span><span class="o">.</span><span class="n">axpy</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">z0</span><span class="p">)</span>           <span class="c1"># y = y + z0</span>
+        <span class="c1"># FIXME: How is with the sign bussines?</span>
+        <span class="n">y</span><span class="o">.</span><span class="n">scale</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>             <span class="c1"># y = -y</span></div></div>
 </pre></div>
 
           </div>
@@ -434,8 +228,8 @@
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
@@ -454,13 +248,13 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">FENaPack 2017.1.0.dev0 documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">FENaPack 2017.1.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+        &#169; Copyright 2016, Jan Blechta, Martin Řehoř.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.5.
     </div>
   </body>
 </html>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>fenapack.nonlinear_solvers &mdash; FENaPack 2017.1.0.dev0 documentation</title>
+    <title>fenapack.nonlinear_solvers &#8212; FENaPack 2017.1.0.dev0 documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -17,15 +17,16 @@
         VERSION:     '2017.1.0.dev0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="FENaPack 2017.1.0.dev0 documentation" href="../../index.html" />
-    <link rel="up" title="Module code" href="../index.html" /> 
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -37,8 +38,8 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">FENaPack 2017.1.0.dev0 documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">FENaPack 2017.1.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -48,7 +49,7 @@
           <div class="body" role="main">
             
   <h1>Source code for fenapack.nonlinear_solvers</h1><div class="highlight"><pre>
-<span class="c1"># Copyright (C) 2015-2016 Jan Blechta and Martin Rehor</span>
+<span></span><span class="c1"># Copyright (C) 2015-2017 Jan Blechta and Martin Rehor</span>
 <span class="c1">#</span>
 <span class="c1"># This file is part of FENaPack.</span>
 <span class="c1">#</span>
@@ -65,184 +66,77 @@
 <span class="c1"># You should have received a copy of the GNU Lesser General Public License</span>
 <span class="c1"># along with FENaPack.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
 
-<span class="kn">import</span> <span class="nn">dolfin</span>
-<span class="kn">import</span> <span class="nn">re</span>
+<span class="sd">&quot;&quot;&quot;This module provides subclasses of DOLFIN interface for</span>
+<span class="sd">solving non-linear problems suitable for use with fieldsplit</span>
+<span class="sd">preconditioned Krylov methods</span>
+<span class="sd">&quot;&quot;&quot;</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NewtonSolver&#39;</span><span class="p">,</span> <span class="s1">&#39;PCDProblem&#39;</span><span class="p">]</span>
+<span class="kn">from</span> <span class="nn">dolfin</span> <span class="k">import</span> <span class="n">NewtonSolver</span><span class="p">,</span> <span class="n">PETScFactory</span><span class="p">,</span> <span class="n">NonlinearProblem</span>
+<span class="kn">from</span> <span class="nn">dolfin</span> <span class="k">import</span> <span class="n">SystemAssembler</span><span class="p">,</span> <span class="n">assemble</span>
 
+<div class="viewcode-block" id="PCDNewtonSolver"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.PCDNewtonSolver">[docs]</a><span class="k">class</span> <span class="nc">PCDNewtonSolver</span><span class="p">(</span><span class="n">NewtonSolver</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Newton solver suitable for use with</span>
+<span class="sd">    :py:class:`PCDKrylovSolver`&quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="NewtonSolver"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NewtonSolver">[docs]</a><span class="k">class</span> <span class="nc">NewtonSolver</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">NewtonSolver</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;This class is a modification of :py:class:`dolfin.NewtonSolver`</span>
-<span class="sd">    suitable to deal appropriately with</span>
-<span class="sd">    :py:class:`fenapack.field_split.FieldSplitSolver` and PCD</span>
-<span class="sd">    preconditioners from :py:class:`fenapack.preconditioners` module.</span>
-<span class="sd">    In particular, it takes properly of linear solver and preconditioner</span>
-<span class="sd">    setup in between succesive Newton iterations.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-<div class="viewcode-block" id="NewtonSolver.__init__"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NewtonSolver.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">debug_hook</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Create Newton solver for solver for given problem. Optional</span>
-<span class="sd">        debug hook executed on every iteration can be provided.</span>
+<div class="viewcode-block" id="PCDNewtonSolver.__init__"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.PCDNewtonSolver.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solver</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize for a given PCD Krylov solver.</span>
 
-<span class="sd">        *Arguments*</span>
-<span class="sd">            solver (:py:class:`GenericLinearSolver`)</span>
-<span class="sd">                A linear solver.</span>
-<span class="sd">            debug_hook (function)</span>
-<span class="sd">                A function of the signature::</span>
-
-<span class="sd">                    bool dolfin.NewtonSolver.converged(GenericVector r, NonlinearProblem problem, int iteration)</span>
-
-<span class="sd">                Provided ``r`` is a current residual vector, ``problem`` is</span>
-<span class="sd">                argument supplied to ``solve`` and ``iteration`` is number of</span>
-<span class="sd">                current iteration; :py:class:`bool` return value is ignored.</span>
+<span class="sd">        :type solver: :py:class:`PCDKrylovSolver`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_hook</span> <span class="o">=</span> <span class="n">debug_hook</span>
-        <span class="n">factory</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">PETScFactory</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">NewtonSolver</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solver</span><span class="o">.</span><span class="n">mpi_comm</span><span class="p">(),</span> <span class="n">solver</span><span class="p">,</span> <span class="n">factory</span><span class="p">)</span>
-        <span class="c1"># Homebrewed implementation</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_solver</span> <span class="o">=</span> <span class="n">solver</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_matA</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Matrix</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_dx</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Vector</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_b</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Vector</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_residual</span> <span class="o">=</span> <span class="mf">0.0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_residual0</span> <span class="o">=</span> <span class="mf">0.0</span></div>
+
+        <span class="c1"># Initialize DOLFIN Newton solver</span>
+        <span class="n">comm</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">mpi_comm</span><span class="p">()</span>
+        <span class="n">factory</span> <span class="o">=</span> <span class="n">PETScFactory</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">PCDNewtonSolver</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">factory</span><span class="p">)</span>
+
+        <span class="c1"># Store Python reference for solver setup</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solver</span> <span class="o">=</span> <span class="n">solver</span></div>
 
 
-    <span class="k">def</span> <span class="nf">converged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">newton_iteration</span><span class="p">):</span>
-        <span class="c1"># A Python rewrite of &#39;dolfin::NewtonSolver::converged&#39; with</span>
-        <span class="c1"># possibility to call debugging hook.</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hook</span><span class="p">:</span>
-            <span class="n">dolfin</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Calling debugging hook of NewtonSolver::converged&#39;</span>
-                         <span class="s1">&#39; at iteration </span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">newton_iteration</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_hook</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">newton_iteration</span><span class="p">)</span>
-        <span class="n">rtol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;relative_tolerance&quot;</span><span class="p">]</span>
-        <span class="n">atol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;absolute_tolerance&quot;</span><span class="p">]</span>
-        <span class="n">report</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;report&quot;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_residual</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="s2">&quot;l2&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">newton_iteration</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_residual0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_residual</span>
-        <span class="n">relative_residual</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_residual</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">_residual0</span>
-        <span class="c1"># Print modified report message</span>
-        <span class="k">if</span> <span class="n">report</span> <span class="ow">and</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">MPI</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">mpi_comm_world</span><span class="p">())</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">dolfin</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Nonlinear iteration </span><span class="si">%d</span><span class="s2">:&quot;</span>
-                        <span class="s2">&quot; r (abs) = </span><span class="si">%.3e</span><span class="s2"> (tol = </span><span class="si">%.3e</span><span class="s2">)&quot;</span>
-                        <span class="s2">&quot; r (rel) = </span><span class="si">%.3e</span><span class="s2"> (tol = </span><span class="si">%.3e</span><span class="s2">)&quot;</span>
-                        <span class="o">%</span> <span class="p">(</span><span class="n">newton_iteration</span><span class="p">,</span>
-                           <span class="bp">self</span><span class="o">.</span><span class="n">_residual</span><span class="p">,</span> <span class="n">atol</span><span class="p">,</span>
-                         <span class="n">relative_residual</span><span class="p">,</span> <span class="n">rtol</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">relative_residual</span> <span class="o">&lt;</span> <span class="n">rtol</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_residual</span> <span class="o">&lt;</span> <span class="n">atol</span>
+    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="c1"># Store Python reference for solver setup</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span> <span class="o">=</span> <span class="n">problem</span>
+
+        <span class="c1"># Solve the problem, drop the reference, and return</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">PCDNewtonSolver</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span>
+        <span class="k">return</span> <span class="n">r</span>
 
 
-    <span class="c1"># Homebrewed implementation</span>
-<div class="viewcode-block" id="NewtonSolver.solve"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.NewtonSolver.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Solve abstract nonlinear problem :math:`F(x) = 0` for given</span>
-<span class="sd">        :math:`F` and Jacobian :math:`\dfrac{\partial F}{\partial x}`.</span>
+    <span class="k">def</span> <span class="nf">solver_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">nonlinear_problem</span><span class="p">,</span> <span class="n">iteration</span><span class="p">):</span>
+        <span class="c1"># Only do the setup once</span>
+        <span class="c1"># FIXME: Is this good?</span>
+        <span class="k">if</span> <span class="n">iteration</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_initialized&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">True</span>
 
-<span class="sd">        *Arguments*</span>
-<span class="sd">            problem (:py:class:`dolfin.NonlinearProblem`)</span>
-<span class="sd">                The nonlinear problem.</span>
-<span class="sd">            x (:py:class:`dolfin.GenericVector`)</span>
-<span class="sd">                The unknown vector.</span>
+        <span class="c1"># C++ references passed in do not have Python context</span>
+        <span class="n">linear_solver</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solver</span>
+        <span class="n">nonlinear_problem</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem</span>
 
-<span class="sd">        *Returns*</span>
-<span class="sd">            (int, bool)</span>
-<span class="sd">                Pair of number of Newton iterations, and whether</span>
-<span class="sd">                iteration converged)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># A Python rewrite of &#39;dolfin::NewtonSolver::solve&#39;</span>
-        <span class="c1"># with modification in linear solver setup.</span>
-        <span class="n">convergence_criterion</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;convergence_criterion&quot;</span><span class="p">]</span>
-        <span class="n">maxiter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;maximum_iterations&quot;</span><span class="p">]</span>
+        <span class="c1"># Set operators and initialize PCD</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">A</span> <span class="k">if</span> <span class="n">P</span><span class="o">.</span><span class="n">empty</span><span class="p">()</span> <span class="k">else</span> <span class="n">P</span>
+        <span class="n">linear_solver</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">)</span>
+        <span class="n">linear_solver</span><span class="o">.</span><span class="n">init_pcd</span><span class="p">(</span><span class="n">nonlinear_problem</span><span class="p">)</span>
 
-        <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_solver&quot;</span><span class="p">)</span>
-        <span class="c1"># solver_type = self.parameters[&quot;linear_solver&quot;]</span>
-        <span class="c1"># pc_type = self.parameters[&quot;preconditioner&quot;]</span>
-        <span class="c1"># if not self._solver:</span>
-        <span class="c1">#     self._solver = dolfin.LinearSolver(solver_type, pc_type)</span>
 
-        <span class="c1"># self._solver.update_parameters(self.parameters[self._solver.parameter_type()])</span>
-
-        <span class="n">krylov_iterations</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="n">problem</span><span class="o">.</span><span class="n">F</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_b</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
-        <span class="n">problem</span><span class="o">.</span><span class="n">form</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_matA</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_b</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">convergence_criterion</span> <span class="o">==</span> <span class="s2">&quot;residual&quot;</span><span class="p">:</span>
-            <span class="n">newton_converged</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">converged</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_b</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">convergence_criterion</span> <span class="o">==</span> <span class="s2">&quot;incremental&quot;</span><span class="p">:</span>
-            <span class="n">newton_converged</span> <span class="o">=</span> <span class="bp">False</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">dolfin</span><span class="o">.</span><span class="n">dolfin_error</span><span class="p">(</span><span class="s2">&quot;utils.py&quot;</span>
-                                <span class="s2">&quot;check for convergence&quot;</span><span class="p">,</span>
-                                <span class="s2">&quot;The convergence criterion </span><span class="si">%s</span><span class="s2"> is unknown,&quot;</span>
-                                <span class="s2">&quot; known criteria are &#39;residual&#39; or &#39;incremental&#39;&quot;</span>
-                                <span class="o">%</span> <span class="n">convergence_criterion</span><span class="p">)</span>
-
-        <span class="n">relaxation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;relaxation_parameter&quot;</span><span class="p">]</span>
-
-        <span class="k">while</span> <span class="ow">not</span> <span class="n">newton_converged</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span> <span class="o">&lt;</span> <span class="n">maxiter</span><span class="p">:</span>
-            <span class="n">problem</span><span class="o">.</span><span class="n">J</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_matA</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
-            <span class="c1"># TODO: Fix this in DOLFIN. Setup of the linear solver should be</span>
-            <span class="c1"># handled by some appropriate method of &#39;NonlinearProblem&#39;.</span>
-            <span class="c1"># By default, this method must call</span>
-            <span class="c1">#   self._solver.set_operator(self._matA)</span>
-            <span class="c1"># in order to retain original functionality of &#39;NewtonSolver&#39;.</span>
-            <span class="c1"># Users should be allowed to overload this method to customize</span>
-            <span class="c1"># linear solver setup, e.g. to set preconditioner.</span>
-            <span class="n">problem</span><span class="o">.</span><span class="n">linear_solver_setup</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_solver</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matA</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dx</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_dx</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
-            <span class="n">krylov_iterations</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solver</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_b</span><span class="p">)</span>
-            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">relaxation</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">DOLFIN_EPS</span><span class="p">:</span>
-                <span class="n">x</span><span class="p">[:]</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dx</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">x</span><span class="o">.</span><span class="n">axpy</span><span class="p">(</span><span class="o">-</span><span class="n">relaxation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dx</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">problem</span><span class="o">.</span><span class="n">F</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_b</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
-            <span class="n">problem</span><span class="o">.</span><span class="n">form</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_matA</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_b</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">convergence_criterion</span> <span class="o">==</span> <span class="s2">&quot;residual&quot;</span><span class="p">:</span>
-                <span class="n">newton_converged</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">converged</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_b</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span>
-                                                  <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">convergence_criterion</span> <span class="o">==</span> <span class="s2">&quot;incremental&quot;</span><span class="p">:</span>
-                <span class="n">newton_converged</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">converged</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dx</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span>
-                                                  <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">dolfin</span><span class="o">.</span><span class="n">dolfin_error</span><span class="p">(</span><span class="s2">&quot;utils.py&quot;</span>
-                                    <span class="s2">&quot;check for convergence&quot;</span><span class="p">,</span>
-                                    <span class="s2">&quot;The convergence criterion </span><span class="si">%s</span><span class="s2"> is unknown,&quot;</span>
-                                    <span class="s2">&quot; known criteria are &#39;residual&#39; or &#39;incremental&#39;&quot;</span>
-                                    <span class="o">%</span> <span class="n">convergence_criterion</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">newton_converged</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">MPI</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">mpi_comm_world</span><span class="p">())</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">dolfin</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Nonlinear solver finished in </span><span class="si">%d</span><span class="s2"> iterations&quot;</span>
-                            <span class="s2">&quot; and </span><span class="si">%d</span><span class="s2"> linear solver iterations.&quot;</span>
-                            <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span><span class="p">,</span> <span class="n">krylov_iterations</span><span class="p">))</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">error_on_nonconvergence</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;error_on_nonconvergence&quot;</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">error_on_nonconvergence</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span> <span class="o">==</span> <span class="n">maxiter</span><span class="p">:</span>
-                    <span class="n">dolfin</span><span class="o">.</span><span class="n">dolfin_error</span><span class="p">(</span><span class="s2">&quot;utils.py&quot;</span><span class="p">,</span>
-                                        <span class="s2">&quot;solve nonlinear system with NewtonSolver&quot;</span><span class="p">,</span>
-                                        <span class="s2">&quot;Newton solver did not converge because&quot;</span>
-                                        <span class="s2">&quot; maximum number of iterations reached&quot;</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">dolfin</span><span class="o">.</span><span class="n">dolfin_error</span><span class="p">(</span><span class="s2">&quot;utils.py&quot;</span><span class="p">,</span>
-                                        <span class="s2">&quot;solve nonlinear system with NewtonSolver&quot;</span><span class="p">,</span>
-                                        <span class="s2">&quot;Newton solver did not converge&quot;</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">dolfin</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Newton solver did not converge.&quot;</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_newton_iteration</span><span class="p">,</span> <span class="n">newton_converged</span></div></div>
+    <span class="k">def</span> <span class="nf">linear_solver</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solver</span></div>
 
 
 
-<div class="viewcode-block" id="PCDProblem"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.PCDProblem">[docs]</a><span class="k">class</span> <span class="nc">PCDProblem</span><span class="p">(</span><span class="n">dolfin</span><span class="o">.</span><span class="n">NonlinearProblem</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Class for interfacing with :py:class:`NewtonSolver`.&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="PCDProblem.__init__"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.PCDProblem.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="n">bcs</span><span class="p">,</span> <span class="n">J</span><span class="p">,</span> <span class="n">J_pc</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
-                 <span class="n">mp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">fp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">kp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bcs_pcd</span><span class="o">=</span><span class="p">[]):</span>
+<span class="c1"># FIXME: Separate Newton and PCD part of this class. Linear PCD problem</span>
+<span class="c1"># has nothing to do with Newton part</span>
+<div class="viewcode-block" id="PCDProblem"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.PCDProblem">[docs]</a><span class="k">class</span> <span class="nc">PCDProblem</span><span class="p">(</span><span class="n">NonlinearProblem</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Class for interfacing with not only :py:class:`NewtonSolver`.&quot;&quot;&quot;</span>
+    <span class="c1"># TODO: Add abstract base class with docstrings</span>
+    <span class="c1"># TODO: What about interface</span>
+    <span class="c1">#          pcd_problem = PCDProblem()</span>
+    <span class="c1">#          pcd_problem.forms.F = F</span>
+    <span class="c1">#          pcd_problem.forms.J = J</span>
+    <span class="c1">#          ....</span>
+<div class="viewcode-block" id="PCDProblem.__init__"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.nonlinear_solvers.PCDProblem.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="n">bcs</span><span class="p">,</span> <span class="n">J</span><span class="p">,</span> <span class="n">J_pc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">mp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">kp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bcs_pcd</span><span class="o">=</span><span class="p">[]):</span>
         <span class="sd">&quot;&quot;&quot;Return subclass of :py:class:`dolfin.NonlinearProblem` suitable</span>
 <span class="sd">        for :py:class:`NewtonSolver` based on</span>
 <span class="sd">        :py:class:`fenapack.field_split.FieldSplitSolver` and PCD</span>
@@ -276,123 +170,83 @@
 <span class="sd">        All the arguments should be given on the common mixed function space.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">NonlinearProblem</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">PCDProblem</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_F</span> <span class="o">=</span> <span class="n">F</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span> <span class="o">=</span> <span class="n">bcs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_J</span> <span class="o">=</span> <span class="n">J</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_J_pc</span> <span class="o">=</span> <span class="n">J_pc</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_mp</span> <span class="o">=</span> <span class="n">mp</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_mu</span> <span class="o">=</span> <span class="n">mu</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ap</span> <span class="o">=</span> <span class="n">ap</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_fp</span> <span class="o">=</span> <span class="n">fp</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_kp</span> <span class="o">=</span> <span class="n">kp</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_bcs_pcd</span> <span class="o">=</span> <span class="n">bcs_pcd</span>
+        <span class="c1"># Assembler for Newton/Picard system</span>
+        <span class="c1"># FIXME: Does it get broken for Oseen system?</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assembler</span> <span class="o">=</span> <span class="n">SystemAssembler</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="n">bcs</span><span class="p">)</span>
 
-        <span class="c1"># Matrices used to assemble parts of the preconditioner</span>
-        <span class="c1"># NOTE: Some of them may be unused.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_matP</span>  <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Matrix</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_matMp</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Matrix</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_matMu</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Matrix</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_matAp</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Matrix</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_matFp</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Matrix</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_matKp</span> <span class="o">=</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">Matrix</span><span class="p">()</span></div>
+        <span class="c1"># Assembler for preconditioner</span>
+        <span class="k">if</span> <span class="n">J_pc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assembler_pc</span> <span class="o">=</span> <span class="n">SystemAssembler</span><span class="p">(</span><span class="n">J_pc</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="n">bcs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assembler_pc</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Store forms/bcs for later</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">forms</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;F&quot;</span><span class="p">:</span> <span class="n">F</span><span class="p">,</span>
+            <span class="s2">&quot;ap&quot;</span><span class="p">:</span> <span class="n">ap</span><span class="p">,</span>
+            <span class="s2">&quot;mp&quot;</span><span class="p">:</span> <span class="n">mp</span><span class="p">,</span>
+            <span class="s2">&quot;mu&quot;</span><span class="p">:</span> <span class="n">mu</span><span class="p">,</span>
+            <span class="s2">&quot;fp&quot;</span><span class="p">:</span> <span class="n">fp</span><span class="p">,</span>
+            <span class="s2">&quot;kp&quot;</span><span class="p">:</span> <span class="n">kp</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bcs_pcd</span> <span class="o">=</span> <span class="n">bcs_pcd</span></div>
+
+
+    <span class="k">def</span> <span class="nf">get_form</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">form</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forms</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">form</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;Form &#39;</span><span class="si">%s</span><span class="s2">&#39; requested by PCD not available&quot;</span> <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">form</span>
+
+
+    <span class="k">def</span> <span class="nf">function_space</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forms</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">arguments</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">function_space</span><span class="p">()</span>
 
 
     <span class="k">def</span> <span class="nf">F</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="c1"># b ... residual vector</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_F</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">b</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span><span class="p">:</span>
-            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assembler</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
 
 
     <span class="k">def</span> <span class="nf">J</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="c1"># A ... system matrix</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_J</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">A</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span><span class="p">:</span>
-            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assembler</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
 
 
-    <span class="k">def</span> <span class="nf">J_pc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">P</span><span class="p">):</span>
-        <span class="c1"># P ... preconditioning matrix</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_attr</span><span class="p">(</span><span class="s2">&quot;J_pc&quot;</span><span class="p">)</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_J_pc</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">P</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs</span><span class="p">:</span>
-            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">P</span><span class="p">)</span>
-
-
-    <span class="k">def</span> <span class="nf">mp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Mp</span><span class="p">):</span>
-        <span class="c1"># Mp ... pressure mass matrix</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_attr</span><span class="p">(</span><span class="s2">&quot;mp&quot;</span><span class="p">)</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mp</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Mp</span><span class="p">)</span>
-
-
-    <span class="k">def</span> <span class="nf">mu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Mu</span><span class="p">):</span>
-        <span class="c1"># Mu ... velocity mass matrix</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_attr</span><span class="p">(</span><span class="s2">&quot;mu&quot;</span><span class="p">)</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mu</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Mu</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">J_pc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">assembler_pc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assembler_pc</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="n">P</span><span class="p">)</span>
 
 
     <span class="k">def</span> <span class="nf">ap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Ap</span><span class="p">):</span>
-        <span class="c1"># Ap ... pressure Laplacian matrix</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_attr</span><span class="p">(</span><span class="s2">&quot;ap&quot;</span><span class="p">)</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ap</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Ap</span><span class="p">)</span>
+        <span class="n">assembler</span> <span class="o">=</span> <span class="n">SystemAssembler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_form</span><span class="p">(</span><span class="s2">&quot;ap&quot;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_form</span><span class="p">(</span><span class="s2">&quot;F&quot;</span><span class="p">),</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">pcd_bcs</span><span class="p">())</span>
+        <span class="n">assembler</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="n">Ap</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">mp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Mp</span><span class="p">):</span>
+        <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_form</span><span class="p">(</span><span class="s2">&quot;mp&quot;</span><span class="p">),</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Mp</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">mu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Mu</span><span class="p">):</span>
+        <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_form</span><span class="p">(</span><span class="s2">&quot;mu&quot;</span><span class="p">),</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Mu</span><span class="p">)</span>
 
 
     <span class="k">def</span> <span class="nf">fp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Fp</span><span class="p">):</span>
-        <span class="c1"># Fp ... pressure convection-diffusion matrix</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_attr</span><span class="p">(</span><span class="s2">&quot;fp&quot;</span><span class="p">)</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fp</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Fp</span><span class="p">)</span>
+        <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_form</span><span class="p">(</span><span class="s2">&quot;fp&quot;</span><span class="p">),</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Fp</span><span class="p">)</span>
 
 
     <span class="k">def</span> <span class="nf">kp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Kp</span><span class="p">):</span>
-        <span class="c1"># Kp ... pressure convection matrix</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_attr</span><span class="p">(</span><span class="s2">&quot;kp&quot;</span><span class="p">)</span>
-        <span class="n">dolfin</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_kp</span><span class="p">,</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Kp</span><span class="p">)</span>
+        <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_form</span><span class="p">(</span><span class="s2">&quot;kp&quot;</span><span class="p">),</span> <span class="n">tensor</span><span class="o">=</span><span class="n">Kp</span><span class="p">)</span>
 
 
-    <span class="c1">#Hook called by :py:class:`NewtonSolver` on every iteration.</span>
-    <span class="k">def</span> <span class="nf">linear_solver_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">it</span><span class="p">):</span>
-        <span class="c1"># Assemble preconditioner Jacobian or use system Jacobian</span>
+    <span class="c1"># FIXME: Naming</span>
+    <span class="k">def</span> <span class="nf">pcd_bcs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">J_pc</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_matP</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
-            <span class="n">P</span> <span class="o">=</span> <span class="n">A</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">P</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matP</span>
-
-        <span class="n">schur_approx</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="c1"># Prepare matrices guaranteed to be constant during iterations once</span>
-        <span class="k">if</span> <span class="n">it</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">schur_approx</span><span class="p">[</span><span class="s2">&quot;bcs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs_pcd</span>
-            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;Ap&quot;</span><span class="p">,</span> <span class="s2">&quot;Mp&quot;</span><span class="p">,</span> <span class="s2">&quot;Mu&quot;</span><span class="p">]:</span>
-                <span class="n">mat_object</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_mat&quot;</span><span class="o">+</span><span class="n">key</span><span class="p">)</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">())(</span><span class="n">mat_object</span><span class="p">)</span> <span class="c1"># assemble</span>
-                <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
-                    <span class="k">pass</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">schur_approx</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">mat_object</span>
-
-        <span class="c1"># Assemble non-constant matrices everytime</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;Fp&quot;</span><span class="p">,</span> <span class="s2">&quot;Kp&quot;</span><span class="p">]:</span>
-            <span class="n">mat_object</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_mat&quot;</span><span class="o">+</span><span class="n">key</span><span class="p">)</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">())(</span><span class="n">mat_object</span><span class="p">)</span> <span class="c1"># assemble</span>
-            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
-                <span class="k">pass</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">schur_approx</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">mat_object</span>
-
-        <span class="c1"># Pass assembled operators and bc to linear solver</span>
-        <span class="n">solver</span><span class="o">.</span><span class="n">set_operators</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="o">**</span><span class="n">schur_approx</span><span class="p">)</span>
-
-
-    <span class="k">def</span> <span class="nf">_check_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="o">+</span><span class="n">attr</span><span class="p">)</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;Keyword argument &#39;</span><span class="si">%s</span><span class="s2">&#39; of &#39;PCDProblem&#39; object&quot;</span>
-                                 <span class="s2">&quot; has not been set.&quot;</span> <span class="o">%</span> <span class="n">attr</span><span class="p">)</span></div>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs_pcd</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">AssertionError</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;BCs requested by PCD not available&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bcs_pcd</span></div>
 </pre></div>
 
           </div>
@@ -403,8 +257,8 @@
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
@@ -423,13 +277,13 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">FENaPack 2017.1.0.dev0 documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">FENaPack 2017.1.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+        &#169; Copyright 2016, Jan Blechta, Martin Řehoř.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.5.
     </div>
   </body>
 </html>

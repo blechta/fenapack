@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>FENaPack &mdash; FENaPack 2017.1.0.dev0 documentation</title>
+    <title>FENaPack &#8212; FENaPack 2017.1.0.dev0 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,14 +17,16 @@
         VERSION:     '2017.1.0.dev0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="FENaPack 2017.1.0.dev0 documentation" href="#" />
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="PCD preconditioner for Navier-Stokes equations" href="demos/navier-stokes-pcd.html" /> 
   </head>
   <body role="document">
@@ -40,7 +42,7 @@
         <li class="right" >
           <a href="demos/navier-stokes-pcd.html" title="PCD preconditioner for Navier-Stokes equations"
              accesskey="N">next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">FENaPack 2017.1.0.dev0 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">FENaPack 2017.1.0.dev0 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -51,7 +53,7 @@
             
   <div class="section" id="fenapack-fenics-navier-stokes-preconditioning-package">
 <h1>FENaPack - FEniCS Navier-Stokes preconditioning package<a class="headerlink" href="#fenapack-fenics-navier-stokes-preconditioning-package" title="Permalink to this headline">¶</a></h1>
-<a class="reference external image-reference" href="https://circleci.com/gh/blechta/fenapack"><img src="https://circleci.com/gh/blechta/fenapack.svg?style=svg" /></a>
+<a class="reference external image-reference" href="https://circleci.com/gh/blechta/fenapack"><img alt="https://circleci.com/gh/blechta/fenapack.svg?style=svg" src="https://circleci.com/gh/blechta/fenapack.svg?style=svg" /></a>
 <p>FENaPack is a package implementing preconditioners for Navier-Stokes
 problem using FEniCS and PETSc packages. In particular, variants of PCD
 (pressure-convection-diffussion) preconditioner from <a class="footnote-reference" href="#id3" id="id1">[1]</a>, <a class="footnote-reference" href="#id4" id="id2">[2]</a> are
@@ -67,20 +69,26 @@ Oxford University Press 2005. 2nd edition 2014.</td></tr>
 <table class="docutils footnote" frame="void" id="id4" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label">[2]</td><td><em>(<a class="fn-backref" href="#id2">1</a>, <a class="fn-backref" href="#id5">2</a>, <a class="fn-backref" href="#id7">3</a>)</em> Olshanskii M. A., Vassilevski Y. V., <em>Pressure Schur complement
+<tr><td class="label">[2]</td><td><em>(<a class="fn-backref" href="#id2">1</a>, <a class="fn-backref" href="#id5">2</a>)</em> Olshanskii M. A., Vassilevski Y. V., <em>Pressure Schur complement
 preconditioners for the discrete Oseen problem</em>.
 SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.</td></tr>
 </tbody>
 </table>
 <div class="section" id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
-<p>To use FENaPack matching version of FEniCS (version 2017.1.0.dev0) compiled with
-PETSc and petsc4py is needed. To use FENaPack either install it by standard
-procedures or <code class="docutils literal"><span class="pre">source</span> <span class="pre">fenapack.conf</span></code>.</p>
+<p>To use FENaPack matching version of FEniCS (version 2017.1.0.dev0)
+compiled with PETSc and petsc4py is needed. To install FENaPack
+from source do:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="p">[</span><span class="o">--</span><span class="n">user</span><span class="o">|--</span><span class="n">prefix</span><span class="o">=...</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">e</span><span class="p">]</span> <span class="o">.</span>
+</pre></div>
+</div>
+<p>in the source/repository root dir.  Editable install using <code class="docutils literal"><span class="pre">-e</span></code>
+allows to use FENaPack directly from source directory while
+editing it which is suitable for development.</p>
 <p>Meshes for running demos can be downloaded from the FEniCS project
 website by executing <code class="docutils literal"><span class="pre">download-meshes</span></code> script. Demos can be run
 by navigating to a particular demo directory and typing:</p>
-<div class="highlight-default"><div class="highlight"><pre>NP=4
+<div class="highlight-default"><div class="highlight"><pre><span></span>NP=4
 mpirun -n $NP python demo_foo-bar.py [-h]
 </pre></div>
 </div>
@@ -152,72 +160,48 @@ dense. Possible trick is to approximate <span class="math">\(\mathbb{S}\)</span>
 order of the operators</p>
 <div class="math">
 \[\mathbb{S} \approx
-\mathbb{X}_\mathrm{BRM}
+\mathbb{X}_\mathrm{BRM1}
 := (-\Delta) \left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}\]</div>
 <p>or</p>
 <div class="math">
 \[\mathbb{S} \approx
-\mathbb{X}_\mathrm{SEW}
+\mathbb{X}_\mathrm{BRM2}
 := \left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)^{-1}(-\Delta).\]</div>
 <p>This gives rise to the action of 11-block of preconditioner
 <span class="math">\(\mathbb{P}^{-1}\)</span> given by</p>
 <div class="math">
-\[\mathbb{X}_\mathrm{BRM}^{-1}
+\[\mathbb{X}_\mathrm{BRM1}^{-1}
 := \left(-\nu\Delta+\mathbf{v}\cdot\nabla\right)(-\Delta)^{-1}.\]</div>
 <p>or</p>
 <div class="math">
-\[\mathbb{X}_\mathrm{SEW}^{-1}
+\[\mathbb{X}_\mathrm{BRM2}^{-1}
 := (-\Delta)^{-1}\left(-\nu\Delta+\mathbf{v}\cdot\nabla\right).\]</div>
 <p>Obviously additional artificial boundary condition for Laplacian solve
 <span class="math">\(-\Delta^{-1}\)</span> is needed in the action of preconditioner. Modifying
-the approach from <a class="footnote-reference" href="#id4" id="id5">[2]</a> we implement <span class="math">\(\mathbb{X}_\mathrm{BRM}^{-1}\)</span> as</p>
+the approach from <a class="footnote-reference" href="#id4" id="id5">[2]</a> we implement <span class="math">\(\mathbb{X}_\mathrm{BRM1}^{-1}\)</span> as</p>
 <div class="math">
-\[\mathbb{X}_\mathrm{BRM}^{-1}
+\[\mathbb{X}_\mathrm{BRM1}^{-1}
 := \mathbb{M}_p^{-1} (\mathbb{I} + \mathbb{K}_p\mathbb{A}_p^{-1})\]</div>
 <p>where <span class="math">\(\mathbb{M}_p\)</span> is <span class="math">\(\nu^{-1}\)</span>-multiple of mass matrix on
 pressure, <span class="math">\(\mathbb{K}_p \approx \nu^{-1}\mathbf{v}\cdot\nabla\)</span> is
 a pressure convection matrix, and <span class="math">\(\mathbb{A}_p^{-1} \approx
 (-\Delta)^{-1}\)</span> is a pressure Laplacian solve with <em>zero boundary condition
-on inlet</em>. This is implemented by <a class="reference internal" href="api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM" title="fenapack.preconditioners.PCDPC_BRM"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.PCDPC_BRM</span></code></a>
+on inlet</em>. This is implemented by <a class="reference internal" href="api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM1" title="fenapack.preconditioners.PCDPC_BRM1"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.PCDPC_BRM1</span></code></a>
 and <a class="reference internal" href="demos/navier-stokes-pcd.html"><span class="doc">PCD preconditioner for Navier-Stokes equations</span></a>.</p>
-<p>On the other hand SEW approach</p>
+<p>Analogically we prefer to express BRM2 approach as</p>
 <div class="math">
-\[\mathbb{X}_\mathrm{SEW}^{-1}
-:= \mathbb{A}^{-1} \mathbb{F}_p \mathbb{M}_p^{-1}\]</div>
-<p>with pressure convection-diffusion (PCD) matrix <span class="math">\(\mathbb{F}_p \approx
--\Delta + \mathbf{v}\cdot\nabla\)</span> which also needs at least boundary condition
-for Laplacian solve is advocated in <a class="footnote-reference" href="#id3" id="id6">[1]</a> with use of &#8220;boundary conditions&#8221;
-for zero Dirichlet on <em>outlet</em> and natural conditions elsewhere for both
-<span class="math">\(\mathbb{A}_p\)</span> and <span class="math">\(\mathbb{F}_p\)</span>. Moreover approach, if written
-in this form, requires a nasty ghost layer trick around Dirichlet boundary to
-compensate for poor approximation of</p>
-<div class="math">
-\[\mathbb{I} \approx \mathbb{A}_p^{-1} \mathbb{A}_p\]</div>
-<p>around Dirichlet boundary as can be found in <a class="footnote-reference" href="#id4" id="id7">[2]</a> and <a class="footnote-reference" href="#id9" id="id8">[3]</a>. It shows crucial
-to approximate well leading (Stokes) part of the operator. This is the reason
-why there is <span class="math">\(\mathbb{I}\)</span> instead of <span class="math">\(\mathbb{A}_p
-\mathbb{A}_p^{-1} \approx \mathbb{I}\)</span> in <span class="math">\(\mathbb{X}_\mathrm{BRM}^{-1}\)</span>.
-SEW variant (with approximate finite difference-like ghost layer trick around
-Dirichlet boundary) is implemented in classes
-<a class="reference internal" href="api-doc/fenapack.html#fenapack.preconditioners.PCDPC_SEW" title="fenapack.preconditioners.PCDPC_SEW"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.PCDPC_SEW</span></code></a> and
-<a class="reference internal" href="api-doc/fenapack.html#fenapack.preconditioners.UnsteadyPCDPC_SEW" title="fenapack.preconditioners.UnsteadyPCDPC_SEW"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.UnsteadyPCDPC_SEW</span></code></a>. Its usage is
-demonstrated in some scripts in <code class="docutils literal"><span class="pre">apps</span></code> directory.</p>
-<table class="docutils footnote" frame="void" id="id9" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id8">[3]</a></td><td>Silvester D., Elman H., Ramage A.,
-<em>IFISS. Incompressible Flow &amp; Iterative Solver Software.</em>
-<a class="reference external" href="http://www.maths.manchester.ac.uk/~djs/ifiss/">http://www.maths.manchester.ac.uk/~djs/ifiss/</a></td></tr>
-</tbody>
-</table>
+\[\mathbb{X}_\mathrm{BRM2}^{-1}
+:= (\mathbb{I} + \mathbb{A}_p^{-1}\mathbb{K}_p) \mathbb{M}_p^{-1}\]</div>
+<p>now with <em>zero boundary condition on outlet for Laplacian solve</em> and
+additional Robin term in convection matrix <span class="math">\(\mathbb{K}_p\)</span> roughly
+as stated in <a class="footnote-reference" href="#id3" id="id6">[1]</a>, section 9.2.2. See also <a class="reference internal" href="demos/navier-stokes-pcd.html"><span class="doc">PCD preconditioner for Navier-Stokes equations</span></a>
+and <a class="reference internal" href="api-doc/fenapack.html#fenapack.preconditioners.PCDPC_BRM2" title="fenapack.preconditioners.PCDPC_BRM2"><code class="xref py py-class docutils literal"><span class="pre">fenapack.preconditioners.PCDPC_BRM2</span></code></a>.</p>
 </div>
 <div class="section" id="documented-demos">
 <h2>Documented demos<a class="headerlink" href="#documented-demos" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="demos/navier-stokes-pcd.html">PCD preconditioner for Navier-Stokes equations</a><ul class="simple">
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="demos/navier-stokes-pcd.html">PCD preconditioner for Navier-Stokes equations</a></li>
 </ul>
 </div>
 </div>
@@ -225,9 +209,7 @@ demonstrated in some scripts in <code class="docutils literal"><span class="pre"
 <h2>Manual and API Reference<a class="headerlink" href="#manual-and-api-reference" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="api-doc/fenapack.html">API Reference</a><ul class="simple">
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="api-doc/fenapack.html">API Reference</a></li>
 </ul>
 </div>
 <ul class="simple">
@@ -265,15 +247,15 @@ demonstrated in some scripts in <code class="docutils literal"><span class="pre"
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="_sources/index.txt"
+      <li><a href="_sources/index.rst.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
@@ -295,12 +277,12 @@ demonstrated in some scripts in <code class="docutils literal"><span class="pre"
         <li class="right" >
           <a href="demos/navier-stokes-pcd.html" title="PCD preconditioner for Navier-Stokes equations"
              >next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">FENaPack 2017.1.0.dev0 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">FENaPack 2017.1.0.dev0 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, Jan Blechta, Martin Řehoř.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+        &#169; Copyright 2016, Jan Blechta, Martin Řehoř.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.5.
     </div>
   </body>
 </html>

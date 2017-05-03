@@ -1,0 +1,308 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>fenapack.field_split_backend &#8212; FENaPack 2017.1.0.dev0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2017.1.0.dev0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">FENaPack 2017.1.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for fenapack.field_split_backend</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2017 Jan Blechta</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of FENaPack.</span>
+<span class="c1">#</span>
+<span class="c1"># FENaPack is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU Lesser General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># FENaPack is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU Lesser General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU Lesser General Public License</span>
+
+<span class="sd">&quot;&quot;&quot;Tools for extraction and management of fieldsplit</span>
+<span class="sd">submatrices, subvectors, subbcs, subksps intended to</span>
+<span class="sd">be hidden from user interface&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">dolfin</span> <span class="k">import</span> <span class="n">PETScMatrix</span><span class="p">,</span> <span class="n">Timer</span><span class="p">,</span> <span class="n">DirichletBC</span>
+<span class="kn">from</span> <span class="nn">petsc4py</span> <span class="k">import</span> <span class="n">PETSc</span>
+
+<span class="kn">from</span> <span class="nn">fenapack._field_split_utils</span> <span class="k">import</span> <span class="n">SubfieldBC</span>
+<span class="kn">from</span> <span class="nn">fenapack.nonlinear_solvers</span> <span class="k">import</span> <span class="n">PCDProblem</span>
+
+
+<div class="viewcode-block" id="PCDInterface"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface">[docs]</a><span class="k">class</span> <span class="nc">PCDInterface</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Wrapper of PCDProblem for interfacing with PCD PC</span>
+<span class="sd">    fieldsplit implementation. Convection fieldsplit submatrices</span>
+<span class="sd">    are extracted as shallow or deep submatrices according to</span>
+<span class="sd">    ``deep_submats`` parameter.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="PCDInterface.__init__"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pcd_problem</span><span class="p">,</span> <span class="n">is_u</span><span class="p">,</span> <span class="n">is_p</span><span class="p">,</span> <span class="n">deep_submats</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create PCDInterface instance given PCDProblem instance,</span>
+<span class="sd">        and velocity and pressure index sets&quot;&quot;&quot;</span>
+
+        <span class="c1"># Check input</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pcd_problem</span><span class="p">,</span> <span class="n">PCDProblem</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">is_u</span><span class="p">,</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">IS</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">is_p</span><span class="p">,</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">IS</span><span class="p">)</span>
+
+        <span class="c1"># Store what needed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span> <span class="o">=</span> <span class="n">pcd_problem</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_u</span> <span class="o">=</span> <span class="n">is_u</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_p</span> <span class="o">=</span> <span class="n">is_p</span>
+
+        <span class="c1"># Choose submatrix implementation</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">deep_submats</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">deep_submats</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assemble_operator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assemble_operator_deep</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assemble_operator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assemble_operator_shallow</span>
+
+        <span class="c1"># Dictionary for storing work mats</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scratch</span> <span class="o">=</span> <span class="p">{}</span></div>
+
+
+<div class="viewcode-block" id="PCDInterface.setup_ksp_Ap"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface.setup_ksp_Ap">[docs]</a>    <span class="k">def</span> <span class="nf">setup_ksp_Ap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Setup pressure Laplacian ksp and assemble matrix&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_ksp_once</span><span class="p">(</span><span class="n">ksp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">ap</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_p</span><span class="p">,</span> <span class="n">spd</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PCDInterface.setup_ksp_Mp"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface.setup_ksp_Mp">[docs]</a>    <span class="k">def</span> <span class="nf">setup_ksp_Mp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Setup pressure mass matrix ksp and assemble matrix&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_ksp_once</span><span class="p">(</span><span class="n">ksp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">mp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_p</span><span class="p">,</span> <span class="n">spd</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PCDInterface.setup_ksp_Mu"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface.setup_ksp_Mu">[docs]</a>    <span class="k">def</span> <span class="nf">setup_ksp_Mu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Setup velocity mass matrix ksp and assemble matrix&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_ksp_once</span><span class="p">(</span><span class="n">ksp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_u</span><span class="p">,</span> <span class="n">spd</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PCDInterface.setup_mat_Kp"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface.setup_mat_Kp">[docs]</a>    <span class="k">def</span> <span class="nf">setup_mat_Kp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mat</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Setup and assemble pressure convection</span>
+<span class="sd">        matrix and return it&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">assemble_operator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">kp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_p</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="n">mat</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PCDInterface.setup_mat_Fp"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface.setup_mat_Fp">[docs]</a>    <span class="k">def</span> <span class="nf">setup_mat_Fp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mat</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Setup and assemble pressure convection-diffusion</span>
+<span class="sd">        matrix and return it&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">assemble_operator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">fp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_p</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="n">mat</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PCDInterface.apply_pcd_bcs"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface.apply_pcd_bcs">[docs]</a>    <span class="k">def</span> <span class="nf">apply_pcd_bcs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vec</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Apply bcs to intermediate pressure vector of PCD pc&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">apply_bcs</span><span class="p">(</span><span class="n">vec</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">pcd_bcs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_p</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PCDInterface.get_work_dolfin_mat"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface.get_work_dolfin_mat">[docs]</a>    <span class="k">def</span> <span class="nf">get_work_dolfin_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span>
+                            <span class="n">can_be_destroyed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">can_be_shared</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get working DOLFIN matrix by key. ``can_be_destroyed=True`` tells</span>
+<span class="sd">        that it is probably favourable to not store the matrix unless it is</span>
+<span class="sd">        shared as it will not be used ever again, ``None`` means that it can</span>
+<span class="sd">        be destroyed but it is not probably favourable and ``False`` forbids</span>
+<span class="sd">        the destruction. ``can_be_shared`` tells if a work matrix can be the</span>
+<span class="sd">        same with work matrices for other keys.&quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Add mechanism for sharing DOLFIN mats</span>
+        <span class="c1"># NOTE: Maybe we don&#39;t really need sharing. If only persistent matrix</span>
+        <span class="c1">#       is convection then there is nothing to be shared.</span>
+
+        <span class="c1"># Check if requested matrix is in scratch</span>
+        <span class="n">dolfin_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># Allocate new matrix otherwise</span>
+        <span class="k">if</span> <span class="n">dolfin_mat</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dolfin_mat</span> <span class="o">=</span> <span class="n">PETScMatrix</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
+
+        <span class="c1"># Store or pop the matrix as requested</span>
+        <span class="k">if</span> <span class="n">can_be_destroyed</span> <span class="ow">in</span> <span class="p">[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scratch</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">dolfin_mat</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">can_be_destroyed</span> <span class="ow">is</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scratch</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">dolfin_mat</span></div>
+
+
+<div class="viewcode-block" id="PCDInterface.setup_ksp_once"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface.setup_ksp_once">[docs]</a>    <span class="k">def</span> <span class="nf">setup_ksp_once</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">,</span> <span class="n">assemble_func</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">spd</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Assemble into operator of given ksp if not yet assembled&quot;&quot;&quot;</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">ksp</span><span class="o">.</span><span class="n">getOperators</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># FIXME: This logic that it is created once should be visible</span>
+        <span class="c1">#        in higher level, not in these internals</span>
+        <span class="k">if</span> <span class="n">mat</span><span class="o">.</span><span class="n">type</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">mat</span><span class="o">.</span><span class="n">isAssembled</span><span class="p">():</span>
+            <span class="c1"># Assemble matrix</span>
+            <span class="n">dolfin_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_work_dolfin_mat</span><span class="p">(</span><span class="n">assemble_func</span><span class="p">,</span> <span class="n">mat</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span>
+                                                  <span class="n">can_be_destroyed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                                  <span class="n">can_be_shared</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">assemble_func</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="p">)</span>
+            <span class="n">mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_deep_submat</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+            <span class="c1"># Use eventual spd flag</span>
+            <span class="n">mat</span><span class="o">.</span><span class="n">setOption</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">Mat</span><span class="o">.</span><span class="n">Option</span><span class="o">.</span><span class="n">SPD</span><span class="p">,</span> <span class="n">spd</span><span class="p">)</span>
+
+            <span class="c1"># Set correct options prefix</span>
+            <span class="n">prefix</span> <span class="o">=</span> <span class="n">ksp</span><span class="o">.</span><span class="n">getOptionsPrefix</span><span class="p">()</span>
+            <span class="n">mat</span><span class="o">.</span><span class="n">setOptionsPrefix</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+
+            <span class="c1"># Use also as preconditioner matrix</span>
+            <span class="n">ksp</span><span class="o">.</span><span class="n">setOperators</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="n">mat</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">ksp</span><span class="o">.</span><span class="n">getOperators</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isAssembled</span><span class="p">()</span>
+
+            <span class="c1"># Setup ksp</span>
+            <span class="k">with</span> <span class="n">Timer</span><span class="p">(</span><span class="s2">&quot;FENaPack: </span><span class="si">{}</span><span class="s2"> setup&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">prefix</span><span class="p">)):</span>
+                <span class="n">ksp</span><span class="o">.</span><span class="n">setUp</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_assemble_operator_shallow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">assemble_func</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Assemble operator of given name using shallow submat&quot;&quot;&quot;</span>
+        <span class="c1"># Assemble into persistent DOLFIN matrix everytime</span>
+        <span class="c1"># TODO: Does not shallow submat take care of parents lifetime? How?</span>
+        <span class="n">dolfin_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_work_dolfin_mat</span><span class="p">(</span><span class="n">assemble_func</span><span class="p">,</span> <span class="n">iset</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span>
+                                              <span class="n">can_be_destroyed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                              <span class="n">can_be_shared</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">assemble_func</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="p">)</span>
+
+        <span class="c1"># FIXME: This logic that it is created once should be visible</span>
+        <span class="c1">#        in higher level, not in these internals</span>
+        <span class="c1"># Create shallow submatrix (view into dolfin mat) once</span>
+        <span class="k">if</span> <span class="n">submat</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">submat</span><span class="o">.</span><span class="n">type</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">submat</span><span class="o">.</span><span class="n">isAssembled</span><span class="p">():</span>
+            <span class="n">submat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_shallow_submat</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="n">submat</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">submat</span><span class="o">.</span><span class="n">isAssembled</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">submat</span>
+
+
+    <span class="k">def</span> <span class="nf">_assemble_operator_deep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">assemble_func</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Assemble operator of given name using deep submat&quot;&quot;&quot;</span>
+        <span class="n">dolfin_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_work_dolfin_mat</span><span class="p">(</span><span class="n">assemble_func</span><span class="p">,</span> <span class="n">iset</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span>
+                                              <span class="n">can_be_destroyed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                              <span class="n">can_be_shared</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">assemble_func</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_deep_submat</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="n">submat</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="PCDInterface.apply_bcs"><a class="viewcode-back" href="../../api-doc/fenapack.html#fenapack.field_split_backend.PCDInterface.apply_bcs">[docs]</a>    <span class="k">def</span> <span class="nf">apply_bcs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vec</span><span class="p">,</span> <span class="n">bcs_getter</span><span class="p">,</span> <span class="n">iset</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Transform dolfin bcs obtained using ``bcs_getter`` function</span>
+<span class="sd">        into fieldsplit subBCs and apply them to fieldsplit vector.</span>
+<span class="sd">        SubBCs are cached.&quot;&quot;&quot;</span>
+        <span class="c1"># Fetch subbcs from cache or construct it</span>
+        <span class="n">subbcs</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_subbcs&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">subbcs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">bcs</span> <span class="o">=</span> <span class="n">bcs_getter</span><span class="p">()</span>
+            <span class="n">bcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">bcs</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bcs</span><span class="p">,</span> <span class="n">DirichletBC</span><span class="p">)</span> <span class="k">else</span> <span class="n">bcs</span>
+            <span class="n">subbcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">SubfieldBC</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="n">iset</span><span class="p">)</span> <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="n">bcs</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_subbcs</span> <span class="o">=</span> <span class="n">subbcs</span>
+
+        <span class="c1"># Apply bcs</span>
+        <span class="k">for</span> <span class="n">bc</span> <span class="ow">in</span> <span class="n">subbcs</span><span class="p">:</span>
+            <span class="n">bc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span></div>
+
+
+    <span class="k">if</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Sys</span><span class="o">.</span><span class="n">getVersion</span><span class="p">()[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span> <span class="ow">and</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Sys</span><span class="o">.</span><span class="n">getVersionInfo</span><span class="p">()[</span><span class="s1">&#39;release&#39;</span><span class="p">]:</span>
+
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span> <span class="nf">_get_deep_submat</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">dolfin_mat</span><span class="o">.</span><span class="n">mat</span><span class="p">()</span><span class="o">.</span><span class="n">getSubMatrix</span><span class="p">(</span><span class="n">iset</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="n">submat</span><span class="p">)</span>
+
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span> <span class="nf">_get_shallow_submat</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">submat</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">submat</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Mat</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">iset</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">submat</span><span class="o">.</span><span class="n">createSubMatrix</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="o">.</span><span class="n">mat</span><span class="p">(),</span> <span class="n">iset</span><span class="p">,</span> <span class="n">iset</span><span class="p">)</span>
+
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span> <span class="nf">_get_deep_submat</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">dolfin_mat</span><span class="o">.</span><span class="n">mat</span><span class="p">()</span><span class="o">.</span><span class="n">createSubMatrix</span><span class="p">(</span><span class="n">iset</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="n">submat</span><span class="p">)</span>
+
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span> <span class="nf">_get_shallow_submat</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="p">,</span> <span class="n">iset</span><span class="p">,</span> <span class="n">submat</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">submat</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">submat</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Mat</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">iset</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">submat</span><span class="o">.</span><span class="n">createSubMatrixVirtual</span><span class="p">(</span><span class="n">dolfin_mat</span><span class="o">.</span><span class="n">mat</span><span class="p">(),</span> <span class="n">iset</span><span class="p">,</span> <span class="n">iset</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">FENaPack 2017.1.0.dev0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Jan Blechta, Martin Řehoř.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.5.
+    </div>
+  </body>
+</html>

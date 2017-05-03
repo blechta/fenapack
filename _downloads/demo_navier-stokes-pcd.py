@@ -2,7 +2,7 @@
 solved using Newton/Picard iterative method. Linear solver is based on field
 split PCD preconditioning."""
 
-# Copyright (C) 2015-2016 Martin Rehor
+# Copyright (C) 2015-2017 Martin Rehor, Jan Blechta
 #
 # This file is part of FENaPack.
 #
@@ -22,20 +22,34 @@ split PCD preconditioning."""
 # Begin demo
 
 from dolfin import *
-from fenapack import FieldSplitSolver, NewtonSolver, PCDProblem, StabilizationParameterSD
+from matplotlib import pyplot
 
+from fenapack import PCDKrylovSolver
+from fenapack import PCDNewtonSolver
+from fenapack import PCDProblem
+from fenapack import StabilizationParameterSD
+
+import argparse, sys
 
 parameters["form_compiler"]["representation"] = "uflacs"
 parameters["form_compiler"]["optimize"] = True
+parameters["plotting_backend"] = "matplotlib"
 
 # Parse input arguments
-import argparse, sys
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=
                                  argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-l", type=int, dest="level", default=4,
                     help="level of mesh refinement")
 parser.add_argument("--nu", type=float, dest="viscosity", default=0.02,
                     help="kinematic viscosity")
+parser.add_argument("--pcd", type=str, dest="pcd_variant", default="BRM2",
+                    choices=["BRM1", "BRM2"], help="PCD variant")
+parser.add_argument("--nls", type=str, dest="nls", default="picard",
+                    choices=["picard", "newton"], help="nonlinear solver")
+parser.add_argument("--ls", type=str, dest="ls", default="iterative",
+                    choices=["direct", "iterative"], help="linear solvers")
+parser.add_argument("--dm", action='store_true', dest="mumps_debug",
+                    help="debug MUMPS")
 args = parser.parse_args(sys.argv[1:])
 
 # Load mesh from file and refine uniformly
@@ -72,7 +86,10 @@ inflow = Expression(("4.0*x[1]*(1.0 - x[1])", "0.0"), degree=2)
 bc1 = DirichletBC(W.sub(0), inflow, boundary_markers, 1)
 
 # Artificial BC for PCD preconditioner
-bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 1)
+if args.pcd_variant == "BRM1":
+    bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 1)
+elif args.pcd_variant == "BRM2":
+    bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 2)
 
 # Provide some info about the current problem
 info("Reynolds number: Re = %g" % (2.0/args.viscosity))
@@ -82,8 +99,10 @@ info("Dimension of the function space: %g" % W.dim())
 u, p = TrialFunctions(W)
 v, q = TestFunctions(W)
 w = Function(W)
+# FIXME: Which split is correct? Both work but one might use
+# restrict_as_ufc_function
 u_, p_ = split(w)
-n = FacetNormal(mesh)
+#u_, p_ = w.split()
 nu = Constant(args.viscosity)
 
 # Nonlinear equation
@@ -94,63 +113,85 @@ F = (
     - q*div(u_)
 )*dx
 
-# Picard linearization (one could use full Newton)
-J = (
-      nu*inner(grad(u), grad(v))
-    + inner(dot(grad(u), u_), v)
-    - p*div(v)
-    - q*div(u)
-)*dx
+# Jacobian
+if args.nls == "picard":
+    J = (
+          nu*inner(grad(u), grad(v))
+        + inner(dot(grad(u), u_), v)
+        - p*div(v)
+        - q*div(u)
+    )*dx
+elif args.nls == "newton":
+    J = derivative(F, w)
 
 # Add stabilization for AMG 00-block
-delta = StabilizationParameterSD(w.sub(0), nu)
-J_pc = J + delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
+if args.ls == "iterative":
+    delta = StabilizationParameterSD(w.sub(0), nu)
+    J_pc = J + delta*inner(dot(grad(u), u_), dot(grad(v), u_))*dx
+elif args.ls == "direct":
+    J_pc = None
 
 # PCD operators
 mp = Constant(1.0/nu)*p*q*dx
 kp = Constant(1.0/nu)*dot(grad(p), u_)*q*dx
 ap = inner(grad(p), grad(q))*dx
+if args.pcd_variant == "BRM2":
+    n = FacetNormal(mesh)
+    ds = Measure("ds", subdomain_data=boundary_markers)
+    kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(1)
+    #kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(0)  # TODO: Is this beneficial?
 
 # Collect forms to define nonlinear problem
 problem = PCDProblem(F, [bc0, bc1], J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
 
-# Set up linear field split solver
-linear_solver = FieldSplitSolver(W, "gmres")
-linear_solver.parameters["monitor_convergence"] = True
+# Set up linear solver (GMRES with right preconditioning using Schur fact)
+linear_solver = PCDKrylovSolver(comm=mesh.mpi_comm())
 linear_solver.parameters["relative_tolerance"] = 1e-6
-linear_solver.parameters["nonzero_initial_guess"] = False
-linear_solver.parameters["preconditioner"]["side"] = "right"
-linear_solver.parameters["preconditioner"]["fieldsplit"]["type"] = "schur"
-linear_solver.parameters["preconditioner"]["fieldsplit"]["schur"]["fact_type"] = "upper"
-linear_solver.parameters["preconditioner"]["fieldsplit"]["schur"]["precondition"] = "user"
+PETScOptions.set("ksp_monitor")
+PETScOptions.set("ksp_gmres_restart", 150)
 
 # Set up subsolvers
-OptDB_00, OptDB_11 = linear_solver.get_subopts()
-OptDB_00["ksp_type"] = "richardson"
-OptDB_00["ksp_max_it"] = 1
-OptDB_00["pc_type"] = "hypre"
-OptDB_00["pc_hypre_type"] = "boomeramg"
-OptDB_11["ksp_type"] = "preonly"
-OptDB_11["pc_type"] = "python"
-OptDB_11["pc_python_type"] = "fenapack.PCDPC_BRM"
-OptDB_11["PCD_Ap_ksp_type"] = "richardson"
-OptDB_11["PCD_Ap_ksp_max_it"] = 2
-OptDB_11["PCD_Ap_pc_type"] = "hypre"
-OptDB_11["PCD_Ap_pc_hypre_type"] = "boomeramg"
-OptDB_11["PCD_Mp_ksp_type"] = "chebyshev"
-OptDB_11["PCD_Mp_ksp_max_it"] = 5
-OptDB_11["PCD_Mp_ksp_chebyshev_eigenvalues"] = "0.5, 2.0"
-OptDB_11["PCD_Mp_pc_type"] = "jacobi"
+PETScOptions.set("fieldsplit_p_pc_python_type", "fenapack.PCDPC_" + args.pcd_variant)
+if args.ls == "iterative":
+    PETScOptions.set("fieldsplit_u_ksp_type", "richardson")
+    PETScOptions.set("fieldsplit_u_ksp_max_it", 1)
+    PETScOptions.set("fieldsplit_u_pc_type", "hypre")
+    PETScOptions.set("fieldsplit_u_pc_hypre_type", "boomeramg")
+    PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_type", "richardson")
+    PETScOptions.set("fieldsplit_p_PCD_Ap_ksp_max_it", 2)
+    PETScOptions.set("fieldsplit_p_PCD_Ap_pc_type", "hypre")
+    PETScOptions.set("fieldsplit_p_PCD_Ap_pc_hypre_type", "boomeramg")
+    PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_type", "chebyshev")
+    PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_max_it", 5)
+    PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues", "0.5, 2.0")
+    #PETScOptions.set("fieldsplit_p_PCD_Mp_ksp_chebyshev_esteig", "1,0,0,1")  # FIXME: What does it do?
+    PETScOptions.set("fieldsplit_p_PCD_Mp_pc_type", "jacobi")
+elif args.ls == "direct" and args.mumps_debug:
+    # Debugging MUMPS
+    PETScOptions.set("fieldsplit_u_mat_mumps_icntl_4", 2)
+    PETScOptions.set("fieldsplit_p_PCD_Ap_mat_mumps_icntl_4", 2)
+    PETScOptions.set("fieldsplit_p_PCD_Mp_mat_mumps_icntl_4", 2)
+
+# Apply options
+linear_solver.set_from_options()
 
 # Set up nonlinear solver
-solver = NewtonSolver(linear_solver)
+solver = PCDNewtonSolver(linear_solver)
 solver.parameters["relative_tolerance"] = 1e-5
 
 # Solve problem
 solver.solve(problem, w.vector())
 
+# Report timings
+list_timings(TimingClear_clear, [TimingType_wall, TimingType_user])
+
 # Plot solution
 u, p = w.split()
+pyplot.figure()
+pyplot.subplot(2, 1, 1)
 plot(u, title="velocity")
+pyplot.subplot(2, 1, 2)
 plot(p, title="pressure")
-interactive()
+pyplot.figure()
+plot(p, title="pressure", mode="warp")
+pyplot.show()
