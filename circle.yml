@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: quay.io/fenicsproject/dev:py2
+      - image: quay.io/fenicsproject/dev
         user: fenics
         environment:
           LD_LIBRARY_PATH: /home/fenics/local/lib
