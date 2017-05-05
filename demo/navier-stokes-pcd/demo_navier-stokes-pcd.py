@@ -31,8 +31,6 @@ from fenapack import StabilizationParameterSD
 
 import argparse, sys
 
-parameters["form_compiler"]["representation"] = "uflacs"
-parameters["form_compiler"]["optimize"] = True
 parameters["plotting_backend"] = "matplotlib"
 
 # Parse input arguments

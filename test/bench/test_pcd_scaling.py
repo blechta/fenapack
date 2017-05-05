@@ -16,8 +16,6 @@ from fenapack import PCDProblem
 from fenapack import StabilizationParameterSD
 
 
-parameters["form_compiler"]["representation"] = "uflacs"
-parameters["form_compiler"]["optimize"] = True
 parameters["plotting_backend"] = "matplotlib"
 
 
