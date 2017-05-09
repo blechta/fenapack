@@ -294,8 +294,7 @@ def run_apidoc(_):
 
     # Get location of Sphinx files
     sphinx_source_dir = os.path.abspath(os.path.dirname(__file__))
-    repo_dir = os.path.abspath(os.path.join(sphinx_source_dir, os.path.pardir,
-                                            os.path.pardir, os.path.pardir))
+    repo_dir = os.path.abspath(os.path.join(sphinx_source_dir, os.path.pardir, os.path.pardir))
     apidoc_dir = os.path.join(sphinx_source_dir, "api-doc")
 
     # Include these modules
