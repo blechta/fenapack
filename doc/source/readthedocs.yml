@@ -1,0 +1,4 @@
+name: fenapack
+type: sphinx
+python:
+  version: 3.5
