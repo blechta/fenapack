@@ -15,6 +15,29 @@
 import sys
 import os
 
+
+# Are we on Read the docs?
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
+
+# Read the docs fix-ups
+if on_rtd:
+    from unittest.mock import MagicMock
+
+    class Mock(MagicMock):
+        @classmethod
+        def __getattr__(cls, name):
+            return MagicMock()
+
+    # Mock C/C++ packages
+    MOCK_MODULES = ['dolfin', 'petsc4py']
+    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
+    # Mock PETSc version number
+    import petsc4py
+    petsc4py.PETSc = Mock()
+    petsc4py.PETSc.Sys = Mock()
+    petsc4py.PETSc.Sys.getVersion = Mock(return_value=(3, 8, 0))
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
