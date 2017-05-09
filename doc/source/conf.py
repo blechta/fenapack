@@ -286,3 +286,30 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+
+# Ensure api doc is built
+def run_apidoc(_):
+    from sphinx.apidoc import main
+
+    # Get location of Sphinx files
+    sphinx_source_dir = os.path.abspath(os.path.dirname(__file__))
+    repo_dir = os.path.abspath(os.path.join(sphinx_source_dir, os.path.pardir,
+                                            os.path.pardir, os.path.pardir))
+    apidoc_dir = os.path.join(sphinx_source_dir, "api-doc")
+
+    # Include these modules
+    modules = ['fenapack']
+
+    for module in modules:
+        # Generate .rst files ready for autodoc
+        module_dir = os.path.join(repo_dir, module)
+        main(["-f",             # Overwrite existing files
+              "-d", "1",        # Maximum depth of submodules to show in the TOC
+              "-o", apidoc_dir, # Directory to place all output
+              module_dir        # Module directory
+             ]
+        )
+
+def setup(app):
+    app.connect('builder-inited', run_apidoc)
