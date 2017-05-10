@@ -290,7 +290,7 @@ texinfo_documents = [
 
 # Ensure api doc is built
 def run_apidoc(_):
-    from sphinx.apidoc import main
+    from sphinx import apidoc
 
     # Get location of Sphinx files
     sphinx_source_dir = os.path.abspath(os.path.dirname(__file__))
@@ -303,11 +303,22 @@ def run_apidoc(_):
     for module in modules:
         # Generate .rst files ready for autodoc
         module_dir = os.path.join(repo_dir, module)
-        main(["-f",             # Overwrite existing files
-              "-d", "1",        # Maximum depth of submodules to show in the TOC
-              "-o", apidoc_dir, # Directory to place all output
-              module_dir        # Module directory
-             ]
+        apidoc.OPTIONS = [
+            "members",
+            "special-members",
+            #"private-members",
+            #"undoc-members",
+            "show-inheritance"
+        ]
+        apidoc.main(["",               # This argument is omitted by option parser
+                     "-f",             # Overwrite existing files
+                     #"-T",             # Don't create a table of contents file
+                     #"-P",             # Include "_private" modules
+                     #"-M",             # Put module doc before submodule doc
+                     "-d", "1",        # Maximum depth of submodules to show in the TOC
+                     "-o", apidoc_dir, # Directory to place all output
+                     module_dir        # Module directory
+                    ]
         )
 
 def setup(app):
