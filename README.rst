@@ -40,7 +40,7 @@ by navigating to a particular demo directory and typing::
   NP=4
   mpirun -n $NP python demo_foo-bar.py [-h]
 
-Full documentation is available at https://blechta.github.io/fenapack/.
+Full documentation is available at https://fenapack.readthedocs.io/.
 
 
 Authors
@@ -79,6 +79,6 @@ Links
 =====
 
 - Homepage https://github.com/blechta/fenapack
-- Testing https://travis-ci.org/blechta/fenapack
-- Documentation https://blechta.github.io/fenapack/
+- Testing https://circleci.com/gh/blechta/fenapack
+- Documentation https://fenapack.readthedocs.io/
 - Bug reports https://github.com/blechta/fenapack/issues
