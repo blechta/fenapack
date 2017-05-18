@@ -88,9 +88,9 @@ class BasePCDPC(object):
 
 class PCDPC_BRM1(BasePCDPC):
     """This class implements a modification of PCD variant similar to one by
-    [2]_.
+    [1]_.
 
-    .. [2] Olshanskii M. A., Vassilevski Y. V., *Pressure Schur complement
+    .. [1] Olshanskii M. A., Vassilevski Y. V., *Pressure Schur complement
            preconditioners for the discrete Oseen problem*.
            SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.
     """
@@ -138,9 +138,9 @@ class PCDPC_BRM1(BasePCDPC):
 
 class PCDPC_BRM2(BasePCDPC):
     """This class implements a modification steady variant of PCD
-    described in [1]_.
+    described in [2]_.
 
-    .. [1] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast
+    .. [2] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast
            Iterative Solvers: With Application in Incompressible Fluid Dynamics*.
            Oxford University Press 2005. 2nd edition 2014.
     """
