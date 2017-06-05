@@ -25,6 +25,7 @@ petsc4py.init(("python", "-malloc_info"))
 from defcon import *
 from dolfin import *
 from matplotlib import pyplot
+import numpy
 
 from fenapack import PCDKSP
 from fenapack import PCDProblem
@@ -216,6 +217,13 @@ class NavierStokesProblem(BifurcationProblem):
                 "ksp_gmres_restart": 128,
                 "fieldsplit_p_pc_python_type": "fenapack.PCDPC_"+self.args.pcd,
             })
+
+            # Initial guess is more difficult to get
+            if numpy.isclose(params[0], 0.5):  # FIXME: hardcoded value
+                opts.update({
+                    "ksp_max_it": 256,
+                    "ksp_rtol": 1.0e-9,
+                })
 
             if self.args.ksp_monitor:
                 opts.update({"ksp_monitor": None})
