@@ -234,8 +234,7 @@ class NavierStokesProblem(BifurcationProblem):
                     "fieldsplit_p_PCD_Ap_pc_hypre_type": "boomeramg",
                     "fieldsplit_p_PCD_Mp_ksp_type": "chebyshev",
                     "fieldsplit_p_PCD_Mp_ksp_max_it": 5,
-                    # FIXME: Only valid in 2D (see SEW book)?
-                    "fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues": "0.5, 2.0",
+                    "fieldsplit_p_PCD_Mp_ksp_chebyshev_eigenvalues": "0.5, 2.5",
                     "fieldsplit_p_PCD_Mp_pc_type": "jacobi",
                 })
 
