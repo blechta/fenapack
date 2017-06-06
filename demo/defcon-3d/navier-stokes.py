@@ -153,7 +153,11 @@ class NavierStokesProblem(BifurcationProblem):
         outflow.mark(colours, 2)  # outlet facets
 
         # BCs
-        poiseuille = Expression(("-(x[1] + 1) * (x[1] - 1)", "0.0", "0.0"), degree=2, mpi_comm=comm)
+        #poiseuille = Expression(("-(x[1] + 1) * (x[1] - 1)", "0.0", "0.0"), degree=2, mpi_comm=comm)
+        poiseuille = Expression(("(x[1]+1)*(x[1]-1)*(x[2]+1)*(x[2]-1)",
+                                 "0.0",
+                                 "0.0"),
+                                degree=4, mpi_comm=comm)
         bc_inflow = DirichletBC(Z.sub(0), poiseuille, colours, 1)
         bc_wall = DirichletBC(Z.sub(0), (0, 0, 0), colours, 0)
 
