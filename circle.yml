@@ -1,6 +1,33 @@
+# This page describes how to setup CircleCI version 2.0
+# for a project built on top of DOLFIN. Tests are run
+# using FEniCS docker images, in particular using an
+# image with the development version of FEniCS. Note that
+# modern FEniCS Docker images have both Python version 2
+# and 3. Hence it is easy to change a Python version of
+# the below commands or even run both versions.
+#
+# For details, see also `the FEniCS Docker reference manual
+# <http://fenics-containers.readthedocs.org/en/latest/>`_.
+#
+# Use CircleCI 2.0. It has native support for Docker images.::
+
 version: 2
+
+# Specify build jobs::
+
 jobs:
   build:
+
+# ``image`` specifies a Docker image with the development
+# version of FEniCS. Inside of a container we will be using
+# a user ``fenics`` which has an installation of FEniCS.
+# But we will work in a different directory derived from
+# the name of the project. The ``environment`` needs to
+# be adjusted to allow importing C++ DOLFIN libraries and
+# finding necessary files for just-in-time compilation.
+# This is done because CircleCI bypasses environment setup
+# specified in the FEniCS image.::
+
     docker:
       - image: quay.io/fenicsproject/dev
         user: fenics
@@ -8,8 +35,14 @@ jobs:
           LD_LIBRARY_PATH: /home/fenics/local/lib
           CMAKE_PREFIX_PATH: /home/fenics/local
     working_directory: /home/fenics/fenapack
+
+# First step is checking out the source code into
+# the working directory::
+
     steps:
       - checkout
+
+# Then print some diagnostic information to a build log::
 
       - run:
           name: Environment and FEniCS version info
@@ -18,19 +51,52 @@ jobs:
             python3 -c'import ffc; print(ffc.git_commit_hash(), ffc.ufc_signature())'
             python3 -c'import dolfin; print(dolfin.git_commit_hash())'
 
+# Install the project from the working directory. (Note that
+# the ``download-meshes`` script should be invoked during
+# installation but that does not work because of some
+# directories mismatch.)::
+
       - run:
           name: Install FENaPack
           command: |
             ./download-meshes
             pip3 install -v --user .
 
+# Try to import the project. That involves some just-in-time
+# compilation which we test and measure as a separate build
+# step.::
+
       - run:
           name: Import FENaPack first time (JIT)
           command: python3 -c"import fenapack"
 
+# Run the unit tests using `the pytest framework
+# <https://pytest.org>`_. By ``-svl`` options we make a test
+# output more verbose and using ``--junitxml`` we save a
+# test result in machine-readable format. In a later step
+# we tell to CircleCI where the result is. CircleCI is able
+# to provide various information based on the results on
+# its web UI.::
+
       - run:
           name: Unit tests
           command: py.test-3 test/unit -svl --junitxml /tmp/circle/unit.xml
+
+# Now we run parallel unit tests. This would normally be
+# done by just prefixing a ``py.test`` command by an
+# ``mpirun`` command. Here we wrap it in the ``bash``
+# instance to figure out an MPI rank number using the
+# ``${OMPI_COMM_WORLD_RANK:-$PMI_RANK}`` variable, which
+# should work both with MPICH and OpenMPI, and use it
+# to generate separate test result files. Other issue is
+# that the Python 3 hash randomization together with
+# unordered dicts make order of object destruction during
+# garbage collection non-deterministic and different across
+# MPI processes. When a destructor of any object is
+# collective this may cause a deadlock. By forcing the same
+# ``PYTHONHASHSEED`` for all processes we prevent this
+# problem. The chance is that this will not be necessary
+# with Python 3.6 where dicts are ordered.::
 
       - run:
           name: Unit tests MPI
@@ -39,6 +105,13 @@ jobs:
             py.test-3 test/unit -svl
             --junitxml /tmp/circle/unit-mpi-${OMPI_COMM_WORLD_RANK:-$PMI_RANK}.xml
             '
+
+# Now we run the benchmarking suite and store generated PDF
+# files for later use. Note that we tell to a shell (note
+# that every build step is run in a separate shell) not to
+# exit on first failure by ``set +e``. Instead we only want
+# to eventually fail only on the ``py.test`` command by
+# returning its exit code by ``exit $rc``.::
 
       - run:
           name: Bench
@@ -49,11 +122,20 @@ jobs:
             mv *.pdf /tmp/circle
             exit $rc
 
+# Now we run the regression tests implemented by a homebrew
+# Python script ``test.py``. The script invokes also
+# parallel tests so again we enforce the same hash seed
+# across MPI processes.::
+
       - run:
           name: Regression tests
           command: |
             cd test/regression
             PYTHONHASHSEED=0 NP=3 python3 -u test.py
+
+# Finally we tell to CircleCI to store build artifacts
+# and test results, which both can be accessed on
+# CircleCI website.::
 
       - store_artifacts:
           path: /tmp/circle
