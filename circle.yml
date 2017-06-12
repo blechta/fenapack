@@ -1,3 +1,6 @@
+# CircleCI configuration
+# ======================
+#
 # This page describes how to setup CircleCI version 2.0
 # for a project built on top of DOLFIN. Tests are run
 # using FEniCS docker images, in particular using an
@@ -143,3 +146,6 @@ jobs:
 
       - store_test_results:
           path: /tmp/circle
+
+# Download the complete configuration file
+# :download:`circle.yml`.

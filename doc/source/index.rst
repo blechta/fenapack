@@ -109,6 +109,15 @@ Documented demos
    demos/navier-stokes-pcd
 
 
+Developer's resources
+=====================
+
+.. toctree::
+   :titlesonly:
+
+   circle
+
+
 Manual and API Reference
 ========================
 

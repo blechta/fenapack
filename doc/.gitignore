@@ -1,2 +1,4 @@
 build/
 source/api-doc/
+source/circle.rst
+source/circle.yml

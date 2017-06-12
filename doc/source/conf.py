@@ -14,6 +14,12 @@
 
 import sys
 import os
+import shutil
+
+
+# Import PyLit
+sys.path.insert(0, os.path.abspath('.'))
+import pylit
 
 
 # Are we on Read the docs?
@@ -288,8 +294,8 @@ texinfo_documents = [
 #texinfo_no_detailmenu = False
 
 
-# Ensure api doc is built
-def run_apidoc(_):
+def run_apidoc():
+    """Run sphinx-apidoc"""
     from sphinx import apidoc
 
     # Get location of Sphinx files
@@ -321,5 +327,29 @@ def run_apidoc(_):
                     ]
         )
 
+
+def run_pylit():
+    """Run pylit to build docs from some sources"""
+    # Get location of files
+    sphinx_source_dir = os.path.abspath(os.path.dirname(__file__))
+    repo_dir = os.path.abspath(os.path.join(sphinx_source_dir, os.path.pardir, os.path.pardir))
+    ci_source = os.path.join(repo_dir, "circle.yml")
+    ci_text = os.path.join(sphinx_source_dir, "circle.rst")
+
+    # Run pylit
+    pylit.main(args=["-c", ci_source, ci_text])
+
+    # Copy source to doc source dir (for inclusion in doc)
+    shutil.copyfile(ci_source, os.path.join(sphinx_source_dir, "circle.yml"))
+
+
+def run_all(_):
+    """Run all preprocessing steps before actually building
+    docs"""
+    run_apidoc()
+    run_pylit()
+
+
+# Tell sphinx to do all the preprocessing
 def setup(app):
-    app.connect('builder-inited', run_apidoc)
+    app.connect('builder-inited', run_all)
