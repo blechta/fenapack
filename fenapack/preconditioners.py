@@ -19,6 +19,7 @@ from dolfin import timed
 from petsc4py import PETSc
 
 from fenapack.utils import get_default_factor_solver_package
+from fenapack.utils import allow_only_one_call
 
 
 class BasePCDPC(object):
@@ -60,6 +61,7 @@ class BasePCDPC(object):
         return vecs
 
 
+    @allow_only_one_call
     def init_pcd(self, pcd_interface):
         """Initialize by PCDInterface instance"""
         if hasattr(self, "interface"):
@@ -165,5 +167,36 @@ class PCDPC_BRM2(BasePCDPC):
         self.bcs_applier(z1)      # apply bcs to z1
         self.ksp_Ap.solve(z1, z0) # z0 = A_p^{-1} z1
         y.axpy(1.0, z0)           # y = y + z0
+        # FIXME: How is with the sign bussines?
+        y.scale(-1.0)             # y = -y
+
+
+
+class PCDPC_L2(BasePCDPC):
+    def create(self, pc):
+        self.ksp_Mp = self.create_default_ksp(pc.comm)
+
+        options_prefix = pc.getOptionsPrefix()
+        self.ksp_Mp.setOptionsPrefix(options_prefix + "PCD_Mp_")
+
+
+    def setFromOptions(self, pc):
+        self.ksp_Mp.setFromOptions()
+
+
+    def setUp(self, pc):
+
+        # Prepare mass matrixi solver
+        # NOTE: Called function ensures that assembly, submat extraction and
+        #       ksp setup is done only once during preconditioner lifetime.
+        # FIXME: Maybe move Mp and Ap setup to init and remove logic in backend.
+        #        This will make it obvious that this is done once.
+        self.interface.setup_ksp_Mp(self.ksp_Mp)
+
+
+    @timed("FENaPack: PCDPC_L2 apply")
+    def apply(self, pc, x, y):
+        # Apply PCD
+        self.ksp_Mp.solve(x, y)   # y = M_p^{-1} x
         # FIXME: How is with the sign bussines?
         y.scale(-1.0)             # y = -y

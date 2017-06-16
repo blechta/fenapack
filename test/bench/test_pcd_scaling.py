@@ -2,6 +2,7 @@ from __future__ import print_function
 
 from dolfin import *
 from matplotlib import pyplot, gridspec
+import numpy
 import pytest
 import six
 
@@ -123,6 +124,8 @@ def create_pcd_problem(F, bcs, J, J_pc, w, nu, boundary_markers, pcd_variant):
         bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 1)
     elif pcd_variant == "BRM2":
         bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 2)
+    else:
+        bc_pcd = None
 
     # Arguments and coefficients of the form
     u, p = TrialFunctions(W)
@@ -191,10 +194,15 @@ def create_solver(comm, pcd_variant, ls, mumps_debug=False):
     return solver
 
 
-@pytest.mark.parametrize("nu",          [0.02])
-@pytest.mark.parametrize("alpha",       [1.0, 0.5])
-@pytest.mark.parametrize("nls",         ["picard", "newton"])
-@pytest.mark.parametrize("pcd_variant", ["BRM1", "BRM2"])
+#@pytest.mark.parametrize("nu",          [0.02])
+#@pytest.mark.parametrize("alpha",       [1.0, 0.5])
+#@pytest.mark.parametrize("nls",         ["picard", "newton"])
+#@pytest.mark.parametrize("pcd_variant", ["L2", "BRM1", "BRM2"])
+#@pytest.mark.parametrize("ls",          ["direct", "iterative"])
+@pytest.mark.parametrize("nu",          [0.04, 0.02, 0.01, 0.005])
+@pytest.mark.parametrize("alpha",       [1.0])
+@pytest.mark.parametrize("nls",         ["newton"])
+@pytest.mark.parametrize("pcd_variant", ["L2"])
 @pytest.mark.parametrize("ls",          ["direct", "iterative"])
 def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, postprocessor):
     set_log_level(WARNING)
@@ -218,10 +226,14 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, postprocessor):
             #solver.linear_solver().set_from_options()
 
         # Solve
-        with Timer("Solve") as t_solve:
-            newton_iterations, converged = solver.solve(pcd_problem, w.vector())
-        assert converged
-        krylov_iterations = solver.krylov_iterations()
+        try:
+            with Timer("Solve") as t_solve:
+                newton_iterations, converged = solver.solve(pcd_problem, w.vector())
+        except RuntimeError:
+            krylov_iterations = numpy.nan
+        else:
+            assert converged
+            krylov_iterations = solver.krylov_iterations()
 
         # Prepare results
         ndofs = W.dim()
@@ -259,9 +271,13 @@ def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, postprocessor):
 @pytest.fixture(scope='module')
 def postprocessor():
     proc = Postprocessor()
-    proc.add_plot((("nu", 0.02), ))
-    proc.add_plot((("nu", 0.02), ("ls", "direct")))
-    proc.add_plot((("nu", 0.02), ("ls", "iterative")))
+    #proc.add_plot((("nu", 0.02), ))
+    #proc.add_plot((("nu", 0.02), ("ls", "direct")))
+    #proc.add_plot((("nu", 0.02), ("ls", "iterative")))
+
+    proc.add_plot((("alpha", 1.0), ("nls", "newton"), ("pcd_variant", "L2")))
+    proc.add_plot((("alpha", 1.0), ("nls", "newton"), ("pcd_variant", "L2"), ("ls", "direct")))
+    proc.add_plot((("alpha", 1.0), ("nls", "newton"), ("pcd_variant", "L2"), ("ls", "iterative")))
     return proc
 
 
