@@ -31,8 +31,6 @@ from fenapack import StabilizationParameterSD
 
 import argparse, sys
 
-parameters["plotting_backend"] = "matplotlib"
-
 # Parse input arguments
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=
                                  argparse.ArgumentDefaultsHelpFormatter)

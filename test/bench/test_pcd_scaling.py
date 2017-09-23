@@ -16,9 +16,6 @@ from fenapack import PCDProblem
 from fenapack import StabilizationParameterSD
 
 
-parameters["plotting_backend"] = "matplotlib"
-
-
 @pytest.fixture
 def data_dir():
     path = os.path.join(os.getcwd(), os.path.dirname(__file__),
