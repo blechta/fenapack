@@ -32,7 +32,7 @@ jobs:
 # specified in the FEniCS image.::
 
     docker:
-      - image: quay.io/fenicsproject/stable:2017.1.0.r2
+      - image: quay.io/fenicsproject/dev
         user: fenics
         environment:
           LD_LIBRARY_PATH: /home/fenics/local/lib
