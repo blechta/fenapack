@@ -153,9 +153,6 @@ def main():
                         continue
                     pydemos.append(d)
 
-    # Set non-interactive
-    os.putenv('DOLFIN_NOPLOT', '1')
-
     print("Running all demos (non-interactively)")
     print("")
     print("Found %d C++ demos" % len(cppdemos))

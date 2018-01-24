@@ -128,7 +128,8 @@ jobs:
 # Now we run the regression tests implemented by a homebrew
 # Python script ``test.py``. The script invokes also
 # parallel tests so again we enforce the same hash seed
-# across MPI processes.::
+# across MPI processes. We copy resulting figures to directory
+# where CircleCI collects artifacts.::
 
       - run:
           name: Regression tests
