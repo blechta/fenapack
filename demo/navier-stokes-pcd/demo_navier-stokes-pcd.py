@@ -29,7 +29,7 @@ from fenapack import PCDNewtonSolver
 from fenapack import PCDProblem
 from fenapack import StabilizationParameterSD
 
-import argparse, sys
+import argparse, sys, os
 
 # Parse input arguments
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=
@@ -183,11 +183,16 @@ list_timings(TimingClear_clear, [TimingType_wall, TimingType_user])
 
 # Plot solution
 u, p = w.split()
+size = MPI.size(mesh.mpi_comm())
+rank = MPI.rank(mesh.mpi_comm())
 pyplot.figure()
 pyplot.subplot(2, 1, 1)
 plot(u, title="velocity")
 pyplot.subplot(2, 1, 2)
 plot(p, title="pressure")
+pyplot.savefig("figure_v_p_size{}_rank{}.pdf".format(size, rank))
 pyplot.figure()
 plot(p, title="pressure", mode="warp")
-pyplot.show()
+pyplot.savefig("figure_warp_size{}_rank{}.pdf".format(size, rank))
+if "CI" not in os.environ:
+    pyplot.show()
