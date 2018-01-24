@@ -63,7 +63,7 @@ class Gamma1(SubDomain):
 class Gamma2(SubDomain):
     def inside(self, x, on_boundary):
         return on_boundary and near(x[0], 5.0)
-boundary_markers = FacetFunction("size_t", mesh)
+boundary_markers = MeshFunction("size_t", mesh, mesh.topology().dim()-1)
 boundary_markers.set_all(3)        # interior facets
 Gamma0().mark(boundary_markers, 0) # no-slip facets
 Gamma1().mark(boundary_markers, 1) # inlet facets

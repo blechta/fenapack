@@ -142,7 +142,7 @@ class NavierStokesProblem(BifurcationProblem):
         comm = Z.mesh().mpi_comm()
 
         # Facet markers
-        colours = FacetFunction("size_t", Z.mesh())
+        colours = MeshFunction("size_t", Z.mesh(), Z.mesh().topology().dim()-1)
         walls = CompiledSubDomain("on_boundary", mpi_comm=comm)
         inflow = CompiledSubDomain("on_boundary && near(x[0], 0.0)", mpi_comm=comm)
         outflow = CompiledSubDomain("on_boundary && near(x[0], 150.0)", mpi_comm=comm)

@@ -17,7 +17,7 @@ def create_dummy_solver_and_problem():
     P2 = VectorElement("Lagrange", mesh.ufl_cell(), 2)
     P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
     W = FunctionSpace(mesh, P2*P1)
-    ff = FacetFunction('size_t', W.mesh())
+    ff = MeshFunction('size_t', W.mesh(), W.mesh().topology().dim()-1)
     w = Function(W)
     F, bcs, J, J_pc = create_forms(w, ff, 1.0, 1.0, "newton", "direct")
     pcd_problem = create_pcd_problem(F, bcs, J, J_pc, w, 1.0, ff, "BRM1")
