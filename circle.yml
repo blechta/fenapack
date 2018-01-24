@@ -133,8 +133,12 @@ jobs:
       - run:
           name: Regression tests
           command: |
+            set +e
             cd test/regression
             PYTHONHASHSEED=0 NP=3 python3 -u test.py
+            rc=$?
+            cd ../../demo; find -name "*.pdf" -exec cp --parents {} /tmp/circle \;
+            exit $rc
 
 # Finally we tell to CircleCI to store build artifacts
 # and test results, which both can be accessed on
