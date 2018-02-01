@@ -22,26 +22,26 @@ from dolfin import PETScMatrix, Timer, DirichletBC
 from petsc4py import PETSc
 
 from fenapack._field_split_utils import SubfieldBC
-from fenapack.nonlinear_solvers import PCDProblem
+from fenapack.assembling import PCDAssembler
 
 
 class PCDInterface(object):
-    """Wrapper of PCDProblem for interfacing with PCD PC
+    """Wrapper of PCDAssembler for interfacing with PCD PC
     fieldsplit implementation. Convection fieldsplit submatrices
     are extracted as shallow or deep submatrices according to
     ``deep_submats`` parameter."""
 
-    def __init__(self, pcd_problem, is_u, is_p, deep_submats=False):
-        """Create PCDInterface instance given PCDProblem instance,
+    def __init__(self, pcd_assembler, is_u, is_p, deep_submats=False):
+        """Create PCDInterface instance given PCDAssembler instance,
         and velocity and pressure index sets"""
 
         # Check input
-        assert isinstance(pcd_problem, PCDProblem)
+        assert isinstance(pcd_assembler, PCDAssembler)
         assert isinstance(is_u, PETSc.IS)
         assert isinstance(is_p, PETSc.IS)
 
         # Store what needed
-        self.problem = pcd_problem
+        self.assembler = pcd_assembler
         self.is_u = is_u
         self.is_p = is_p
 
@@ -58,34 +58,34 @@ class PCDInterface(object):
 
     def setup_ksp_Ap(self, ksp):
         """Setup pressure Laplacian ksp and assemble matrix"""
-        self.setup_ksp_once(ksp, self.problem.ap, self.is_p, spd=True)
+        self.setup_ksp_once(ksp, self.assembler.ap, self.is_p, spd=True)
 
 
     def setup_ksp_Mp(self, ksp):
         """Setup pressure mass matrix ksp and assemble matrix"""
-        self.setup_ksp_once(ksp, self.problem.mp, self.is_p, spd=True)
+        self.setup_ksp_once(ksp, self.assembler.mp, self.is_p, spd=True)
 
 
     def setup_ksp_Mu(self, ksp):
         """Setup velocity mass matrix ksp and assemble matrix"""
-        self.setup_ksp_once(ksp, self.problem.mu, self.is_u, spd=True)
+        self.setup_ksp_once(ksp, self.assembler.mu, self.is_u, spd=True)
 
 
     def setup_mat_Kp(self, mat=None):
         """Setup and assemble pressure convection
         matrix and return it"""
-        return self.assemble_operator(self.problem.kp, self.is_p, submat=mat)
+        return self.assemble_operator(self.assembler.kp, self.is_p, submat=mat)
 
 
     def setup_mat_Fp(self, mat=None):
         """Setup and assemble pressure convection-diffusion
         matrix and return it"""
-        return self.assemble_operator(self.problem.fp, self.is_p, submat=mat)
+        return self.assemble_operator(self.assembler.fp, self.is_p, submat=mat)
 
 
     def apply_pcd_bcs(self, vec):
         """Apply bcs to intermediate pressure vector of PCD pc"""
-        self.apply_bcs(vec, self.problem.pcd_bcs, self.is_p)
+        self.apply_bcs(vec, self.assembler.pcd_bcs, self.is_p)
 
 
     def get_work_dolfin_mat(self, key, comm,

@@ -22,7 +22,7 @@ preconditioned Krylov methods
 
 from dolfin import NewtonSolver, PETScFactory, NonlinearProblem
 
-from fenapack.assembling import PCDProblem
+from fenapack.assembling import PCDAssembler
 
 
 class PCDNewtonSolver(NewtonSolver):
@@ -69,7 +69,7 @@ class PCDNewtonSolver(NewtonSolver):
         # Set operators and initialize PCD
         P = A if P.empty() else P
         linear_solver.set_operators(A, P)
-        linear_solver.init_pcd(nonlinear_problem.pcd_problem)
+        linear_solver.init_pcd(nonlinear_problem.pcd_assembler)
 
 
     def linear_solver(self):
@@ -79,28 +79,28 @@ class PCDNewtonSolver(NewtonSolver):
 class PCDNonlinearProblem(NonlinearProblem):
     """Class for interfacing with :py:class:`PCDNewtonSolver`."""
 
-    def __init__(self, pcd_problem):
+    def __init__(self, pcd_assembler):
         """Return subclass of :py:class:`dolfin.NonlinearProblem`
         suitable for :py:class:`NewtonSolver` based on
         :py:class:`fenapack.field_split.PCDKrylovSolver` and
         PCD preconditioners from :py:class:`fenapack.preconditioners`.
 
         *Arguments*
-            pcd_problem (:py:class:`fenapack.assembling.PCDProblem`)
-               A class defining the PCD problem.
+            pcd_assembler (:py:class:`fenapack.assembling.PCDAssembler`)
+               A class which takes care of assembling PCD operators on demand.
         """
 
-        assert isinstance(pcd_problem, PCDProblem)
+        assert isinstance(pcd_assembler, PCDAssembler)
         super(PCDNonlinearProblem, self).__init__()
-        self.pcd_problem = pcd_problem
+        self.pcd_assembler = pcd_assembler
 
     def F(self, b, x):
-        self.pcd_problem.rhs_vector(b, x)
+        self.pcd_assembler.rhs_vector(b, x)
 
 
     def J(self, A, x):
-        self.pcd_problem.system_matrix(A)
+        self.pcd_assembler.system_matrix(A)
 
 
     def J_pc(self, P, x):
-        self.pcd_problem.pc_matrix(P)
+        self.pcd_assembler.pc_matrix(P)

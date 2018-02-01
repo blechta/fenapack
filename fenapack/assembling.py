@@ -24,7 +24,7 @@ operators themselves.
 from dolfin import SystemAssembler, assemble
 
 
-class PCDProblem(object):
+class PCDAssembler(object):
     """Base class for creating linear problems to be solved by application
     of the PCD preconditioning strategy. Users are encouraged to use this class
     for interfacing with :py:class:`fenapack.field_split.PCDKrylovSolver`.

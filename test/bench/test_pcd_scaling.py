@@ -11,9 +11,8 @@ import gc
 import itertools
 
 from fenapack import PCDKrylovSolver
-from fenapack import PCDNewtonSolver
-from fenapack import PCDProblem
-from fenapack import PCDNonlinearProblem
+from fenapack import PCDAssembler
+from fenapack import PCDNewtonSolver, PCDNonlinearProblem
 from fenapack import StabilizationParameterSD
 
 
@@ -140,11 +139,11 @@ def create_pcd_problem(F, bcs, J, J_pc, w, nu, boundary_markers, pcd_variant):
         kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(1)
         #kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(0)  # TODO: Is this beneficial?
 
-    # Collect forms to define PCD problem
-    pcd_problem = PCDProblem(J, F, bcs, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
+    # Collect forms in PCD assembler
+    pcd_assembler = PCDAssembler(J, F, bcs, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
 
-    # Create corresponding nonlinear problem
-    problem = PCDNonlinearProblem(pcd_problem)
+    # Create nonlinear problem
+    problem = PCDNonlinearProblem(pcd_assembler)
 
     return problem
 
@@ -198,11 +197,11 @@ def create_solver(comm, pcd_variant, ls, mumps_debug=False):
 @pytest.mark.parametrize("pcd_variant", ["BRM1", "BRM2"])
 @pytest.mark.parametrize("ls",          ["direct", "iterative"])
 def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, postprocessor):
-    set_log_level(WARNING)
+    #set_log_level(WARNING)
 
     # Iterate over refinement level
     #for level in range(7):
-    for level in range(6):
+    for level in range(4):
 
         # Prepare problem and solvers
         with Timer("Prepare") as t_prepare:
