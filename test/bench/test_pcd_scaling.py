@@ -13,6 +13,7 @@ import itertools
 from fenapack import PCDKrylovSolver
 from fenapack import PCDNewtonSolver
 from fenapack import PCDProblem
+from fenapack import PCDNonlinearProblem
 from fenapack import StabilizationParameterSD
 
 
@@ -139,8 +140,11 @@ def create_pcd_problem(F, bcs, J, J_pc, w, nu, boundary_markers, pcd_variant):
         kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(1)
         #kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(0)  # TODO: Is this beneficial?
 
-    # Collect forms to define nonlinear problem
-    problem = PCDProblem(F, bcs, J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
+    # Collect forms to define PCD problem
+    pcd_problem = PCDProblem(J, F, bcs, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
+
+    # Create corresponding nonlinear problem
+    problem = PCDNonlinearProblem(pcd_problem)
 
     return problem
 

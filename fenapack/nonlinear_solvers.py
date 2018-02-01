@@ -21,11 +21,14 @@ preconditioned Krylov methods
 """
 
 from dolfin import NewtonSolver, PETScFactory, NonlinearProblem
-from dolfin import SystemAssembler, assemble
+
+from fenapack.assembling import PCDProblem
+
 
 class PCDNewtonSolver(NewtonSolver):
     """Newton solver suitable for use with
-    :py:class:`PCDKrylovSolver`"""
+    :py:class:`fenapack.field_split.PCDKrylovSolver`.
+    """
 
     def __init__(self, solver):
         """Initialize for a given PCD Krylov solver.
@@ -66,133 +69,38 @@ class PCDNewtonSolver(NewtonSolver):
         # Set operators and initialize PCD
         P = A if P.empty() else P
         linear_solver.set_operators(A, P)
-        linear_solver.init_pcd(nonlinear_problem)
+        linear_solver.init_pcd(nonlinear_problem.pcd_problem)
 
 
     def linear_solver(self):
         return self._solver
 
 
+class PCDNonlinearProblem(NonlinearProblem):
+    """Class for interfacing with :py:class:`PCDNewtonSolver`."""
 
-# FIXME: Separate Newton and PCD part of this class. Linear PCD problem
-# has nothing to do with Newton part
-class PCDProblem(NonlinearProblem):
-    """Class for interfacing with not only :py:class:`NewtonSolver`."""
-    # TODO: Add abstract base class with docstrings
-    # TODO: What about interface
-    #          pcd_problem = PCDProblem()
-    #          pcd_problem.forms.F = F
-    #          pcd_problem.forms.J = J
-    #          ....
-    def __init__(self, F, bcs, J, J_pc=None,
-                 mp=None, mu=None, ap=None, fp=None, kp=None, bcs_pcd=[]):
-        """Return subclass of :py:class:`dolfin.NonlinearProblem` suitable
-        for :py:class:`NewtonSolver` based on
-        :py:class:`fenapack.field_split.FieldSplitSolver` and PCD
-        preconditioners from :py:class:`fenapack.field_split`.
+    def __init__(self, pcd_problem):
+        """Return subclass of :py:class:`dolfin.NonlinearProblem`
+        suitable for :py:class:`NewtonSolver` based on
+        :py:class:`fenapack.field_split.PCDKrylovSolver` and
+        PCD preconditioners from :py:class:`fenapack.preconditioners`.
 
         *Arguments*
-            F (:py:class:`dolfin.Form` or :py:class:`ufl.Form`)
-                Linear form representing the equation.
-            bcs (:py:class:`list` of :py:class:`dolfin.DirichletBC`)
-                Boundary conditions applied to ``F``, ``J``, and ``J_pc``.
-            J (:py:class:`dolfin.Form` or :py:class:`ufl.Form`)
-                Bilinear form representing system Jacobian.
-            J_pc (:py:class:`dolfin.Form` or :py:class:`ufl.Form`)
-                Bilinear form representing Jacobian optionally passed to
-                preconditioner instead of ``J``. In case of PCD, stabilized
-                00-block can be passed to 00-KSP solver.
-            mp, mu, ap, fp, kp (:py:class:`dolfin.Form` or :py:class:`ufl.Form`)
-                Bilinear forms which (some of them) might be used by a
-                particular PCD preconditioner. Typically they represent "mass
-                matrix" on pressure, "mass matrix" on velocity, minus Laplacian
-                operator on pressure, pressure convection-diffusion operator,
-                and pressure convection operator respectively.
-
-                ``mp``, ``mu``, and ``ap`` are assumed to be constant during
-                subsequent non-linear iterations and are assembled only once.
-                On the other hand, ``fp`` and ``kp`` are updated in every
-                iteration.
-            bcs_pcd (:py:class:`list` of :py:class:`dolfin.DirichletBC`)
-                Artificial boundary conditions used by PCD preconditioner.
-
-        All the arguments should be given on the common mixed function space.
+            pcd_problem (:py:class:`fenapack.assembling.PCDProblem`)
+               A class defining the PCD problem.
         """
 
-        super(PCDProblem, self).__init__()
-
-        # Assembler for Newton/Picard system
-        # FIXME: Does it get broken for Oseen system?
-        self.assembler = SystemAssembler(J, F, bcs)
-
-        # Assembler for preconditioner
-        if J_pc is not None:
-            self.assembler_pc = SystemAssembler(J_pc, F, bcs)
-        else:
-            self.assembler_pc = None
-
-        # Store forms/bcs for later
-        self.forms = {
-            "F": F,
-            "ap": ap,
-            "mp": mp,
-            "mu": mu,
-            "fp": fp,
-            "kp": kp,
-        }
-        self._bcs_pcd = bcs_pcd
-
-
-    def get_form(self, key):
-        form = self.forms.get(key)
-        if form is None:
-            raise AttributeError("Form '%s' requested by PCD not available" % key)
-        return form
-
-
-    def function_space(self):
-        return self.forms["F"].arguments()[0].function_space()
-
+        assert isinstance(pcd_problem, PCDProblem)
+        super(PCDNonlinearProblem, self).__init__()
+        self.pcd_problem = pcd_problem
 
     def F(self, b, x):
-        self.assembler.assemble(b, x)
+        self.pcd_problem.rhs_vector(b, x)
 
 
     def J(self, A, x):
-        self.assembler.assemble(A)
+        self.pcd_problem.system_matrix(A)
 
 
     def J_pc(self, P, x):
-        if self.assembler_pc is not None:
-            self.assembler_pc.assemble(P)
-
-
-    def ap(self, Ap):
-        assembler = SystemAssembler(self.get_form("ap"), self.get_form("F"),
-                                    self.pcd_bcs())
-        assembler.assemble(Ap)
-
-
-    def mp(self, Mp):
-        assemble(self.get_form("mp"), tensor=Mp)
-
-
-    def mu(self, Mu):
-        assemble(self.get_form("mu"), tensor=Mu)
-
-
-    def fp(self, Fp):
-        assemble(self.get_form("fp"), tensor=Fp)
-
-
-    def kp(self, Kp):
-        assemble(self.get_form("kp"), tensor=Kp)
-
-
-    # FIXME: Naming
-    def pcd_bcs(self):
-        try:
-            assert self._bcs_pcd is not None
-        except (AttributeError, AssertionError):
-            raise AttributeError("BCs requested by PCD not available")
-        return self._bcs_pcd
+        self.pcd_problem.pc_matrix(P)
