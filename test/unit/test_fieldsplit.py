@@ -20,13 +20,13 @@ def create_dummy_solver_and_problem():
     ff = MeshFunction('size_t', W.mesh(), W.mesh().topology().dim()-1)
     w = Function(W)
     F, bcs, J, J_pc = create_forms(w, ff, 1.0, 1.0, "newton", "direct")
-    pcd_problem = create_pcd_problem(F, bcs, J, J_pc, w, 1.0, ff, "BRM1")
+    problem = create_pcd_problem(F, bcs, J, J_pc, w, 1.0, ff, "BRM1")
     solver = PCDKrylovSolver(comm=mesh.mpi_comm())
     solver.set_options_prefix("s"+get_random_string()+"_")
     A = PETScMatrix(solver.mpi_comm())
-    pcd_problem.J(A, w.vector())
+    problem.J(A, w.vector())
     solver.set_operators(A, A)
-    return solver, pcd_problem
+    return solver, problem
 
 
 @pytest.fixture(scope="module")
@@ -60,15 +60,15 @@ def test_petsc_issue_160_2():
 
 @pytest.mark.xfail(reason="PETSc issue #160", strict=True, raises=AssertionError)
 def test_petsc_issue_160_3():
-    """Test that whether PETSc issue #160 is resolver and we
+    """Test that whether PETSc issue #160 is resolved and we
     should remove any workarounds"""
-    solver, pcd_problem = create_dummy_solver_and_problem()
+    solver, problem = create_dummy_solver_and_problem()
     prefix = solver.get_options_prefix()
     PETSc.Options().setValue(prefix+"fieldsplit_u_ksp_type", "pipecr")
 
     # Setup fieldsplit PC (avoid init_pcd which calls setFromOptions)
-    is0 = dofmap_dofs_is(pcd_problem.function_space().sub(0).dofmap())
-    is1 = dofmap_dofs_is(pcd_problem.function_space().sub(1).dofmap())
+    is0 = dofmap_dofs_is(problem.pcd_assembler.function_space().sub(0).dofmap())
+    is1 = dofmap_dofs_is(problem.pcd_assembler.function_space().sub(1).dofmap())
     solver.ksp().pc.setFieldSplitIS(['u', is0], ['p', is1])
     solver.ksp().pc.setUp()
 
@@ -78,11 +78,11 @@ def test_petsc_issue_160_3():
 
 def test_set_options_prefix():
     """Test that out workaround of PETSc issue #160 works"""
-    solver, pcd_problem = create_dummy_solver_and_problem()
+    solver, problem = create_dummy_solver_and_problem()
 
     # Check that setting prefix early works
     solver.set_options_prefix("foo_")
-    solver.init_pcd(pcd_problem)
+    solver.init_pcd(problem.pcd_assembler)
     assert solver.ksp().pc.getFieldSplitSubKSP()[0].getOptionsPrefix() == "foo_fieldsplit_u_"
     assert solver.ksp().pc.getFieldSplitSubKSP()[1].getOptionsPrefix() == "foo_fieldsplit_p_"
 

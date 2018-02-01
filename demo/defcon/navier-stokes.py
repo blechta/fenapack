@@ -27,7 +27,7 @@ from dolfin import *
 from matplotlib import pyplot
 
 from fenapack import PCDKSP
-from fenapack import PCDProblem
+from fenapack import PCDAssembler
 from fenapack import StabilizationParameterSD
 
 import sys
@@ -132,9 +132,9 @@ class NavierStokesProblem(BifurcationProblem):
             bc_pcd = DirichletBC(z.function_space().sub(1), 0.0, colours, 2)
 
         # Store what needed for later
-        self._pcd_problem = PCDProblem(F, bcs, J, J_pc,
-                                       ap=ap, kp=kp, mp=mp,
-                                       bcs_pcd=bc_pcd)
+        self._pcd_assembler = PCDAssembler(J, F, bcs, J_pc,
+                                           ap=ap, kp=kp, mp=mp,
+                                           bcs_pcd=bc_pcd)
 
         return F
 
@@ -270,7 +270,7 @@ class NavierStokesProblem(BifurcationProblem):
         x = as_backend_type(problem.u.vector()).vec()
         # FIXME: Make sure this works when J_pc is not used
         solver.jacobian(solver.snes, x, *solver.snes.ksp.getOperators())
-        ksp.init_pcd(self._pcd_problem)
+        ksp.init_pcd(self._pcd_assembler)
 
         return solver
 

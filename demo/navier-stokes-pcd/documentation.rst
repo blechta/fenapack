@@ -85,7 +85,7 @@ preparing the preconditioner.
 and Laplacian ``ap`` to be used by :any:`PCD BRM preconditioner
 <fenapack.preconditioners.PCDPC_BRM>` are defined using pressure components
 ``p``, ``q`` on the mixed space ``W``. They are passed to the class
-:py:class:`fenapack.nonlinear_solvers.PCDProblem` which takes care of
+:py:class:`fenapack.assembling.PCDAssembler` which takes care of
 assembling the operators on demand.
 
 .. code-block:: python
@@ -100,7 +100,9 @@ assembling the operators on demand.
         kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(1)
 
     # Collect forms to define nonlinear problem
-    problem = PCDProblem(F, [bc0, bc1], J, J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
+    pcd_assembler = PCDAssembler(J, F, [bc0, bc1],
+                                 J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
+    problem = PCDNonlinearProblem(pcd_assembler)
 
 Now we create GMRES preconditioned with PCD, set the tolerance, enable
 monitoring of residual during Krylov iterarations, and set the maximal
