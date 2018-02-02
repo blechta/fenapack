@@ -14,10 +14,15 @@ from bench.test_pcd_scaling import get_random_string
 
 def create_dummy_solver_and_problem():
     mesh = UnitSquareMesh(3, 3)
+    class Gamma1(SubDomain):
+        def inside(self, x, on_boundary):
+            return on_boundary and near(x[0], 0.0)
     P2 = VectorElement("Lagrange", mesh.ufl_cell(), 2)
     P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
     W = FunctionSpace(mesh, P2*P1)
     ff = MeshFunction('size_t', W.mesh(), W.mesh().topology().dim()-1)
+    ff.set_all(0)
+    Gamma1().mark(ff, 1)
     w = Function(W)
     F, bcs, J, J_pc = create_forms(w, ff, 1.0, 1.0, "newton", "direct")
     problem = create_pcd_problem(F, bcs, J, J_pc, w, 1.0, ff, "BRM1")
