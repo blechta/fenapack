@@ -76,13 +76,15 @@ class PCDInterface(object):
     def setup_mat_Kp(self, mat=None):
         """Setup and assemble pressure convection
         matrix and return it"""
-        return self.assemble_operator(self.assembler.kp, self.is_p, submat=mat)
+        if mat is None or not self.assembler.get_pcd_form("kp").is_constant():
+            return self.assemble_operator(self.assembler.kp, self.is_p, submat=mat)
 
 
     def setup_mat_Fp(self, mat=None):
         """Setup and assemble pressure convection-diffusion
         matrix and return it"""
-        return self.assemble_operator(self.assembler.fp, self.is_p, submat=mat)
+        if mat is None or not self.assembler.get_pcd_form("kp").is_constant():
+            return self.assemble_operator(self.assembler.fp, self.is_p, submat=mat)
 
 
     def apply_pcd_bcs(self, vec):
