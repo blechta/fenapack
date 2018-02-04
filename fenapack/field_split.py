@@ -56,8 +56,8 @@ class PCDKSP(PETSc.KSP):
 
 
     @allow_only_one_call
-    def init_pcd(self, pcd_problem, pcd_pc_class=None):
-        """Initialize from ``PCDProblem`` instance. Needs to be called
+    def init_pcd(self, pcd_assembler, pcd_pc_class=None):
+        """Initialize from ``PCDAssembler`` instance. Needs to be called
         after ``setOperators`` and ``setUp``. That's why two-phase
         initialization is needed: first ``__init__``, then ``init_pcd``
 
@@ -66,7 +66,7 @@ class PCDKSP(PETSc.KSP):
         """
 
         # Get subfield index sets
-        V = pcd_problem.function_space()
+        V = pcd_assembler.function_space()
         is0 = dofmap_dofs_is(V.sub(0).dofmap())
         is1 = dofmap_dofs_is(V.sub(1).dofmap())
 
@@ -119,19 +119,19 @@ class PCDKSP(PETSc.KSP):
             ksp1.pc.setPythonContext(pcd_pc)
             ksp1.setFromOptions()  # Override defaults above by user's options
 
-        # Get backend implementation of PCDProblem
+        # Get backend implementation of PCDAssembler
         # FIXME: Make me parameter
         #deep_submats = False
         deep_submats = True
-        pcd_interface = PCDInterface(pcd_problem, is0, is1,
+        pcd_interface = PCDInterface(pcd_assembler, is0, is1,
                                      deep_submats=deep_submats)
 
         # Provide assembling routines to PCD
         try:
             pcd_pc.init_pcd(pcd_interface)
         except Exception:
-            print("Initialization of PCD PC from PCDProblem failed!")
-            print("Maybe wrong PCD PC class or PCDProblem instance.")
+            print("Initialization of PCD PC from PCDAssembler failed!")
+            print("Maybe wrong PCD PC class or PCDAssembler instance.")
             raise
 
         # Setup PCD PC so that we have accurate timing
@@ -157,15 +157,15 @@ class PCDKrylovSolver(PETScKrylovSolver):
         super(PCDKrylovSolver, self).__init__(self._ksp)
 
 
-    def init_pcd(self, pcd_problem, pcd_pc_class=None):
-        """Initialize from ``PCDProblem`` instance. Needs to be called
+    def init_pcd(self, pcd_assembler, pcd_pc_class=None):
+        """Initialize from ``PCDAssembler`` instance. Needs to be called
         after ``setOperators`` and ``setUp``. That's why two-phase
         initialization is needed: first ``__init__``, then ``init_pcd``
 
         Note that this function automatically calls setFromOptions to
         all subKSP objects.
         """
-        self._ksp.init_pcd(pcd_problem, pcd_pc_class=pcd_pc_class)
+        self._ksp.init_pcd(pcd_assembler, pcd_pc_class=pcd_pc_class)
 
 
     def ksp(self):
