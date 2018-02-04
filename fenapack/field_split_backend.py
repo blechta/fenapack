@@ -58,17 +58,19 @@ class PCDInterface(object):
 
     def setup_ksp_Ap(self, ksp):
         """Setup pressure Laplacian ksp and assemble matrix"""
-        self.setup_ksp_once(ksp, self.assembler.ap, self.is_p, spd=True)
-
+        self.setup_ksp(ksp, self.assembler.ap, self.is_p, spd=True,
+                       const=self.assembler.get_pcd_form("ap").is_constant())
 
     def setup_ksp_Mp(self, ksp):
         """Setup pressure mass matrix ksp and assemble matrix"""
-        self.setup_ksp_once(ksp, self.assembler.mp, self.is_p, spd=True)
+        self.setup_ksp(ksp, self.assembler.mp, self.is_p, spd=True,
+                       const=self.assembler.get_pcd_form("mp").is_constant())
 
 
     def setup_ksp_Mu(self, ksp):
         """Setup velocity mass matrix ksp and assemble matrix"""
-        self.setup_ksp_once(ksp, self.assembler.mu, self.is_u, spd=True)
+        self.setup_ksp(ksp, self.assembler.mu, self.is_u, spd=True,
+                       const=self.assembler.get_pcd_form("mu").is_constant())
 
 
     def setup_mat_Kp(self, mat=None):
@@ -117,24 +119,25 @@ class PCDInterface(object):
         return dolfin_mat
 
 
-    def setup_ksp_once(self, ksp, assemble_func, iset, spd=False):
+    def setup_ksp(self, ksp, assemble_func, iset, spd=False, const=False):
         """Assemble into operator of given ksp if not yet assembled"""
         mat = ksp.getOperators()[0]
-        # FIXME: This logic that it is created once should be visible
-        #        in higher level, not in these internals
+        prefix = ksp.getOptionsPrefix()
         if mat.type is None or not mat.isAssembled():
             # Assemble matrix
+            destruction = True if const else None
             dolfin_mat = self.get_work_dolfin_mat(assemble_func, mat.comm,
-                                                  can_be_destroyed=True,
+                                                  can_be_destroyed=destruction,
                                                   can_be_shared=True)
             assemble_func(dolfin_mat)
             mat = self._get_deep_submat(dolfin_mat, iset, submat=None)
+            # NOTE: self._get_shallow_submat(dolfin_mat, iset, submat=None)
+            #       results in PETSc error code 92 [MatGetFactor() failed]
 
             # Use eventual spd flag
             mat.setOption(PETSc.Mat.Option.SPD, spd)
 
             # Set correct options prefix
-            prefix = ksp.getOptionsPrefix()
             mat.setOptionsPrefix(prefix)
 
             # Use also as preconditioner matrix
@@ -142,6 +145,14 @@ class PCDInterface(object):
             assert ksp.getOperators()[0].isAssembled()
 
             # Setup ksp
+            with Timer("FENaPack: {} setup".format(prefix)):
+                ksp.setUp()
+        elif not const:
+            # Reinitialize matrix and ksp
+            # TODO: Can we use a virtual submat (view into dolfin mat) in KSP?
+            mat = self._assemble_operator_deep(assemble_func, iset, submat=mat)
+            assert mat.getOptionsPrefix() == prefix
+            ksp.setOperators(mat, mat)
             with Timer("FENaPack: {} setup".format(prefix)):
                 ksp.setUp()
 
