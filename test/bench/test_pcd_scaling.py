@@ -197,11 +197,11 @@ def create_solver(comm, pcd_variant, ls, mumps_debug=False):
 @pytest.mark.parametrize("pcd_variant", ["BRM1", "BRM2"])
 @pytest.mark.parametrize("ls",          ["direct", "iterative"])
 def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, postprocessor):
-    #set_log_level(WARNING)
+    set_log_level(WARNING)
 
     # Iterate over refinement level
     #for level in range(7):
-    for level in range(4):
+    for level in range(6):
 
         # Prepare problem and solvers
         with Timer("Prepare") as t_prepare:
