@@ -144,7 +144,6 @@ class PCDAssembler(object):
 
 
     def mp(self, Mp):
-        mp = self.get_dolfin_form("mp")
         assemble(self.get_dolfin_form("mp"), tensor=Mp)
 
 
