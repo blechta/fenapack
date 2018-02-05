@@ -132,9 +132,8 @@ class PCDInterface(object):
                                                   can_be_destroyed=destruction,
                                                   can_be_shared=True)
             assemble_func(dolfin_mat)
-            mat = self._get_deep_submat(dolfin_mat, iset, submat=None)
-            # NOTE: self._get_shallow_submat(dolfin_mat, iset, submat=None)
-            #       results in PETSc error code 92 [MatGetFactor() failed]
+            mat = self._get_deep_submat(dolfin_mat.mat(), iset, submat=None)
+            # NOTE: shallow version results in PETSc error 92 [MatGetFactor() failed]
 
             # Use eventual spd flag
             mat.setOption(PETSc.Mat.Option.SPD, spd)

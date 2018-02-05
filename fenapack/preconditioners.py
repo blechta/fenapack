@@ -68,12 +68,9 @@ class BasePCDPC(object):
 
 
     def setUp(self, pc):
-
         # Prepare mass matrix and Laplacian solvers
         # NOTE: Called function ensures that assembly, submat extraction and
         #       ksp setup is done only once during preconditioner lifetime.
-        # FIXME: Maybe move Mp and Ap setup to init and remove logic in backend.
-        #        This will make it obvious that this is done once.
         self.interface.setup_ksp_Mp(self.ksp_Mp)
         self.interface.setup_ksp_Ap(self.ksp_Ap)
 
@@ -137,7 +134,7 @@ class PCDPC_BRM1(BasePCDPC):
 
 
 class PCDPC_BRM2(BasePCDPC):
-    """This class implements a modification steady variant of PCD
+    """This class implements a modification of steady variant of PCD
     described in [2]_.
 
     .. [2] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast
