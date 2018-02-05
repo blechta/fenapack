@@ -75,8 +75,10 @@ class BasePCDPC(object):
         self.interface.setup_ksp_Ap(self.ksp_Ap)
 
         # Prepare convection matrix
-        self.mat_Kp = self.interface.setup_mat_Kp(mat=getattr(self, "mat_Kp", None))
-        self.mat_Kp.setOptionsPrefix(pc.getOptionsPrefix() + "PCD_Kp_")
+        Kp = self.interface.setup_mat_Kp(mat=getattr(self, "mat_Kp", None))
+        if Kp is not None: # updated only if not constant
+            self.mat_Kp = Kp
+            self.mat_Kp.setOptionsPrefix(pc.getOptionsPrefix() + "PCD_Kp_")
 
         # Fetch bcs apply function
         self.bcs_applier = self.interface.apply_pcd_bcs
