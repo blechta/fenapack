@@ -169,9 +169,9 @@ class PCDAssembler(object):
 
 
 class PCDForm(object):
-    """Wrapper for PCD operators represented by :py:class:`Form`.
-    This class allows to record specific properties of the form that can be
-    utilized later while setting up the preconditioner.
+    """Wrapper for PCD operators represented by :py:class:`dolfin.Form` or
+    :py:class:`ufl.Form`. This class allows to record specific properties of
+    the form that can be utilized later while setting up the preconditioner.
 
     For example, we can specify which matrices remain constant during the outer
     iterative algorithm (e.g. Newton-Raphson method, time-stepping) and which

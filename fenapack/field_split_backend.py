@@ -133,7 +133,6 @@ class PCDInterface(object):
                                                   can_be_shared=True)
             assemble_func(dolfin_mat)
             mat = self._get_deep_submat(dolfin_mat, iset, submat=None)
-            # NOTE: shallow version results in PETSc error 92 [MatGetFactor() failed]
 
             # Use eventual spd flag
             mat.setOption(PETSc.Mat.Option.SPD, spd)
@@ -145,12 +144,12 @@ class PCDInterface(object):
             ksp.setOperators(mat, mat)
             assert ksp.getOperators()[0].isAssembled()
 
-            # Setup ksp
+            # Set up ksp
             with Timer("FENaPack: {} setup".format(prefix)):
                 ksp.setUp()
+
         elif not const:
-            # Reinitialize matrix and ksp
-            # TODO: Can we use a virtual submat (view into dolfin mat) in KSP?
+            # Assemble matrix and set up ksp
             mat = self._assemble_operator_deep(assemble_func, iset, submat=mat)
             assert mat.getOptionsPrefix() == prefix
             ksp.setOperators(mat, mat)
