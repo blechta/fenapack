@@ -123,7 +123,8 @@ class PCDKSP(PETSc.KSP):
         # FIXME: Make me parameter
         #deep_submats = False
         deep_submats = True
-        pcd_interface = PCDInterface(pcd_assembler, is0, is1,
+        A = self.getOperators()[0]
+        pcd_interface = PCDInterface(pcd_assembler, A, is0, is1,
                                      deep_submats=deep_submats)
 
         # Provide assembling routines to PCD

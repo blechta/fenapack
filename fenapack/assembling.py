@@ -33,7 +33,8 @@ class PCDAssembler(object):
     """
 
     def __init__(self, a, L, bcs, a_pc=None,
-                 mp=None, mu=None, ap=None, fp=None, kp=None, bcs_pcd=[]):
+                 mp=None, mu=None, ap=None, fp=None, kp=None, gp=None,
+                 bcs_pcd=[]):
         """Collect individual variational forms and boundary conditions
         defining a linear problem (system matrix + RHS vector) on the one side
         and preconditioning operators on the other side.
@@ -49,12 +50,12 @@ class PCDAssembler(object):
                 Bilinear form representing a matrix optionally passed to
                 preconditioner instead of ``a``. In case of PCD, stabilized
                 00-block can be passed to 00-KSP solver.
-            mp, mu, ap, fp, kp (:py:class:`dolfin.Form` or :py:class:`ufl.Form`)
+            mp, mu, ap, fp, kp, gp (:py:class:`dolfin.Form` or :py:class:`ufl.Form`)
                 Bilinear forms which (some of them) might be used by a
-                particular PCD preconditioner. Typically they represent "mass
+                particular PCD(R) preconditioner. Typically they represent "mass
                 matrix" on pressure, "mass matrix" on velocity, minus Laplacian
                 operator on pressure, pressure convection-diffusion operator,
-                and pressure convection operator respectively.
+                pressure convection operator and pressure gradient respectively.
             bcs_pcd (:py:class:`list` of :py:class:`dolfin.DirichletBC`)
                 Artificial boundary conditions used by PCD preconditioner.
 
@@ -62,13 +63,22 @@ class PCDAssembler(object):
 
         All the forms are wrapped using :py:class:`PCDForm` so that each of
         them can be endowed with additional set of properties.
-        By default, ``mp``, ``mu``, and ``ap`` are assumed to be constant
-        if the preconditioner is used repeatedly in some outer iterative
-        process (e.g Newton-Raphson method, time-stepping).
+
+        By default, ``mp``, ``mu``, ``ap`` and ``gp`` are assumed to be
+        constant if the preconditioner is used repeatedly in some outer
+        iterative process (e.g Newton-Raphson method, time-stepping).
         As such, the corresponding operators are assembled only once.
         On the other hand, ``fp`` and ``kp`` are updated in every
-        outer iteration. This default setting can be changed by accessing
-        a :py:class:`PCDForm` instance via :py:meth:`PCDAssembler.get_pcd_form`.
+        outer iteration.
+
+        Also note that ``gp`` is the only form that is by default in a *phantom
+        mode*. It means that the corresponding operator (if needed) is not
+        obtained by assembling the form, but it is extracted as the 01-block of
+        the system matrix.
+
+        The default setting can be modified by accessing
+        a :py:class:`PCDForm` instance via :py:meth:`PCDAssembler.get_pcd_form`
+        and changing the properties directly.
         """
 
         # Assembler for the linear system of algebraic equations
@@ -81,6 +91,7 @@ class PCDAssembler(object):
             self.assembler_pc = None
 
         # Store bcs
+        self._bcs = bcs
         self._bcs_pcd = bcs_pcd
 
         # Store and initialize forms
@@ -91,6 +102,7 @@ class PCDAssembler(object):
             "mu": PCDForm(mu, const=True),
             "fp": PCDForm(fp),
             "kp": PCDForm(kp),
+            "gp": PCDForm(gp, const=True, phantom=True),
         }
 
 
@@ -159,6 +171,15 @@ class PCDAssembler(object):
         assemble(self.get_dolfin_form("kp"), tensor=Kp)
 
 
+    def gp(self, Bt):
+        """Assemble discrete pressure gradient. It is crucial to respect any
+        constraints placed on the velocity test space by Dirichlet boundary
+        conditions."""
+        assemble(self.get_dolfin_form("gp"), tensor=Bt)
+        for bc in self._bcs:
+            bc.apply(Bt)
+
+
     # FIXME: Naming
     def pcd_bcs(self):
         try:
@@ -177,7 +198,7 @@ class PCDForm(object):
     iterative algorithm (e.g. Newton-Raphson method, time-stepping) and which
     matrices need to be updated in every outer iteration.
     """
-    def __init__(self, form, const=False):
+    def __init__(self, form, const=False, phantom=False):
         """The class is initialized by a single form with default properties.
 
         *Arguments*
@@ -185,6 +206,11 @@ class PCDForm(object):
                 A form to be wrapped.
             const (`bool`)
                 Whether the form remains constant in outer iterations.
+            phantom (`bool`)
+                If `True`, then the corresponding operator will be obtained
+                not by assembling the form, but in some different way. (For
+                example, pressure gradient may be extracted directly from
+                the system matrix.)
         """
         # Store form
         self._form = form
@@ -192,9 +218,13 @@ class PCDForm(object):
         # Initialize public properties
         assert isinstance(const, bool)
         self.constant = const
+        self.phantom = phantom
 
     def dolfin_form(self):
         return self._form
 
     def is_constant(self):
         return self.constant
+
+    def is_phantom(self):
+        return self.phantom

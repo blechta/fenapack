@@ -36,4 +36,5 @@ from fenapack.field_split import PCDKSP, PCDKrylovSolver
 from fenapack.assembling import PCDAssembler, PCDForm
 from fenapack.nonlinear_solvers import PCDNewtonSolver, PCDNonlinearProblem
 from fenapack.preconditioners import PCDPC_BRM1, PCDPC_BRM2
+from fenapack.preconditioners import PCDRPC_BRM1, PCDRPC_BRM2
 from fenapack.stabilization import StabilizationParameterSD

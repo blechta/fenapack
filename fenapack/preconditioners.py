@@ -166,3 +166,132 @@ class PCDPC_BRM2(BasePCDPC):
         y.axpy(1.0, z0)           # y = y + z0
         # FIXME: How is with the sign bussines?
         y.scale(-1.0)             # y = -y
+
+
+
+class BasePCDRPC(BasePCDPC):
+    """Base python context for pressure convection diffusion reaction (PCDR)
+    preconditioners.
+    """
+    # TODO: Add demo/bench to demonstrate performance of PCDR
+    def create(self, pc):
+        super(BasePCDRPC, self).create(pc)
+        self.ksp_Rp = self.create_default_ksp(pc.comm)
+
+        options_prefix = pc.getOptionsPrefix()
+        self.ksp_Rp.setOptionsPrefix(options_prefix + "PCD_Rp_")
+
+
+    def setFromOptions(self, pc):
+        super(BasePCDRPC, self).setFromOptions(pc)
+        self.ksp_Rp.setFromOptions()
+
+
+    def setUp(self, pc):
+        # Prepare mass matrix and Laplacian solvers, convection matrix and bcs_applier
+        super(BasePCDRPC, self).setUp(pc)
+
+        # Prepare Laplacian solver based on velocity mass matrix
+        # and discrete pressure gradient
+        Mu = self.interface.setup_mat_Mu(mat=getattr(self, "mat_Mu", None))
+        if Mu is not None: # updated only if not constant
+            self.mat_Mu = Mu
+            self.mat_Mu.setOptionsPrefix(pc.getOptionsPrefix() + "PCD_Mu_")
+
+        Bt = self.interface.setup_mat_Bt(mat=getattr(self, "mat_Bt", None))
+        if Bt is not None: # updated only if not constant
+            self.mat_Bt = Bt
+            self.mat_Bt.setOptionsPrefix(pc.getOptionsPrefix() + "PCD_Bt_")
+
+        self.interface.setup_ksp_Rp(self.ksp_Rp, self.mat_Mu, self.mat_Bt)
+
+
+
+class PCDRPC_BRM1(BasePCDRPC):
+    """This class implements an extension of :py:class:`PCDPC_BRM1`.
+    Here we add a reaction term into the preconditioner, so that is becomes
+    PCDR (pressure-convection-diffusion-reaction) preconditioner. This
+    particular variant is suitable for time-dependent problems, where the
+    reaction term arises from the time derivative in the balance of momentum.
+    """
+
+    @timed("FENaPack: PCDRPC_BRM1 apply")
+    def apply(self, pc, x, y):
+        r"""This method implements the action of the inverse of the approximate
+        Schur complement :math:`-\hat{S}^{-1}`, that is
+
+        .. math::
+
+            y = - R_p^{-1} x - M_p^{-1} (I + K_p A_p^{-1}) x
+
+        where :math:`K_p` is used to denote pressure convection matrix, while
+        :math:`R_p` originates in the discretized time derivative. Roughly
+        speaking, :math:`R_p^{-1} x` corresponds to additional Laplace solve
+        in which the minus Laplacian operator is approximated in a clever way
+        based on the *velocity mass matrix* and *pressure gradient operator*.
+
+        Based on experimental evidence, we can say that this particular
+        variant performs better than :py:class:`PCDPC_BRM1` (with :math:`K_p`
+        enriched by the pressure mass matrix from the discrete time
+        derivative) applied to time-dependent problems.
+        """
+        # Fetch work vector
+        z, = self.get_work_vecs(x, 1)
+
+        # Apply PCD
+        x.copy(result=z)        # z = x
+        self.bcs_applier(z)     # apply bcs to z
+        self.ksp_Ap.solve(z, y) # y = A_p^{-1} z
+        self.mat_Kp.mult(y, z)  # z = K_p y
+        z.axpy(1.0, x)          # z = z + x
+        self.ksp_Mp.solve(z, y) # y = M_p^{-1} z
+        self.ksp_Rp.solve(x, z) # z = R_p^{-1} x
+        y.axpy(1.0, z)          # y = y + z
+        # FIXME: How is with the sign bussines?
+        y.scale(-1.0)           # y = -y
+
+
+
+class PCDRPC_BRM2(BasePCDRPC):
+    """This class implements an extension of :py:class:`PCDPC_BRM2`.
+    Here we add a reaction term into the preconditioner, so that is becomes
+    PCDR (pressure-convection-diffusion-reaction) preconditioner. This
+    particular variant is suitable for time-dependent problems, where the
+    reaction term arises from the time derivative in the balance of momentum.
+    """
+
+    @timed("FENaPack: PCDRPC_BRM2 apply")
+    def apply(self, pc, x, y):
+        # FIXME: Fix the docstring
+        """This method implements the action of the inverse of the approximate
+        Schur complement :math:`-\hat{S}^{-1}`, that is
+
+        .. math::
+
+            y = - R_p^{-1}x - (I + A_p^{-1} K_p) M_p^{-1} x.
+
+        where :math:`K_p` is used to denote pressure convection matrix, while
+        :math:`R_p` originates in the discretized time derivative. Roughly
+        speaking, :math:`R_p^{-1} x` corresponds to additional Laplace solve
+        in which the minus Laplacian operator is approximated in a clever way
+        based on the *velocity mass matrix* and *pressure gradient operator*.
+
+        Based on experimental evidence, we can say that this particular
+        variant performs better than :py:class:`PCDPC_BRM2` (with :math:`K_p`
+        enriched by the pressure mass matrix from the discrete time
+        derivative) applied to time-dependent problems.
+        """
+        # Fetch work vector
+        z0, z1 = self.get_work_vecs(x, 2)
+
+        # Apply PCD
+        self.ksp_Mp.solve(x, y)   # y = M_p^{-1} x
+        y.copy(result=z0)         # z0 = y
+        self.mat_Kp.mult(z0, z1)  # z1 = K_p z0
+        self.bcs_applier(z1)      # apply bcs to z1
+        self.ksp_Ap.solve(z1, z0) # z0 = A_p^{-1} z1
+        y.axpy(1.0, z0)           # y = y + z0
+        self.ksp_Rp.solve(x, z0)  # z0 = R_p^{-1} x
+        y.axpy(1.0, z0)           # y = y + z0
+        # FIXME: How is with the sign bussines?
+        y.scale(-1.0)             # y = -y

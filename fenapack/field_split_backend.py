@@ -31,9 +31,9 @@ class PCDInterface(object):
     are extracted as shallow or deep submatrices according to
     ``deep_submats`` parameter."""
 
-    def __init__(self, pcd_assembler, is_u, is_p, deep_submats=False):
+    def __init__(self, pcd_assembler, A, is_u, is_p, deep_submats=False):
         """Create PCDInterface instance given PCDAssembler instance,
-        and velocity and pressure index sets"""
+        system matrix and velocity and pressure index sets"""
 
         # Check input
         assert isinstance(pcd_assembler, PCDAssembler)
@@ -42,6 +42,7 @@ class PCDInterface(object):
 
         # Store what needed
         self.assembler = pcd_assembler
+        self.A = A
         self.is_u = is_u
         self.is_p = is_p
 
@@ -73,12 +74,6 @@ class PCDInterface(object):
                        const=self.assembler.get_pcd_form("mp").is_constant())
 
 
-    def setup_ksp_Mu(self, ksp):
-        """Setup velocity mass matrix ksp and assemble matrix"""
-        self.setup_ksp(ksp, self.assembler.mu, self.is_u, spd=True,
-                       const=self.assembler.get_pcd_form("mu").is_constant())
-
-
     def setup_mat_Kp(self, mat=None):
         """Setup and assemble pressure convection
         matrix and return it"""
@@ -93,6 +88,108 @@ class PCDInterface(object):
             return self.assemble_operator(self.assembler.fp, self.is_p, submat=mat)
 
 
+    def setup_mat_Mu(self, mat=None):
+        """Setup and assemble velocity mass matrix
+        and return it"""
+        # NOTE: deep submats are required for the later use in _build_approx_Ap
+        if mat is None or not self.assembler.get_pcd_form("mu").is_constant():
+            return self._assemble_operator_deep(self.assembler.mu, self.is_u, submat=mat)
+
+
+    def setup_mat_Bt(self, mat=None):
+        """Setup and assemble discrete pressure gradient
+        and return it"""
+        # NOTE: deep submats are required for the later use in _build_approx_Ap
+        if mat is None or not self.assembler.get_pcd_form("gp").is_constant():
+            if self.assembler.get_pcd_form("gp").is_phantom():
+                # NOTE: Bt is obtained from the system matrix
+                return self._get_deep_submat(self.A, self.is_u, self.is_p, submat=mat)
+            else:
+                # NOTE: Bt is obtained by assembling a form
+                return self._assemble_operator_deep(self.assembler.gp,
+                                                    self.is_u, self.is_p, submat=mat)
+
+
+    def setup_ksp_Rp(self, ksp, Mu, Bt):
+        """Setup pressure Laplacian ksp based on velocity mass matrix ``Mu``
+        and discrete gradient ``Bt`` and assemble matrix
+        """
+        mat = ksp.getOperators()[0]
+        prefix = ksp.getOptionsPrefix()
+        const = self.assembler.get_pcd_form("mu").is_constant() \
+                  and self.assembler.get_pcd_form("gp").is_constant()
+        if mat.type is None or not mat.isAssembled() or not const:
+            # Get approximate Laplacian
+            mat = self._build_approx_Ap(Mu, Bt, mat)
+
+            # Use eventual spd flag
+            mat.setOption(PETSc.Mat.Option.SPD, True)
+
+            # Set correct options prefix
+            mat.setOptionsPrefix(prefix)
+
+            # Use also as preconditioner matrix
+            ksp.setOperators(mat, mat)
+            assert ksp.getOperators()[0].isAssembled()
+
+            # Setup ksp
+            with Timer("FENaPack: {} setup".format(prefix)):
+                ksp.setUp()
+
+
+    def _build_approx_Ap(self, Mu, Bt, mat=None):
+        # Fetch work vector and matrix
+        diagMu, = self.get_work_vecs_from_square_mat(Mu, 1)
+        Ap, = self.get_work_mats(Bt, 1)
+
+        # Get diagonal of the velocity mass matrix
+        Mu.getDiagonal(result=diagMu)
+
+        # Make inverse of diag(Mu)
+        diagMu.reciprocal() # diag(Mu)^{-1}
+
+        # Make square root of the diagonal and use it for scaling
+        diagMu.sqrtabs() # \sqrt{diag(Mu)^{-1}}
+
+        # Process discrete "grad" operator
+        Bt.copy(result=Ap)         # Ap = Bt
+        Ap.diagonalScale(L=diagMu) # scale rows of Ap, i.e. Ap = diagMu*Bt
+
+        # Return Ap = Ap^T*Ap, which is B diag(Mu)^{-1} B^T,
+        if mat is None or not mat.isAssembled():
+            return Ap.transposeMatMult(Ap)
+        else:
+            # NOTE: 'result' can only be used if the multiplied matrices have
+            #       the same nonzero pattern as in the previous call
+            return Ap.transposeMatMult(Ap, result=mat)
+
+
+    def get_work_vecs_from_square_mat(self, M, num):
+        """Return ``num`` of work vecs initially created from a square
+        matrix ``M``."""
+        # Verify that we have a square matrix
+        m, n = M.getSize()
+        assert m == n
+        try:
+            vecs = self._work_vecs
+            assert len(vecs) == num
+        except AttributeError:
+            self._work_vecs = vecs = tuple(M.getVecLeft() for i in range(num))
+        except AssertionError:
+            raise ValueError("Changing number of work vecs not allowed")
+        return vecs
+
+
+    def get_work_mats(self, M, num):
+        """Return ``num`` of work mats initially created from matrix ``B``."""
+        try:
+            mats = self._work_mats
+            assert len(mats) == num
+        except AttributeError:
+            self._work_mats = mats = tuple(M.duplicate() for i in range(num))
+        except AssertionError:
+            raise ValueError("Changing number of work mats not allowed")
+        return mats
 
 
     def get_work_dolfin_mat(self, key, comm,
