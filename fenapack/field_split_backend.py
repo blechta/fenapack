@@ -56,10 +56,16 @@ class PCDInterface(object):
         self.scratch = {}
 
 
+    def apply_pcd_bcs(self, vec):
+        """Apply bcs to intermediate pressure vector of PCD pc"""
+        self.apply_bcs(vec, self.assembler.pcd_bcs, self.is_p)
+
+
     def setup_ksp_Ap(self, ksp):
         """Setup pressure Laplacian ksp and assemble matrix"""
         self.setup_ksp(ksp, self.assembler.ap, self.is_p, spd=True,
                        const=self.assembler.get_pcd_form("ap").is_constant())
+
 
     def setup_ksp_Mp(self, ksp):
         """Setup pressure mass matrix ksp and assemble matrix"""
@@ -87,9 +93,6 @@ class PCDInterface(object):
             return self.assemble_operator(self.assembler.fp, self.is_p, submat=mat)
 
 
-    def apply_pcd_bcs(self, vec):
-        """Apply bcs to intermediate pressure vector of PCD pc"""
-        self.apply_bcs(vec, self.assembler.pcd_bcs, self.is_p)
 
 
     def get_work_dolfin_mat(self, key, comm,
@@ -132,7 +135,7 @@ class PCDInterface(object):
                                                   can_be_destroyed=destruction,
                                                   can_be_shared=True)
             assemble_func(dolfin_mat)
-            mat = self._get_deep_submat(dolfin_mat, iset, submat=None)
+            mat = self._get_deep_submat(dolfin_mat.mat(), iset, submat=None)
 
             # Use eventual spd flag
             mat.setOption(PETSc.Mat.Option.SPD, spd)
@@ -157,11 +160,11 @@ class PCDInterface(object):
                 ksp.setUp()
 
 
-    def _assemble_operator_shallow(self, assemble_func, iset, submat=None):
+    def _assemble_operator_shallow(self, assemble_func, isrow, iscol=None, submat=None):
         """Assemble operator of given name using shallow submat"""
         # Assemble into persistent DOLFIN matrix everytime
         # TODO: Does not shallow submat take care of parents lifetime? How?
-        dolfin_mat = self.get_work_dolfin_mat(assemble_func, iset.comm,
+        dolfin_mat = self.get_work_dolfin_mat(assemble_func, isrow.comm,
                                               can_be_destroyed=False,
                                               can_be_shared=False)
         assemble_func(dolfin_mat)
@@ -170,19 +173,19 @@ class PCDInterface(object):
         #        in higher level, not in these internals
         # Create shallow submatrix (view into dolfin mat) once
         if submat is None or submat.type is None or not submat.isAssembled():
-            submat = self._get_shallow_submat(dolfin_mat, iset, submat=submat)
+            submat = self._get_shallow_submat(dolfin_mat.mat(), isrow, iscol, submat=submat)
             assert submat.isAssembled()
 
         return submat
 
 
-    def _assemble_operator_deep(self, assemble_func, iset, submat=None):
+    def _assemble_operator_deep(self, assemble_func, isrow, iscol=None, submat=None):
         """Assemble operator of given name using deep submat"""
-        dolfin_mat = self.get_work_dolfin_mat(assemble_func, iset.comm,
+        dolfin_mat = self.get_work_dolfin_mat(assemble_func, isrow.comm,
                                               can_be_destroyed=None,
                                               can_be_shared=True)
         assemble_func(dolfin_mat)
-        return self._get_deep_submat(dolfin_mat, iset, submat=submat)
+        return self._get_deep_submat(dolfin_mat.mat(), isrow, iscol, submat=submat)
 
 
     def apply_bcs(self, vec, bcs_getter, iset):
@@ -205,24 +208,32 @@ class PCDInterface(object):
     if PETSc.Sys.getVersion()[0:2] <= (3, 7) and PETSc.Sys.getVersionInfo()['release']:
 
         @staticmethod
-        def _get_deep_submat(dolfin_mat, iset, submat=None):
-            return dolfin_mat.mat().getSubMatrix(iset, iset, submat=submat)
+        def _get_deep_submat(mat, isrow, iscol=None, submat=None):
+            if iscol is None:
+                iscol = isrow
+            return mat.getSubMatrix(isrow, iscol, submat=submat)
 
         @staticmethod
-        def _get_shallow_submat(dolfin_mat, iset, submat=None):
+        def _get_shallow_submat(mat, isrow, iscol=None, submat=None):
+            if iscol is None:
+                iscol = isrow
             if submat is None:
-                submat = PETSc.Mat().create(iset.comm)
-            return submat.createSubMatrix(dolfin_mat.mat(), iset, iset)
+                submat = PETSc.Mat().create(isrow.comm)
+            return submat.createSubMatrix(mat, isrow, iscol)
 
 
     else:
 
         @staticmethod
-        def _get_deep_submat(dolfin_mat, iset, submat=None):
-            return dolfin_mat.mat().createSubMatrix(iset, iset, submat=submat)
+        def _get_deep_submat(mat, isrow, iscol=None, submat=None):
+            if iscol is None:
+                iscol = isrow
+            return mat.createSubMatrix(isrow, iscol, submat=submat)
 
         @staticmethod
-        def _get_shallow_submat(dolfin_mat, iset, submat=None):
+        def _get_shallow_submat(mat, isrow, iscol=None, submat=None):
+            if iscol is None:
+                iscol = isrow
             if submat is None:
-                submat = PETSc.Mat().create(iset.comm)
-            return submat.createSubMatrixVirtual(dolfin_mat.mat(), iset, iset)
+                submat = PETSc.Mat().create(isrow.comm)
+            return submat.createSubMatrixVirtual(mat, isrow, iscol)
