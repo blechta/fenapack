@@ -1,3 +1,5 @@
+.. _demo_PCD_PC_for_NS_eqns:
+
 PCD preconditioner for Navier-Stokes equations
 ==============================================
 
