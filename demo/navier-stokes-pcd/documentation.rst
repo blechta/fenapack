@@ -154,7 +154,7 @@ convergence rates.**
         PETScOptions.set("fieldsplit_p_PCD_Mp_pc_type", "jacobi")
 
 The direct solver is used by default if the aforementioned blocks
-are not executed. FEnaPack tries to pick MUMPS by default and following
+are not executed. FENaPack tries to pick MUMPS by default and following
 parameter enables very verbose output.
 
 .. code-block:: python

@@ -268,7 +268,7 @@ class PCDRPC_BRM2(BasePCDRPC):
 
         .. math::
 
-            y = - R_p^{-1}x - (I + A_p^{-1} K_p) M_p^{-1} x.
+            y = - R_p^{-1} x - (I + A_p^{-1} K_p) M_p^{-1} x.
 
         where :math:`K_p` is used to denote pressure convection matrix, while
         :math:`R_p` originates in the discretized time derivative. Roughly
