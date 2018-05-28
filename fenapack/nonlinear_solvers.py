@@ -30,10 +30,14 @@ class PCDNewtonSolver(NewtonSolver):
     :py:class:`fenapack.field_split.PCDKrylovSolver`.
     """
 
-    def __init__(self, solver):
-        """Initialize for a given PCD Krylov solver.
+    def __init__(self, solver, pcd_pc_class=None):
+        """Initialize for a given PCD Krylov solver and preconditioner class.
 
-        :type solver: :py:class:`PCDKrylovSolver`
+        *Arguments*
+            solver (:py:class:`fenapack.field_split.PCDKrylovSolver`)
+               A PCD Krylov solver.
+            pcd_pc_class (:py:class:`fenapack.preconditioners.BasePCDPC`)
+               Representative of a class implementing PCD preconditioner.
         """
 
         # Initialize DOLFIN Newton solver
@@ -43,6 +47,7 @@ class PCDNewtonSolver(NewtonSolver):
 
         # Store Python reference for solver setup
         self._solver = solver
+        self._pcd_pc_class = pcd_pc_class
 
 
     def solve(self, problem, x):
@@ -69,7 +74,8 @@ class PCDNewtonSolver(NewtonSolver):
         # Set operators and initialize PCD
         P = A if P.empty() else P
         linear_solver.set_operators(A, P)
-        linear_solver.init_pcd(nonlinear_problem.pcd_assembler)
+        linear_solver.init_pcd(
+            nonlinear_problem.pcd_assembler, self._pcd_pc_class)
 
 
     def linear_solver(self):
