@@ -192,7 +192,6 @@ in [1]_, see Remark 9.6 therein.
 .. toctree::
    :caption: Documented demos
    :titlesonly:
-   :maxdepth: 1
 
    demos/navier-stokes-pcd
    demos/unsteady-navier-stokes-pcd
@@ -201,7 +200,6 @@ in [1]_, see Remark 9.6 therein.
 .. toctree::
    :caption: Developer's resources
    :titlesonly:
-   :maxdepth: 1
 
    circle
 
@@ -211,7 +209,6 @@ Manual and API Reference
 
 .. toctree::
    :titlesonly:
-   :maxdepth: 1
 
    API Reference <api-doc/fenapack>
 
