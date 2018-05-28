@@ -11,7 +11,7 @@ and
 </../../demo/unsteady-navier-stokes-pcd/demo_unsteady-navier-stokes-pcdr.py>`,
 so it is easier to make comparison of PCD vs. PCDR.
 Each python file contains both the variational forms and the solver.
-The differences between the two files are marked by **PCDR-DIFF** and described
+The differences between the two files are marked by **#PCDR-DIFF** and described
 below in detail.
 
 
@@ -88,7 +88,7 @@ operator ``kp`` by the *reaction* term from the time derivative.
                                  J_pc, ap=ap, kp=kp, mp=mp, bcs_pcd=bc_pcd)
     problem = PCDNonlinearProblem(pcd_assembler)
 
-**PCDR-DIFF #1:** If we wish to use any of the :py:class:`PCDR BRM preconditioners
+**#PCDR-DIFF No. 1:** If we wish to use any of the :py:class:`PCDR BRM preconditioners
 <fenapack.preconditioners.PCDRPC_BRM>`, then the *convection* operator ``kp``
 remains unchanged, but we need to supply the velocity mass matrix
 ``mu = idt*inner(u, v)*dx`` to :py:class:`fenapack.assembling.PCDAssembler`.
@@ -102,7 +102,7 @@ as it can be extracted from the Jacobian ``J``.
                                  J_pc, ap=ap, kp=kp, mp=mp, mu=mu, bcs_pcd=bc_pcd)
     assert pcd_assembler.get_pcd_form("gp").phantom # pressure grad obtained from J
 
-**PCDR-DIFF #2:** The fact that we want to use the PCDR preconditioner must be
+**#PCDR-DIFF No. 2:** The fact that we want to use the PCDR preconditioner must be
 invoked from options.
 
 .. code-block:: python
@@ -110,7 +110,7 @@ invoked from options.
     # Set up subsolvers
     PETScOptions.set("fieldsplit_p_pc_python_type", "fenapack.PCDRPC_" + args.pcd_variant)
 
-**PCDR-DIFF #3:** The Laplacian solve related to the *reaction* term can be
+**#PCDR-DIFF No. 3:** The Laplacian solve related to the *reaction* term can be
 performed using algebraic multigrid. (The direct solver is used by default if
 the following block is not executed.)
 
