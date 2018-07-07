@@ -16,43 +16,57 @@
 
 """Compiled extensions for fieldsplit modules"""
 
-from dolfin import compile_extension_module
+from dolfin import compile_cpp_code
+import petsc4py
+
 import os
 
 __all__ = ['dofmap_dofs_is', 'SubfieldBC']
 
 
 dofmap_dofs_is_cpp_code = """
-#ifdef SWIG
-%include "petsc4py/petsc4py.i"
-#endif
+#include <pybind11/pybind11.h>
+#include <pybind11/eigen.h>
+namespace py = pybind11;
 
 #include <vector>
 #include <petscis.h>
 #include <dolfin/fem/GenericDofMap.h>
 #include <dolfin/la/PETScObject.h>
 #include <dolfin/log/log.h>
+#include "petsc_casters.h"
 
-namespace dolfin {
+IS dofmap_dofs_is(const dolfin::GenericDofMap& dofmap)
+{
+  PetscErrorCode ierr;
+  const std::vector<dolfin::la_index> dofs = dofmap.dofs();
+  IS is;
+  dolfin_assert(dofmap.index_map());
+  ierr = ISCreateGeneral(dofmap.index_map()->mpi_comm(), dofs.size(),
+                         dofs.data(), PETSC_COPY_VALUES, &is);
+  if (ierr != 0)
+    dolfin::PETScObject::petsc_error(ierr, "field_split.py", "ISCreateGeneral");
+  return is;
+}
 
-  IS dofmap_dofs_is(const GenericDofMap& dofmap)
+PYBIND11_MODULE(SIGNATURE, m)
+{
+  m.def("dofmap_dofs_is", &dofmap_dofs_is);
+}
+
+namespace pybind11
+{
+  namespace detail
   {
-    PetscErrorCode ierr;
-    const std::vector<dolfin::la_index> dofs = dofmap.dofs();
-    IS is;
-    dolfin_assert(dofmap.index_map());
-    ierr = ISCreateGeneral(dofmap.index_map()->mpi_comm(), dofs.size(),
-                           dofs.data(), PETSC_COPY_VALUES, &is);
-    if (ierr != 0)
-      PETScObject::petsc_error(ierr, "field_split.py", "ISCreateGeneral");
-    return is;
+    PETSC_CASTER_MACRO(IS, is);
   }
-
 }
 """
 
 # Load and wrap compiled function dofmap_dofs_is
-module_dofs = compile_extension_module(dofmap_dofs_is_cpp_code, cppargs='-g -O2')
+path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+module_dofs = compile_cpp_code(dofmap_dofs_is_cpp_code,
+                               include_dirs=[path, petsc4py.get_include()])
 def dofmap_dofs_is(dofmap):
     """Converts DofMap::dofs() to IS.
 
@@ -72,5 +86,5 @@ dofmap_dofs_is.__doc__ += module_dofs.dofmap_dofs_is.__doc__
 # Load compiled class SubfieldBC
 path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 code = open(os.path.join(path, "SubfieldBC.h")).read()
-module_bc = compile_extension_module(code, cppargs='-g -O2')
+module_bc = compile_cpp_code(code, include_dirs=[path, petsc4py.get_include()])
 SubfieldBC = module_bc.SubfieldBC
