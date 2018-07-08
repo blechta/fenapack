@@ -38,3 +38,20 @@ from fenapack.nonlinear_solvers import PCDNewtonSolver, PCDNonlinearProblem
 from fenapack.preconditioners import PCDPC_BRM1, PCDPC_BRM2
 from fenapack.preconditioners import PCDRPC_BRM1, PCDRPC_BRM2
 from fenapack.stabilization import StabilizationParameterSD
+
+
+# Monkey patch dolfin.NewtonSolver in 2018.1.0
+from dolfin import NewtonSolver, compile_cpp_code
+_cpp = """
+#include <pybind11/pybind11.h>
+#include <dolfin/nls/NewtonSolver.h>
+
+PYBIND11_MODULE(SIGNATURE, m)
+{
+  pybind11::class_<dolfin::NewtonSolver, std::shared_ptr<dolfin::NewtonSolver>>
+  (m, "NewtonSolverExt", pybind11::module_local())
+  .def("krylov_iterations", &dolfin::NewtonSolver::krylov_iterations);
+}
+"""
+NewtonSolver.krylov_iterations = compile_cpp_code(_cpp).NewtonSolverExt.krylov_iterations
+del _cpp, NewtonSolver, compile_cpp_code
