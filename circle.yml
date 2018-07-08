@@ -141,6 +141,16 @@ jobs:
             cd ../../demo; find -name "*.pdf" -exec cp --parents {} /tmp/circle \;
             exit $rc
 
+# Install defcon and run test demo
+      - run:
+          name: Run defcon demo
+          command: |
+            pip3 install -v --user git+https://bitbucket.org/pefarrell/defcon
+            python3 -c"import defcon"
+            python3 demo/defcon/mesh/genmesh.py 120
+            cd demo/defcon && mpirun -n 2 python3 navier-stokes.py
+            mkdir -p /tmp/circle/defcon && cp bifurcation.pdf /tmp/circle/defcon
+
 # Finally we tell to CircleCI to store build artifacts
 # and test results, which both can be accessed on
 # CircleCI website.::

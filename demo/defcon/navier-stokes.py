@@ -188,7 +188,7 @@ class NavierStokesProblem(BifurcationProblem):
         #elif Re < 100: return 8
         #else:          return float("inf")
 
-    def solver_parameters(self, params, klass):
+    def solver_parameters(self, params, klass, averaging=False):
         opts = {
             "snes_monitor": None,
             "snes_converged_reason": None,
@@ -197,6 +197,11 @@ class NavierStokesProblem(BifurcationProblem):
             "snes_rtol": 0.0,
         }
 
+        if averaging:
+            opts.update({
+                "snes_max_it": 32,
+                "snes_linesearch_damping": 0.1,
+            })
 
         if self.args.pcd == "none":
             # Completely direct solver, no PCD
@@ -244,7 +249,7 @@ class NavierStokesProblem(BifurcationProblem):
     def jacobian(self, F, state, params, test, trial):
         return self._J
 
-    def solver(self, problem, solver_params, prefix="", **kwargs):
+    def solver(self, problem, params, solver_params, prefix="", **kwargs):
         # Create nonlinear solver
         solver = SNUFLSolver(problem, prefix=prefix,
                              solver_parameters=solver_params,
