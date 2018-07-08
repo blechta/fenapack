@@ -145,7 +145,8 @@ jobs:
       - run:
           name: Run defcon demo
           command: |
-            pip3 install -v --user git+https://bitbucket.org/pefarrell/defcon
+            CC=mpicc HDF5_MPI=ON pip3 install -v --no-cache-dir --user --no-binary=h5py h5py
+            pip3 install -v --no-cache-dir --user git+https://bitbucket.org/pefarrell/defcon
             python3 -c"import defcon"
             python3 demo/defcon/mesh/genmesh.py 120
             cd demo/defcon && mpirun -n 2 python3 navier-stokes.py
