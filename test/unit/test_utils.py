@@ -2,7 +2,7 @@ import pytest
 
 from dolfin import *
 
-from fenapack.utils import get_default_factor_solver_package
+from fenapack.utils import get_default_factor_solver_type
 from fenapack.utils import allow_only_one_call
 
 
@@ -12,14 +12,13 @@ def test_get_default_factor_solver_package():
     methods.pop("default", None)
 
     # Test sequential method
-    assert get_default_factor_solver_package(mpi_comm_self()) in methods
+    assert get_default_factor_solver_type(MPI.comm_self) in methods
 
     # Test parallel method if in parallel
-    comm_world = mpi_comm_world()
-    if MPI.size(comm_world) > 1:
+    if MPI.size(MPI.comm_world) > 1:
         methods.pop("umfpack", None)
         methods.pop("superlu", None)
-    assert get_default_factor_solver_package(comm_world) in methods
+    assert get_default_factor_solver_type(MPI.comm_world) in methods
 
 
 def test_allow_only_one_call():

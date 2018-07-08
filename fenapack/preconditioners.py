@@ -18,7 +18,8 @@
 from dolfin import timed
 from petsc4py import PETSc
 
-from fenapack.utils import get_default_factor_solver_package
+from fenapack.utils import get_default_factor_solver_type
+from fenapack.utils import pc_set_factor_solver_type
 
 
 class BasePCDPC(object):
@@ -44,7 +45,7 @@ class BasePCDPC(object):
         ksp = PETSc.KSP().create(comm)
         ksp.setType(PETSc.KSP.Type.PREONLY)
         ksp.pc.setType(PETSc.PC.Type.CHOLESKY)
-        ksp.pc.setFactorSolverPackage(get_default_factor_solver_package(comm))
+        pc_set_factor_solver_type(ksp.pc, get_default_factor_solver_type(comm))
         return ksp
 
 

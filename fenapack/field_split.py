@@ -23,11 +23,13 @@ from __future__ import print_function
 
 from dolfin import Timer, PETScKrylovSolver
 from petsc4py import PETSc
+from mpi4py import MPI
 
 from fenapack._field_split_utils import dofmap_dofs_is
 from fenapack.field_split_backend import PCDInterface
 from fenapack.preconditioners import PCDPC_BRM1
-from fenapack.utils import get_default_factor_solver_package
+from fenapack.utils import get_default_factor_solver_type
+from fenapack.utils import pc_set_factor_solver_type
 from fenapack.utils import allow_only_one_call
 
 
@@ -70,7 +72,9 @@ class PCDKSP(PETSc.KSP):
         is0 = dofmap_dofs_is(V.sub(0).dofmap())
         is1 = dofmap_dofs_is(V.sub(1).dofmap())
 
-        assert self.comm == V.mesh().mpi_comm(), "Non-matching MPI comm"
+        comm = self.comm.tompi4py()
+        assert comm.Compare(comm, V.mesh().mpi_comm()) in \
+            [MPI.IDENT, MPI.CONGRUENT], "Non-matching MPI comm"
 
         # Set subfields index sets
         # NOTE: Doing only so late here so that user has a chance to
@@ -91,7 +95,7 @@ class PCDKSP(PETSc.KSP):
         # Set some sensible defaults
         ksp0.setType(PETSc.KSP.Type.PREONLY)
         ksp0.pc.setType(PETSc.PC.Type.LU)
-        ksp0.pc.setFactorSolverPackage(get_default_factor_solver_package(self.comm))
+        pc_set_factor_solver_type(ksp0.pc, get_default_factor_solver_type(comm))
         ksp1.setType(PETSc.KSP.Type.PREONLY)
         ksp1.pc.setType(PETSc.PC.Type.PYTHON)
 

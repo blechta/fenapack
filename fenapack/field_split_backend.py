@@ -209,6 +209,10 @@ class PCDInterface(object):
 
         # Allocate new matrix otherwise
         if dolfin_mat is None:
+
+            if isinstance(comm, PETSc.Comm):
+                comm = comm.tompi4py()
+
             dolfin_mat = PETScMatrix(comm)
 
         # Store or pop the matrix as requested

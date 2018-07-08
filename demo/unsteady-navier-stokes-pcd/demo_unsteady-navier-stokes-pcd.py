@@ -209,7 +209,7 @@ while t < args.t_end and not near(t, args.t_end, 0.1*args.dt):
     w0.assign(w)
 
 # Report timings
-list_timings(TimingClear_clear, [TimingType_wall, TimingType_user])
+list_timings(TimingClear.clear, [TimingType.wall, TimingType.user])
 
 # Get iteration counts
 result = {

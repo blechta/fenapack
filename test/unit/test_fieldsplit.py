@@ -28,7 +28,7 @@ def create_dummy_solver_and_problem():
     problem = create_pcd_problem(F, bcs, J, J_pc, w, 1.0, ff, "BRM1")
     solver = PCDKrylovSolver(comm=mesh.mpi_comm())
     solver.set_options_prefix("s"+get_random_string()+"_")
-    A = PETScMatrix(solver.mpi_comm())
+    A = PETScMatrix(solver.ksp().comm.tompi4py())
     problem.J(A, w.vector())
     solver.set_operators(A, A)
     return solver, problem

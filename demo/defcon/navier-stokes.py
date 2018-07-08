@@ -282,7 +282,7 @@ if __name__ == "__main__":
 
     # FIXME: This is not what we want possibly; an average over WORLD,
     #        thus biased by master thread
-    list_timings(TimingClear_keep, [TimingType_wall, TimingType_user])
+    list_timings(TimingClear.keep, [TimingType.wall, TimingType.user])
 
     dc.bifurcation_diagram("sqL2")
     pyplot.title(r"Bifurcation diagram for sudden expansion in a channel")

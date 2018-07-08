@@ -41,7 +41,7 @@ class PCDNewtonSolver(NewtonSolver):
         """
 
         # Initialize DOLFIN Newton solver
-        comm = solver.mpi_comm()
+        comm = solver.ksp().comm.tompi4py()
         factory = PETScFactory.instance()
         super(PCDNewtonSolver, self).__init__(comm, solver, factory)
 

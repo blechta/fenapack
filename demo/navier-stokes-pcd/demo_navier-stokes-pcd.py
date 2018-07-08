@@ -181,7 +181,7 @@ solver.parameters["relative_tolerance"] = 1e-5
 solver.solve(problem, w.vector())
 
 # Report timings
-list_timings(TimingClear_clear, [TimingType_wall, TimingType_user])
+list_timings(TimingClear.clear, [TimingType.wall, TimingType.user])
 
 # Plot solution
 u, p = w.split()

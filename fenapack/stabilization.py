@@ -15,17 +15,24 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
-from dolfin import Constant, Expression, FiniteElement
+from dolfin import Constant, CompiledExpression, FiniteElement, compile_cpp_code
 
 __all__ = ['StabilizationParameterSD']
 
 
 _streamline_diffusion_cpp = """
+#include <pybind11/pybind11.h>
+#include <dolfin/function/Expression.h>
+#include <dolfin/function/FunctionSpace.h>
+
+using namespace dolfin;
+
+
 class StabilizationParameterSD : public Expression
 {
 public:
-  std::shared_ptr<GenericFunction> viscosity, density;
-  std::shared_ptr<GenericFunction> wind;
+
+  std::shared_ptr<GenericFunction> viscosity, density, wind;
 
   StabilizationParameterSD() : Expression() { }
 
@@ -33,13 +40,14 @@ public:
             const ufc::cell& c) const
   {
     // Get dolfin cell and its diameter
-    // FIXME: Avoid dynamical allocation
+    // FIXME: Avoid dynamic allocation
+    dolfin_assert(wind->function_space());
     const std::shared_ptr<const Mesh> mesh = wind->function_space()->mesh();
     const Cell cell(*mesh, c.index);
     double h = cell.h();
 
     // Evaluate viscosity at given coordinates
-    // FIXME: Avoid dynamical allocation
+    // FIXME: Avoid dynamic allocation
     Array<double> nu(viscosity->value_size());
     Array<double> rho(density->value_size());
     viscosity->eval(nu, x, c);
@@ -47,7 +55,7 @@ public:
 
     // Compute l2 norm of wind
     double wind_norm = 0.0;
-    // FIXME: Avoid dynamical allocation
+    // FIXME: Avoid dynamic allocation
     Array<double> w(wind->value_size());
     wind->eval(w, x, c);
     for (uint i = 0; i < w.size(); ++i)
@@ -59,7 +67,21 @@ public:
     values[0] = (PE > 1.0) ? 0.5*h*(1.0 - 1.0/PE)/wind_norm : 0.0;
   }
 };
+
+PYBIND11_MODULE(SIGNATURE, m)
+{
+  pybind11::class_<StabilizationParameterSD,
+             std::shared_ptr<StabilizationParameterSD>,
+             Expression>
+    (m, "StabilizationParameterSD")
+    .def(pybind11::init<>())
+    .def_readwrite("viscosity", &StabilizationParameterSD::viscosity)
+    .def_readwrite("density", &StabilizationParameterSD::density)
+    .def_readwrite("wind", &StabilizationParameterSD::wind);
+}
 """
+
+_expr = compile_cpp_code(_streamline_diffusion_cpp).StabilizationParameterSD
 
 
 def StabilizationParameterSD(wind, viscosity, density=None):
@@ -89,9 +111,8 @@ def StabilizationParameterSD(wind, viscosity, density=None):
         density = Constant(1.0)
     mesh = wind.function_space().mesh()
     element = FiniteElement("DG", mesh.ufl_cell(), 0)
-    delta_sd = Expression(_streamline_diffusion_cpp, element=element,
-                          domain=mesh, mpi_comm=mesh.mpi_comm())
-    delta_sd.wind = wind
-    delta_sd.viscosity = viscosity
-    delta_sd.density = density
+    delta_sd = CompiledExpression(_expr(), element=element, domain=mesh)
+    delta_sd.wind = wind._cpp_object
+    delta_sd.viscosity = viscosity._cpp_object
+    delta_sd.density = density._cpp_object
     return delta_sd
