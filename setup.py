@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from distutils.core import setup
-import re, os, glob, subprocess, warnings
+from  setuptools import setup
+import re, os, glob
 
 version = re.findall('__version__ = "(.*)"',
                      open('fenapack/__init__.py', 'r').read())[0]
@@ -12,30 +12,33 @@ Development Status :: 2 - Pre-Alpha
 Environment :: Console
 Intended Audience :: Science/Research
 License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)
-Programming Language :: Python
+Programming Language :: Python :: 3
 Programming Language :: C++
 Topic :: Scientific/Engineering :: Mathematics
 """
 classifiers = CLASSIFIERS.split('\n')[1:-1]
 
-demofiles = glob.glob(os.path.join("demo", "*", "*.py"))
+demofiles = (
+      glob.glob(os.path.join("demo", "**", "*.py"), recursive=True)
+    + glob.glob(os.path.join("demo", "**", "*.rst"), recursive=True)
+    + glob.glob(os.path.join("demo", "data", "*.xml"))
+)
+data_files=[(os.path.join("share", "fenapack", os.path.dirname(f)), [f])
+            for f in demofiles]
 
-# Download meshes
-if subprocess.call(os.path.join(os.path.curdir, "download-meshes")) != 0:
-    warnings.warn("Download of meshes failed...")
-datafiles = glob.glob(os.path.join("data", "*"))
+with open("README.rst", "r") as f:
+    long_description = f.read()
 
-setup(name="FENaPack",
+setup(name="fenapack",
       version=version,
-      author="Jan Blechta, Martin Řehoř",
+      author="Jan Blechta",
       author_email="blechta@karlin.mff.cuni.cz",
-      url="http://github.com/blechta/fenapack",
-      description="FEniCS Navier-Stokes preconditioning package",
+      url="https://github.com/blechta/fenapack",
+      description="FENaPack: FEniCS Navier-Stokes preconditioning package",
+      long_description=long_description,
+      long_description_content_type="text/x-rst",
       classifiers=classifiers,
-      license="GNU LGPL v3 or later",
       packages=["fenapack"],
       package_dir={"fenapack": "fenapack"},
       package_data={"fenapack": ["*.h"]},
-      data_files=[(os.path.join("share", "fenapack", os.path.dirname(f)), [f])
-                  for f in demofiles+datafiles],
-    )
+      data_files=data_files)

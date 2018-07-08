@@ -7,7 +7,9 @@
 *.pdf
 
 /build/
+/dist/
 /FENaPack.egg-info/
+/fenapack.egg-info/
 
 .cache/
 test/regression/demo.log

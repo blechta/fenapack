@@ -19,7 +19,7 @@ from fenapack import StabilizationParameterSD
 @pytest.fixture
 def data_dir():
     path = os.path.join(os.getcwd(), os.path.dirname(__file__),
-                        os.pardir, os.pardir, "data")
+                        os.pardir, os.pardir, "demo", "data")
     return os.path.realpath(path)
 
 
@@ -29,7 +29,7 @@ def get_random_string():
 
 def create_function_space(refinement_level):
     # Load mesh from file and refine uniformly
-    mesh = Mesh(os.path.join(data_dir(), "step_domain.xml.gz"))
+    mesh = Mesh(os.path.join(data_dir(), "mesh_lshape.xml"))
     for i in range(refinement_level):
         mesh = refine(mesh)
 

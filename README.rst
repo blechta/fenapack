@@ -23,22 +23,33 @@ implemented.
 Usage
 =====
 
-To use FENaPack matching version of FEniCS (version |version|)
-compiled with PETSc and petsc4py is needed. To install FENaPack
-from source do::
+To use FENaPack matching version of FEniCS (version 2018.1.0)
+compiled with PETSc and petsc4py is needed. Note that FENaPack
+uses same version numbering as FEniCS and follows its release
+schedule with a short delay.
 
-  pip install [--user|--prefix=...] [-e] .
+To install FENaPack from source do::
+
+  pip3 install [--user|--prefix=...] [-e] .
 
 in the source/repository root dir.  Editable install using ``-e``
 allows to use FENaPack directly from source directory while
 editing it which is suitable for development.
 
-Meshes for running demos can be downloaded from the FEniCS project
-website by executing ``download-meshes`` script. Demos can be run
-by navigating to a particular demo directory and typing::
+You can install latest FENaPack release form PyPI::
 
-  NP=4
-  mpirun -n $NP python demo_foo-bar.py [-h]
+  pip3 install [--user|--prefix=...] fenapack
+
+or install latest development version from Github::
+
+  pip3 install [--user|--prefix=...] git+https://github.com/blechta/fenapack
+
+To start experimenting::
+
+  cd demo/navier-stokes-pcd
+  python3 demo_navier-stokes-pcd.py --help
+  python3 demo_navier-stokes-pcd.py [opts]
+  mpirun -n 16 python3 demo_navier-stokes-pcd.py [opts]
 
 Full documentation is available at https://fenapack.readthedocs.io/.
 
@@ -82,3 +93,4 @@ Links
 - Testing https://circleci.com/gh/blechta/fenapack
 - Documentation https://fenapack.readthedocs.io/
 - Bug reports https://github.com/blechta/fenapack/issues
+- PyPI home https://pypi.org/project/fenapack

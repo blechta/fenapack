@@ -53,7 +53,7 @@ parser.add_argument("--t_end", type=float, dest="t_end", default=5.0,
 args = parser.parse_args(sys.argv[1:])
 
 # Load mesh from file and refine uniformly
-mesh = Mesh("../../data/step_domain.xml.gz")
+mesh = Mesh(os.path.join(os.path.pardir, "data", "mesh_lshape.xml"))
 for i in range(args.level):
     mesh = refine(mesh)
 

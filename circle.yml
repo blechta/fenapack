@@ -54,15 +54,11 @@ jobs:
             python3 -c'import ffc; print(ffc.git_commit_hash(), ffc.ufc_signature())'
             python3 -c'import dolfin; print(dolfin.git_commit_hash())'
 
-# Install the project from the working directory. (Note that
-# the ``download-meshes`` script should be invoked during
-# installation but that does not work because of some
-# directories mismatch.)::
+# Install the project from the working directory.::
 
       - run:
           name: Install FENaPack
           command: |
-            ./download-meshes
             pip3 install -v --user .
 
 # Try to import the project. That involves some just-in-time
