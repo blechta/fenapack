@@ -28,7 +28,7 @@ import sys, os, re, platform
 from time import time
 from itertools import chain
 
-from instant import get_status_output, get_default_error_dir
+from dijitso.system import get_status_output
 from dolfin import has_mpi, has_parmetis, has_scotch
 
 
@@ -98,13 +98,6 @@ def run_python_demo(prefix, demo, rootdir, timing, failed):
     else:
         print("*** Failed")
         print(output)
-
-        # Add contents from Instant's compile.log to output
-        instant_compile_log = os.path.join(get_default_error_dir(), "compile.log")
-        if os.path.isfile(instant_compile_log):
-            instant_error = file(instant_compile_log).read()
-            output += "\n\nInstant compile.log for %s:\n\n" % demo
-            output += instant_error
         failed += [(demo, "Python", prefix, output)]
 
 def main():
