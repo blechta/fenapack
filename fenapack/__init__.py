@@ -20,7 +20,7 @@
 """This is FENaPack, FEniCS Navier-Stokes preconditioning package."""
 
 __author__ = "Jan Blechta, Martin Řehoř"
-__version__ = "2018.1.0.rc0"
+__version__ = "2018.1.0"
 __license__ = "GNU LGPL v3"
 
 # Do not use petsc4py python error handler (hides error messages
