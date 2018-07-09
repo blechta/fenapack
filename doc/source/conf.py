@@ -35,7 +35,7 @@ if on_rtd:
             return MagicMock()
 
     # Mock C/C++ packages
-    MOCK_MODULES = ['dolfin', 'petsc4py']
+    MOCK_MODULES = ['dolfin', 'petsc4py', 'mpi4py']
     sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
     # Mock PETSc version number

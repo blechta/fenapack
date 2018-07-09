@@ -24,9 +24,9 @@ Usage
 =====
 
 To use FENaPack matching version of FEniCS (version 2018.1.0)
-compiled with PETSc and petsc4py is needed. Note that FENaPack
-uses same version numbering as FEniCS and follows its release
-schedule with a short delay.
+compiled with PETSc, petsc4py and mpi4py is needed. Note that
+FENaPack uses same version numbering as FEniCS and follows
+its release schedule with a short lag.
 
 To install FENaPack from source do::
 
