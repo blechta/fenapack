@@ -302,7 +302,6 @@ texinfo_documents = [
 
 def run_apidoc():
     """Run sphinx-apidoc"""
-    from sphinx import apidoc
 
     # Get location of Sphinx files
     sphinx_source_dir = os.path.abspath(os.path.dirname(__file__))
@@ -315,6 +314,24 @@ def run_apidoc():
     for module in modules:
         # Generate .rst files ready for autodoc
         module_dir = os.path.join(repo_dir, module)
+        argv = [
+            "-f",             # Overwrite existing files
+            #"-T",             # Don't create a table of contents file
+            #"-P",             # Include "_private" modules
+            #"-M",             # Put module doc before submodule doc
+            "-d", "1",        # Maximum depth of submodules to show in the TOC
+            "-o", apidoc_dir, # Directory to place all output
+            module_dir        # Module directory
+        ]
+
+        try:
+            # Sphinx 1.7+
+            from sphinx.ext import apidoc
+        except ImportError:
+            # Sphinx 1.6 (and earlier)
+            from sphinx import apidoc
+            argv.insert(0, apidoc.__file__)
+
         apidoc.OPTIONS = [
             "members",
             "special-members",
@@ -322,16 +339,7 @@ def run_apidoc():
             #"undoc-members",
             "show-inheritance"
         ]
-        apidoc.main(["",               # This argument is omitted by option parser
-                     "-f",             # Overwrite existing files
-                     #"-T",             # Don't create a table of contents file
-                     #"-P",             # Include "_private" modules
-                     #"-M",             # Put module doc before submodule doc
-                     "-d", "1",        # Maximum depth of submodules to show in the TOC
-                     "-o", apidoc_dir, # Directory to place all output
-                     module_dir        # Module directory
-                    ]
-        )
+        apidoc.main(argv)
 
 
 def run_pylit():
