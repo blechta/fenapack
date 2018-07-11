@@ -1,6 +1,5 @@
 name: fenapack
 type: sphinx
-# requirements_file: doc/requirements.txt
 python:
   version: 3.5
   pip_install: true
