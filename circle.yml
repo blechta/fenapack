@@ -4,10 +4,7 @@
 # This page describes how to setup CircleCI version 2.0
 # for a project built on top of DOLFIN. Tests are run
 # using FEniCS docker images, in particular using an
-# image with the development version of FEniCS. Note that
-# modern FEniCS Docker images have both Python version 2
-# and 3. Hence it is easy to change a Python version of
-# the below commands or even run both versions.
+# image with the development version of FEniCS.
 #
 # For details, see also `the FEniCS Docker reference manual
 # <http://fenics-containers.readthedocs.org/en/latest/>`_.
