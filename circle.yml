@@ -84,20 +84,12 @@ jobs:
 # instance to figure out an MPI rank number using the
 # ``${OMPI_COMM_WORLD_RANK:-$PMI_RANK}`` variable, which
 # should work both with MPICH and OpenMPI, and use it
-# to generate separate test result files. Other issue is
-# that the Python 3 hash randomization together with
-# unordered dicts make order of object destruction during
-# garbage collection non-deterministic and different across
-# MPI processes. When a destructor of any object is
-# collective this may cause a deadlock. By forcing the same
-# ``PYTHONHASHSEED`` for all processes we prevent this
-# problem. The chance is that this will not be necessary
-# with Python 3.6 where dicts are ordered.::
+# to generate separate test result files.::
 
       - run:
           name: Unit tests MPI
           command: >
-            PYTHONHASHSEED=0 mpirun -n 3 bash -c '
+            mpirun -n 3 bash -c '
             py.test-3 test/unit -svl
             --junitxml /tmp/circle/unit-mpi-${OMPI_COMM_WORLD_RANK:-$PMI_RANK}.xml
             '
@@ -119,17 +111,15 @@ jobs:
             exit $rc
 
 # Now we run the regression tests implemented by a homebrew
-# Python script ``test.py``. The script invokes also
-# parallel tests so again we enforce the same hash seed
-# across MPI processes. We copy resulting figures to directory
-# where CircleCI collects artifacts.::
+# Python script ``test.py``. We copy resulting figures to
+# directory where CircleCI collects artifacts.::
 
       - run:
           name: Regression tests
           command: |
             set +e
             cd test/regression
-            PYTHONHASHSEED=0 NP=3 python3 -u test.py
+            NP=3 python3 -u test.py
             rc=$?
             cd ../../demo; find -name "*.pdf" -exec cp --parents {} /tmp/circle \;
             exit $rc
