@@ -182,3 +182,12 @@ and simultaneously
 = \frac{1}{\tau} \left(\mathbb{B} \mathbb{D}_\mathrm{M}^{-1} \mathbb{B}^T\right)^{-1}`.
 The same approximation of the minus Laplacian operator was previously used also
 in [1]_, see Remark 9.6 therein.
+
+
+.. [1] Elman H. C., Silvester D. J., Wathen A. J., *Finite Elements and Fast
+       Iterative Solvers: With Application in Incompressible Fluid Dynamics*.
+       Oxford University Press 2005. 2nd edition 2014.
+
+.. [2] Olshanskii M. A., Vassilevski Y. V., *Pressure Schur complement
+       preconditioners for the discrete Oseen problem*.
+       SIAM J. Sci. Comput., 29(6), 2686-2704. 2007.
