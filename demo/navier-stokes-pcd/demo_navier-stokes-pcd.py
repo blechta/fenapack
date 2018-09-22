@@ -195,5 +195,4 @@ pyplot.savefig("figure_v_p_size{}_rank{}.pdf".format(size, rank))
 pyplot.figure()
 plot(p, title="pressure", mode="warp")
 pyplot.savefig("figure_warp_size{}_rank{}.pdf".format(size, rank))
-if "CI" not in os.environ:
-    pyplot.show()
+pyplot.show()

@@ -34,6 +34,7 @@ jobs:
         environment:
           LD_LIBRARY_PATH: /home/fenics/local/lib
           CMAKE_PREFIX_PATH: /home/fenics/local
+          MPLBACKEND: Agg
     working_directory: /home/fenics/fenapack
 
 # First step is checking out the source code into
