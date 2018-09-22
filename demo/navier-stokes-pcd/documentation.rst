@@ -191,5 +191,10 @@ with PCD solver.
 Complete code
 -------------
 
-.. literalinclude:: /../../demo/navier-stokes-pcd/demo_navier-stokes-pcd.py
-   :start-after: # Begin demo
+.. toggle-header::
+    :header: **Show/Hide Code**
+
+    :download:`Download Code </../../demo/navier-stokes-pcd/demo_navier-stokes-pcd.py>`
+
+    .. literalinclude:: /../../demo/navier-stokes-pcd/demo_navier-stokes-pcd.py
+        :start-after: # Begin demo

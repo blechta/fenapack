@@ -20,7 +20,6 @@ split PCD preconditioning."""
 # along with FENaPack.  If not, see <http://www.gnu.org/licenses/>.
 
 # Begin demo
-
 from dolfin import *
 from matplotlib import pyplot
 

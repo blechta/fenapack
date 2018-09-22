@@ -142,8 +142,21 @@ to see that the results can look like this:
 Let us remark that the difference in case ``--pcd BRM2`` is not so striking.
 
 
-Complete code (PCDR version)
-----------------------------
+Complete code
+-------------
 
-.. literalinclude:: /../../demo/unsteady-navier-stokes-pcd/demo_unsteady-navier-stokes-pcdr.py
-   :start-after: # Begin demo
+.. toggle-header::
+    :header: **Show/Hide Code** ``demo_unsteady-navier-stokes-pcd.py``
+
+    :download:`Download Code </../../demo/unsteady-navier-stokes-pcd/demo_unsteady-navier-stokes-pcd.py>`
+
+    .. literalinclude:: /../../demo/unsteady-navier-stokes-pcd/demo_unsteady-navier-stokes-pcd.py
+        :start-after: # Begin demo
+
+.. toggle-header::
+    :header: **Show/Hide Code** ``demo_unsteady-navier-stokes-pcdr.py``
+
+    :download:`Download Code </../../demo/unsteady-navier-stokes-pcd/demo_unsteady-navier-stokes-pcdr.py>`
+
+    .. literalinclude:: /../../demo/unsteady-navier-stokes-pcd/demo_unsteady-navier-stokes-pcdr.py
+        :start-after: # Begin demo
