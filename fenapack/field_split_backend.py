@@ -1,4 +1,4 @@
-# Copyright (C) 2017 Jan Blechta
+# Copyright (C) 2017, 2018 Jan Blechta, Martin Rehor
 #
 # This file is part of FENaPack.
 #
@@ -24,6 +24,8 @@ from petsc4py import PETSc
 from fenapack._field_split_utils import SubfieldBC
 from fenapack.assembling import PCDAssembler
 
+from weakref import WeakKeyDictionary, proxy
+
 
 class PCDInterface(object):
     """Wrapper of PCDAssembler for interfacing with PCD PC
@@ -42,7 +44,7 @@ class PCDInterface(object):
 
         # Store what needed
         self.assembler = pcd_assembler
-        self.A = A
+        self.A = proxy(A)
         self.is_u = is_u
         self.is_p = is_p
 
@@ -54,7 +56,7 @@ class PCDInterface(object):
             self.assemble_operator = self._assemble_operator_shallow
 
         # Dictionary for storing work mats
-        self.scratch = {}
+        self.scratch = WeakKeyDictionary()
 
 
     def apply_pcd_bcs(self, vec):
