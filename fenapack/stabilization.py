@@ -70,10 +70,11 @@ public:
 
 PYBIND11_MODULE(SIGNATURE, m)
 {
+  py::object CppExpression =
+    (py::object) py::module::import("dolfin.cpp.function").attr("Expression");
   pybind11::class_<StabilizationParameterSD,
-             std::shared_ptr<StabilizationParameterSD>,
-             Expression>
-    (m, "StabilizationParameterSD")
+                   std::shared_ptr<StabilizationParameterSD>>
+    (m, "StabilizationParameterSD", CppExpression)
     .def(pybind11::init<>())
     .def_readwrite("viscosity", &StabilizationParameterSD::viscosity)
     .def_readwrite("density", &StabilizationParameterSD::density)
