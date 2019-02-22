@@ -70,8 +70,8 @@ public:
 
 PYBIND11_MODULE(SIGNATURE, m)
 {
-  py::object CppExpression =
-    (py::object) py::module::import("dolfin.cpp.function").attr("Expression");
+  pybind11::object CppExpression =
+    (pybind11::object) pybind11::module::import("dolfin.cpp.function").attr("Expression");
   pybind11::class_<StabilizationParameterSD,
                    std::shared_ptr<StabilizationParameterSD>>
     (m, "StabilizationParameterSD", CppExpression)
