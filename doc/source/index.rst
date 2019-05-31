@@ -23,6 +23,7 @@
    :titlesonly:
 
    circle
+   releasing
 
 
 .. toctree::
