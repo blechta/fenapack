@@ -4,15 +4,15 @@ Releasing
 .. code-block:: sh
 
     # Bump version numbers
-    git ls-files | xargs grep --color 2020\.1
+    git ls-files | xargs grep --color 2019\.1
     edit ...
-    git commit -am"Bump version numbers to 2020.1.0"
+    git commit -am"Bump version numbers to 2019.2.0"
 
     # Wait for CircleCI to report green and fix problems
 
     # Create tag and push
-    git tag -m"Release version 2020.1.0" 2020.1.0
-    git push 2020.1.0
+    git tag -m"Release version 2019.2.0" 2019.2.0
+    git push 2019.2.0
 
     # Package and push to PyPI
     git clean -fdx
@@ -21,5 +21,6 @@ Releasing
     pip3 install --upgrade --user twine
     twine upload dist/*
 
-    # Bump version numbers to 2021.1.0.dev0
+    # Bump version numbers
     edit ...
+    git commit -am"Bump version numbers to 2019.3.0.dev0"
