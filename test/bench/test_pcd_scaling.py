@@ -118,7 +118,7 @@ def create_pcd_problem(F, bcs, J, J_pc, w, nu, boundary_markers, pcd_variant):
     # Artificial BC for PCD preconditioner
     if pcd_variant == "BRM1":
         bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 1)
-    elif pcd_variant == "BRM2":
+    elif pcd_variant in ["BRM2", "Ydiag", "YL2"]:
         bc_pcd = DirichletBC(W.sub(1), 0.0, boundary_markers, 2)
 
     # Arguments and coefficients of the form
@@ -133,7 +133,7 @@ def create_pcd_problem(F, bcs, J, J_pc, w, nu, boundary_markers, pcd_variant):
     mp = Constant(1.0/nu)*p*q*dx
     kp = Constant(1.0/nu)*dot(grad(p), u_)*q*dx
     ap = inner(grad(p), grad(q))*dx
-    if pcd_variant == "BRM2":
+    if pcd_variant in ["BRM2", "Ydiag", "YL2"]:
         n = FacetNormal(W.mesh())
         ds = Measure("ds", subdomain_data=boundary_markers)
         kp -= Constant(1.0/nu)*dot(u_, n)*p*q*ds(1)
@@ -194,7 +194,7 @@ def create_solver(comm, pcd_variant, ls, mumps_debug=False):
 @pytest.mark.parametrize("nu",          [0.02])
 @pytest.mark.parametrize("alpha",       [1.0, 0.5])
 @pytest.mark.parametrize("nls",         ["picard", "newton"])
-@pytest.mark.parametrize("pcd_variant", ["BRM1", "BRM2"])
+@pytest.mark.parametrize("pcd_variant", ["BRM1", "BRM2", "Ydiag", "YL2"])
 @pytest.mark.parametrize("ls",          ["direct", "iterative"])
 def test_scaling_mesh(nu, alpha, nls, pcd_variant, ls, postprocessor):
     set_log_level(LogLevel.WARNING)

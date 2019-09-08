@@ -159,6 +159,13 @@ class PCDAssembler(object):
         assemble(self.get_dolfin_form("mp"), tensor=Mp)
 
 
+    def mp_bcs(self, Mp):
+        assembler = SystemAssembler(self.get_dolfin_form("mp"),
+                                    self.get_dolfin_form("L"),
+                                    self.pcd_bcs())
+        assembler.assemble(Mp)
+
+
     def mu(self, Mu):
         assemble(self.get_dolfin_form("mu"), tensor=Mu)
 

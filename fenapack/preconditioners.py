@@ -170,6 +170,93 @@ class PCDPC_BRM2(BasePCDPC):
 
 
 
+class PCDPC_Ydiag(BasePCDPC):
+    """This class implements a modification of steady variant of PCD
+    described in [3]_.
+
+    .. [3] Blechta J., *Towards efficient numerical computation
+           of flows of non-Newtonian fluids*. PhD thesis,
+           Charles University, Faculty of Mathematics andi
+           Physics, 2019. URL: http://hdl.handle.net/20.500.11956/108384.
+    """
+
+    @timed("FENaPack: PCDPC_Ydiag apply")
+    def apply(self, pc, x, y):
+
+        # Fetch work vector
+        z0, z1 = self.get_work_vecs(x, 2)
+
+        # Apply PCD
+        self.ksp_Mp.solve(x, y)   # y = M_p^{-1} x
+        y.copy(result=z0)         # z0 = y
+        self.bcs_applier(z0)      # apply bcs to z0
+        self.mat_Kp.mult(z0, z1)  # z1 = K_p z0
+        self.bcs_applier(z1)      # apply bcs to z1
+        self.ksp_Ap.solve(z1, z0) # z0 = A_p^{-1} z1
+        self.bcs_applier(z0)      # apply bcs to z0
+        y.axpy(1.0, z0)           # y = y + z0
+        # FIXME: How is with the sign bussines?
+        y.scale(-1.0)             # y = -y
+
+
+
+class PCDPC_YL2(BasePCDPC):
+    """This class implements a modification of steady variant of PCD
+    described in [3]_.
+
+    .. [3] Blechta J., *Towards efficient numerical computation
+           of flows of non-Newtonian fluids*. PhD thesis,
+           Charles University, Faculty of Mathematics andi
+           Physics, 2019. URL: http://hdl.handle.net/20.500.11956/108384.
+    """
+
+
+    def create(self, pc):
+        super(PCDPC_YL2, self).create(pc)
+
+        self.ksp_Mp_bcs = self.create_default_ksp(pc.comm)
+
+        options_prefix = pc.getOptionsPrefix()
+        self.ksp_Mp_bcs.setOptionsPrefix(options_prefix + "PCD_Mp_")
+
+
+    def setFromOptions(self, pc):
+        super(PCDPC_YL2, self).setFromOptions(pc)
+
+        self.ksp_Mp_bcs.setFromOptions()
+
+
+    def setUp(self, pc):
+        super(PCDPC_YL2, self).setUp(pc)
+
+        # Prepare additional mass matrix with bcs solver
+        # NOTE: Called function ensures that assembly, submat extraction and
+        #       ksp setup is done only once during preconditioner lifetime.
+        self.interface.setup_ksp_Mp_bcs(self.ksp_Mp_bcs)
+
+
+    @timed("FENaPack: PCDPC_YL2 apply")
+    def apply(self, pc, x, y):
+
+        # Fetch work vector
+        z0, z1 = self.get_work_vecs(x, 2)
+
+        # Apply PCD
+        self.ksp_Mp.solve(x, y)   # y = M_p^{-1} x
+        x.copy(result=z0)         # z0 = x
+        self.bcs_applier(z0)      # apply bcs to z0
+        self.ksp_Mp_bcs.solve(z0, z1)  # z1 = (M_p^{11})^{-1} z0
+        self.bcs_applier(z1)      # apply bcs to z1
+        self.mat_Kp.mult(z1, z0)  # z0 = K_p z1
+        self.bcs_applier(z0)      # apply bcs to z0
+        self.ksp_Ap.solve(z0, z1) # z1 = A_p^{-1} z0
+        self.bcs_applier(z1)      # apply bcs to z1
+        y.axpy(1.0, z1)           # y = y + z1
+        # FIXME: How is with the sign bussines?
+        y.scale(-1.0)             # y = -y
+
+
+
 class BasePCDRPC(BasePCDPC):
     """Base python context for pressure convection diffusion reaction (PCDR)
     preconditioners.

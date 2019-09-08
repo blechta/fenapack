@@ -76,6 +76,12 @@ class PCDInterface(object):
                        const=self.assembler.get_pcd_form("mp").is_constant())
 
 
+    def setup_ksp_Mp_bcs(self, ksp):
+        """Setup pressure mass matrix with bcs ksp and assemble matrix"""
+        self.setup_ksp(ksp, self.assembler.mp_bcs, self.is_p, spd=True,
+                       const=self.assembler.get_pcd_form("mp").is_constant())
+
+
     def setup_mat_Kp(self, mat=None):
         """Setup and assemble pressure convection
         matrix and return it"""
